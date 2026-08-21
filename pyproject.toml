@@ -1,0 +1,24 @@
+[project]
+name = "ai-data-workspace"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Amir Bensekar", email = "aamirbensekar325@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "boto3>=1.43.77",
+    "fastapi>=0.141.1",
+    "psycopg[binary]>=3.3.4",
+    "python-dotenv>=1.2.2",
+    "python-multipart>=0.0.32",
+    "uvicorn[standard]>=0.52.1",
+]
+
+[project.scripts]
+ai-data-workspace = "ai_data_workspace:main"
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
