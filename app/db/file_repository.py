@@ -117,3 +117,47 @@ def update_physical_file_storage(
 
     finally:
         conn.close()
+
+def create_uploaded_physical_file(
+    file_name: str,
+    file_size: int,
+    file_hash: str,
+    storage_path: str,
+):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO physical_files (
+                    file_name,
+                    file_size,
+                    file_hash,
+                    storage_path,
+                    status
+                )
+                VALUES (%s, %s, %s, %s, 'UPLOADED')
+                RETURNING
+                    file_id,
+                    file_name,
+                    file_size,
+                    file_hash,
+                    storage_path,
+                    status;
+                """,
+                (
+                    file_name,
+                    file_size,
+                    file_hash,
+                    storage_path,
+                ),
+            )
+
+            physical_file = cur.fetchone()
+            conn.commit()
+
+            return physical_file
+
+    finally:
+        conn.close()
