@@ -1,5 +1,7 @@
 import os
 import tempfile
+from unittest import result
+from app.services.processing_service import start_processing
 from app.services.file_service import (
     register_file,
     finalize_presigned_upload,
@@ -199,5 +201,52 @@ def complete_upload(request: FileCompleteRequest):
             "file_id": upload[2],
             "status": upload[3],
             "created_at": upload[4],
+        }
+    }
+
+@router.post("/{file_id}/process")
+def process_file(file_id: int):
+
+    try:
+        result = start_processing(file_id)
+
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=str(exc),
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+        status_code=409,
+        detail=str(exc),
+    )
+
+    attempt = result["attempt"]
+    bronze = result["bronze"]
+    attempt = result["attempt"]
+
+    return {
+        "message": "Bronze processing completed successfully",
+        "processing_attempt": {
+            "attempt_id": attempt[0],
+            "file_id": attempt[1],
+            "attempt_number": attempt[2],
+            "stage": attempt[3],
+            "status": attempt[4],
+            "error_message": attempt[5],
+            "started_at": attempt[6],
+            "completed_at": attempt[7],
+        },
+        "bronze": {
+            "object_key": bronze["bronze_object_key"],
+            "row_count": bronze["row_count"],
+            "columns": bronze["column_names"],
+            "schema": bronze["schema"],
         }
     }

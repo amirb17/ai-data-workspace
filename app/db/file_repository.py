@@ -161,3 +161,192 @@ def create_uploaded_physical_file(
 
     finally:
         conn.close()
+
+def get_physical_file_by_id(file_id: int):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    file_id,
+                    file_name,
+                    file_size,
+                    file_hash,
+                    storage_path,
+                    status
+                FROM physical_files
+                WHERE file_id = %s;
+                """,
+                (file_id,),
+            )
+
+            return cur.fetchone()
+
+    finally:
+        conn.close()
+
+
+def get_next_attempt_number(file_id: int):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COALESCE(MAX(attempt_number), 0) + 1
+                FROM processing_attempts
+                WHERE file_id = %s;
+                """,
+                (file_id,),
+            )
+
+            return cur.fetchone()[0]
+
+    finally:
+        conn.close()
+
+
+def create_processing_attempt(
+    file_id: int,
+    attempt_number: int,
+    stage: str = "BRONZE",
+    status: str = "PROCESSING",
+):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO processing_attempts (
+                    file_id,
+                    attempt_number,
+                    stage,
+                    status,
+                    started_at
+                )
+                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+                RETURNING
+                    attempt_id,
+                    file_id,
+                    attempt_number,
+                    stage,
+                    status,
+                    error_message,
+                    started_at,
+                    completed_at;
+                """,
+                (
+                    file_id,
+                    attempt_number,
+                    stage,
+                    status,
+                ),
+            )
+
+            attempt = cur.fetchone()
+            conn.commit()
+
+            return attempt
+
+    finally:
+        conn.close()
+def get_active_processing_attempt(file_id: int):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    attempt_id,
+                    file_id,
+                    attempt_number,
+                    stage,
+                    status,
+                    error_message,
+                    started_at,
+                    completed_at
+                FROM processing_attempts
+                WHERE file_id = %s
+                  AND status = 'PROCESSING'
+                ORDER BY attempt_number DESC
+                LIMIT 1;
+                """,
+                (file_id,),
+            )
+
+            return cur.fetchone()
+
+    finally:
+        conn.close()
+def update_physical_file_status(
+    file_id: int,
+    status: str,
+):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE physical_files
+                SET
+                    status = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE file_id = %s
+                RETURNING file_id, status;
+                """,
+                (status, file_id),
+            )
+
+            result = cur.fetchone()
+            conn.commit()
+
+            return result
+
+    finally:
+        conn.close()
+def complete_processing_attempt(
+    attempt_id: int,
+    status: str,
+    error_message: str | None = None,
+):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE processing_attempts
+                SET
+                    status = %s,
+                    error_message = %s,
+                    completed_at = CURRENT_TIMESTAMP
+                WHERE attempt_id = %s
+                RETURNING
+                    attempt_id,
+                    file_id,
+                    attempt_number,
+                    stage,
+                    status,
+                    error_message,
+                    started_at,
+                    completed_at;
+                """,
+                (
+                    status,
+                    error_message,
+                    attempt_id,
+                ),
+            )
+
+            result = cur.fetchone()
+            conn.commit()
+
+            return result
+
+    finally:
+        conn.close()
