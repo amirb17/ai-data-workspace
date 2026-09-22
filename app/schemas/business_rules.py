@@ -1,0 +1,19 @@
+from typing import Literal
+from pydantic import BaseModel
+
+
+class BusinessRuleAnswer(BaseModel):
+    column_name: str
+    rule_type: str
+    answer: Literal[
+        "YES",
+        "NO",
+        "ALLOW",
+        "KEEP_FIRST",
+        "KEEP_LATEST",
+        "QUARANTINE",
+    ]
+
+
+class BusinessRuleSubmission(BaseModel):
+    answers: list[BusinessRuleAnswer]

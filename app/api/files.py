@@ -16,15 +16,23 @@ from app.storage.s3_service import (
 )
 from pydantic import BaseModel
 from uuid import uuid4
-
+from app.services.business_rule_service import (
+    get_business_rule_questions,
+)
 
 from app.storage.s3_service import generate_presigned_upload_url
-
+from app.services.business_rule_service import (
+    finalize_business_rules,
+)
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
 from app.utils.hashing import calculate_file_hash
 from app.services.file_service import register_file
-
+from app.schemas.business_rules import BusinessRuleSubmission
+from app.services.business_rule_service import (
+    submit_business_rule_answers,
+)
+from app.services.processing_service import run_silver_processing
 class FileCompleteRequest(BaseModel):
     user_id: int
     object_key: str
@@ -232,7 +240,11 @@ def process_file(file_id: int):
     attempt = result["attempt"]
 
     return {
-        "message": "Bronze processing completed successfully",
+        "message": (
+            "Bronze processing and dataset profiling completed. "
+            "Business rule configuration is required before Silver processing."
+            ),
+        "pipeline_status": "AWAITING_RULES",
         "processing_attempt": {
             "attempt_id": attempt[0],
             "file_id": attempt[1],
@@ -250,3 +262,73 @@ def process_file(file_id: int):
             "schema": bronze["schema"],
         }
     }
+
+@router.get("/{file_id}/business-rules/suggestions")
+def get_rule_suggestions(file_id: int):
+    try:
+        return get_business_rule_questions(file_id)
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+
+@router.post("/{file_id}/business-rules")
+def submit_business_rules(
+    file_id: int,
+    submission: BusinessRuleSubmission,
+):
+    try:
+        return submit_business_rule_answers(
+            file_id=file_id,
+            answers=submission.answers,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+@router.post("/{file_id}/business-rules/finalize")
+def finalize_rules(file_id: int):
+    try:
+        return finalize_business_rules(file_id)
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+@router.post("/{file_id}/silver/process")
+def process_file_silver(file_id: int):
+    try:
+        result = run_silver_processing(
+            file_id=file_id,
+            bucket_name="ai-data-workspace-amir-dev",
+        )
+
+        return {
+            "message": "Silver processing completed successfully.",
+            **result,
+        }
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+
+    except RuntimeError as exc:
+        message = str(exc)
+
+        if "already being processed" in message:
+            raise HTTPException(
+                status_code=409,
+                detail=message,
+            )
+
+        raise HTTPException(
+            status_code=500,
+            detail=message,
+        )

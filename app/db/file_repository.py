@@ -1,3 +1,4 @@
+import json
 from app.db.database import get_connection
 from app.db.database import get_connection
 
@@ -350,3 +351,428 @@ def complete_processing_attempt(
 
     finally:
         conn.close()
+def save_dataset_profiles(
+    file_id: int,
+    profiles: list[dict],
+):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            for profile in profiles:
+                cur.execute(
+                    """
+                    INSERT INTO dataset_profiles (
+                        file_id,
+                        column_name,
+                        inferred_type,
+                        null_count,
+                        distinct_count,
+                        duplicate_count,
+                        min_value,
+                        max_value,
+                        negative_count
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s
+                    )
+                    ON CONFLICT (file_id, column_name)
+                    DO UPDATE SET
+                        inferred_type = EXCLUDED.inferred_type,
+                        null_count = EXCLUDED.null_count,
+                        distinct_count = EXCLUDED.distinct_count,
+                        duplicate_count = EXCLUDED.duplicate_count,
+                        min_value = EXCLUDED.min_value,
+                        max_value = EXCLUDED.max_value,
+                        negative_count = EXCLUDED.negative_count,
+                        created_at = CURRENT_TIMESTAMP;
+                    """,
+                    (
+                        file_id,
+                        profile["column_name"],
+                        profile["inferred_type"],
+                        profile["null_count"],
+                        profile["distinct_count"],
+                        profile["duplicate_count"],
+                        profile["min_value"],
+                        profile["max_value"],
+                        profile["negative_count"],
+                    ),
+                )
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+def save_dataset_profile_summary(
+    file_id: int,
+    total_rows: int,
+    total_columns: int,
+):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO dataset_profile_summaries (
+                    file_id,
+                    total_rows,
+                    total_columns
+                )
+                VALUES (%s, %s, %s)
+
+                ON CONFLICT (file_id)
+                DO UPDATE SET
+                    total_rows = EXCLUDED.total_rows,
+                    total_columns = EXCLUDED.total_columns,
+                    updated_at = CURRENT_TIMESTAMP
+
+                RETURNING
+                    profile_summary_id,
+                    file_id,
+                    total_rows,
+                    total_columns,
+                    created_at,
+                    updated_at;
+                """,
+                (
+                    file_id,
+                    total_rows,
+                    total_columns,
+                ),
+            )
+
+            result = cur.fetchone()
+
+        conn.commit()
+        return result
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+def get_dataset_profile_summary(file_id: int):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    profile_summary_id,
+                    file_id,
+                    total_rows,
+                    total_columns,
+                    created_at,
+                    updated_at
+                FROM dataset_profile_summaries
+                WHERE file_id = %s;
+                """,
+                (file_id,),
+            )
+
+            return cur.fetchone()
+
+    finally:
+        conn.close()
+
+def get_dataset_profiles(file_id: int):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    profile_id,
+                    file_id,
+                    column_name,
+                    inferred_type,
+                    null_count,
+                    distinct_count,
+                    duplicate_count,
+                    min_value,
+                    max_value,
+                    negative_count
+                FROM dataset_profiles
+                WHERE file_id = %s
+                ORDER BY profile_id;
+                """,
+                (file_id,),
+            )
+
+            return cur.fetchall()
+
+    finally:
+        conn.close()
+
+def save_business_rule(
+    file_id: int,
+    column_name: str,
+    rule_type: str,
+    rule_config: dict,
+):
+    query = """
+    INSERT INTO business_rules (
+        file_id,
+        column_name,
+        rule_type,
+        rule_config,
+        is_active
+    )
+    VALUES (%s, %s, %s, %s::jsonb, TRUE)
+
+    ON CONFLICT (file_id, column_name, rule_type)
+    DO UPDATE SET
+        rule_config = EXCLUDED.rule_config,
+        is_active = TRUE,
+        updated_at = CURRENT_TIMESTAMP
+
+    RETURNING
+        rule_id,
+        file_id,
+        column_name,
+        rule_type,
+        rule_config,
+        is_active,
+        created_at,
+        updated_at;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    file_id,
+                    column_name,
+                    rule_type,
+                    json.dumps(rule_config),
+                ),
+            )
+
+            result = cursor.fetchone()
+            conn.commit()
+
+            return result
+def save_business_rule_answer(
+    file_id: int,
+    column_name: str,
+    rule_type: str,
+    answer: str,
+):
+    query = """
+        INSERT INTO business_rule_answers (
+            file_id,
+            column_name,
+            rule_type,
+            answer
+        )
+        VALUES (%s, %s, %s, %s)
+
+        ON CONFLICT (file_id, column_name, rule_type)
+        DO UPDATE SET
+            answer = EXCLUDED.answer,
+            updated_at = CURRENT_TIMESTAMP
+
+        RETURNING
+            answer_id,
+            file_id,
+            column_name,
+            rule_type,
+            answer,
+            created_at,
+            updated_at;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    file_id,
+                    column_name,
+                    rule_type,
+                    answer.upper(),
+                ),
+            )
+
+            result = cursor.fetchone()
+            conn.commit()
+
+            return result
+
+def get_business_rule_answers(file_id: int):
+    query = """
+        SELECT
+            answer_id,
+            file_id,
+            column_name,
+            rule_type,
+            answer,
+            created_at,
+            updated_at
+        FROM business_rule_answers
+        WHERE file_id = %s
+        ORDER BY answer_id;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query, (file_id,))
+            return cursor.fetchall()
+
+def get_active_business_rules(file_id: int):
+    query = """
+        SELECT
+            rule_id,
+            file_id,
+            column_name,
+            rule_type,
+            rule_config,
+            is_active
+        FROM business_rules
+        WHERE file_id = %s
+          AND is_active = TRUE
+        ORDER BY rule_id;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query, (file_id,))
+            return cursor.fetchall()
+
+def deactivate_business_rule(
+    file_id: int,
+    column_name: str,
+    rule_type: str,
+):
+    query = """
+        UPDATE business_rules
+        SET
+            is_active = FALSE,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE file_id = %s
+          AND column_name = %s
+          AND rule_type = %s
+          AND is_active = TRUE
+        RETURNING rule_id;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    file_id,
+                    column_name,
+                    rule_type,
+                ),
+            )
+
+            result = cursor.fetchone()
+            conn.commit()
+
+            return result
+def save_data_quality_run(
+    file_id: int,
+    attempt_id: int,
+    total_rows: int,
+    valid_rows: int,
+    rejected_rows: int,
+    silver_path: str,
+    quarantine_path: str | None,
+):
+    query = """
+        INSERT INTO data_quality_runs (
+            file_id,
+            attempt_id,
+            total_rows,
+            valid_rows,
+            rejected_rows,
+            silver_path,
+            quarantine_path
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING
+            dq_run_id,
+            file_id,
+            attempt_id,
+            total_rows,
+            valid_rows,
+            rejected_rows,
+            silver_path,
+            quarantine_path,
+            created_at;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    file_id,
+                    attempt_id,
+                    total_rows,
+                    valid_rows,
+                    rejected_rows,
+                    silver_path,
+                    quarantine_path,
+                ),
+            )
+
+            result = cursor.fetchone()
+            conn.commit()
+
+            return result
+def save_data_quality_issue(
+    dq_run_id: int,
+    column_name: str,
+    rule_type: str,
+    violation_count: int,
+):
+    query = """
+        INSERT INTO data_quality_issues (
+            dq_run_id,
+            column_name,
+            rule_type,
+            violation_count
+        )
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (
+            dq_run_id,
+            column_name,
+            rule_type
+        )
+        DO UPDATE SET
+            violation_count = EXCLUDED.violation_count
+        RETURNING *;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    dq_run_id,
+                    column_name,
+                    rule_type,
+                    violation_count,
+                ),
+            )
+
+            result = cursor.fetchone()
+
+        conn.commit()
+
+    return result

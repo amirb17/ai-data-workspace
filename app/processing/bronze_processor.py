@@ -2,7 +2,7 @@ import io
 from datetime import datetime, timezone
 
 import pandas as pd
-
+from app.processing.dataset_profiler import profile_dataframe
 from app.storage.s3_service import get_s3_client, BUCKET_NAME
 
 
@@ -20,7 +20,7 @@ def run_bronze_stage(
     raw_bytes = response["Body"].read()
 
     df = pd.read_csv(io.BytesIO(raw_bytes))
-
+    profiles = profile_dataframe(df)
     row_count = len(df)
     column_names = list(df.columns)
 
@@ -57,4 +57,5 @@ def run_bronze_stage(
         "row_count": row_count,
         "column_names": column_names,
         "schema": schema,
+        "profiles": profiles,
     }
