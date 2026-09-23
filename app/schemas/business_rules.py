@@ -1,10 +1,12 @@
 from typing import Literal
+
 from pydantic import BaseModel
 
 
 class BusinessRuleAnswer(BaseModel):
     column_name: str
     rule_type: str
+
     answer: Literal[
         "YES",
         "NO",
@@ -12,6 +14,8 @@ class BusinessRuleAnswer(BaseModel):
         "KEEP_FIRST",
         "KEEP_LATEST",
         "QUARANTINE",
+        "DECIMAL",
+        "DATETIME",
     ]
 
 

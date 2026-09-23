@@ -9,6 +9,10 @@ from app.processing.silver_validator import (
     apply_business_rules,
     calculate_dq_issue_counts,
 )
+from app.processing.silver_transformer import (
+    apply_common_cleaning,
+    apply_transformations,
+)
 
 
 session = boto3.Session(
@@ -96,9 +100,24 @@ def process_silver(
 
     # Apply DQ rules
 
-    validated_df = apply_business_rules(
-        df=bronze_df,
+    # Apply Silver transformations
+    cleaned_df = apply_common_cleaning(
+    bronze_df
+    )
+    (
+        transformed_df,
+        transformation_errors,
+        original_null_masks,
+    ) = apply_transformations(
+        df=cleaned_df,
         rules=rules,
+    )
+
+    validated_df = apply_business_rules(
+        df=transformed_df,
+        rules=rules,
+        transformation_errors=transformation_errors,
+        original_null_masks=original_null_masks,
     )
 
     # Split valid and rejected rows

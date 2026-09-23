@@ -150,6 +150,25 @@ def generate_rule_suggestions(file_id: int) -> list[dict]:
         # Example: amount, revenue, price, quantity
         # ==================================================
         elif role == "MEASURE":
+            suggestions.append(
+                {
+                    "column_name": column_name,
+                    "semantic_role": role,
+                    "suggested_rule_type": "DATA_TYPE",
+                    "reason": (
+                        f"'{column_name}' is classified as a numeric measure "
+                        "and should be stored using a numeric type."
+                    ),
+                    "question": (
+                        f"Should '{column_name}' be converted to a decimal "
+                        "numeric type?"
+                    ),
+                    "options": [
+                        "DECIMAL",
+                        "NO",
+                    ],
+                }
+            )
 
             suggestions.append(
                 {
@@ -195,26 +214,27 @@ def generate_rule_suggestions(file_id: int) -> list[dict]:
         # DATETIME
         # ==================================================
         elif role == "DATETIME":
-
             suggestions.append(
                 {
                     "column_name": column_name,
                     "semantic_role": role,
-                    "suggested_rule_type": "VALID_DATETIME",
+                    "suggested_rule_type": "DATA_TYPE",
                     "reason": (
-                        f"'{column_name}' appears to represent "
-                        "date or time information."
+                        f"'{column_name}' appears to represent date or "
+                        "time information and can be standardized."
                     ),
                     "question": (
-                        f"Should invalid date/time values in "
-                        f"'{column_name}' be rejected?"
+                        f"Should '{column_name}' be converted to a "
+                        "datetime type?"
                     ),
                     "options": [
-                        "YES",
+                        "DATETIME",
                         "NO",
                     ],
                 }
             )
+
+        
 
             if null_count > 0:
                 suggestions.append(

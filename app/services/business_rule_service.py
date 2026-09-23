@@ -44,6 +44,18 @@ def convert_answer_to_rule_config(
 ) -> dict | None:
 
     answer = answer.upper()
+    if rule_type == "DATA_TYPE":
+        if answer == "NO":
+            return None
+
+        if answer in {"DECIMAL", "DATETIME"}:
+            return {
+                "type": answer
+            }
+
+        raise ValueError(
+            f"Unsupported DATA_TYPE answer: {answer}"
+        )
 
     if rule_type == "UNIQUE":
         if answer == "YES":

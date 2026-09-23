@@ -3,6 +3,7 @@ import pandas as pd
 def _apply_not_null_rule(
     df: pd.DataFrame,
     column_name: str,
+    null_mask: pd.Series | None = None,
 ) -> None:
 
     if column_name not in df.columns:
@@ -11,7 +12,11 @@ def _apply_not_null_rule(
             "rule does not exist in dataset"
         )
 
-    invalid_mask = df[column_name].isna()
+    invalid_mask = (
+        null_mask
+        if null_mask is not None
+        else df[column_name].isna()
+    )
 
     for index in df.index[invalid_mask]:
         df.at[index, "_dq_violations"].append(
@@ -71,6 +76,8 @@ def _apply_unique_rule(
 def apply_business_rules(
     df: pd.DataFrame,
     rules: list,
+    transformation_errors: dict[str, pd.Series] | None = None,
+    original_null_masks: dict[str, pd.Series] | None = None,
 ) -> pd.DataFrame:
 
     result = df.copy()
@@ -78,6 +85,13 @@ def apply_business_rules(
     result["_dq_violations"] = [
         [] for _ in range(len(result))
     ]
+    if transformation_errors:
+        for violation_name, invalid_mask in transformation_errors.items():
+
+            for index in result.index[invalid_mask]:
+                result.at[index, "_dq_violations"].append(
+                    violation_name
+                )
 
     for rule in rules:
         column_name = rule[2]
@@ -86,9 +100,18 @@ def apply_business_rules(
 
         if rule_type == "NOT_NULL":
             if rule_config.get("required", False):
+
+                null_mask = None
+
+                if original_null_masks:
+                    null_mask = original_null_masks.get(
+                        column_name
+                    )
+
                 _apply_not_null_rule(
                     result,
                     column_name,
+                    null_mask=null_mask,
                 )
 
         elif rule_type == "UNIQUE":
