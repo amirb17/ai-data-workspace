@@ -687,6 +687,7 @@ def deactivate_business_rule(
 def save_data_quality_run(
     file_id: int,
     attempt_id: int,
+    rule_version: int,
     total_rows: int,
     valid_rows: int,
     rejected_rows: int,
@@ -697,17 +698,19 @@ def save_data_quality_run(
         INSERT INTO data_quality_runs (
             file_id,
             attempt_id,
+            rule_version,
             total_rows,
             valid_rows,
             rejected_rows,
             silver_path,
             quarantine_path
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING
             dq_run_id,
             file_id,
             attempt_id,
+            rule_version,
             total_rows,
             valid_rows,
             rejected_rows,
@@ -723,6 +726,7 @@ def save_data_quality_run(
                 (
                     file_id,
                     attempt_id,
+                    rule_version,
                     total_rows,
                     valid_rows,
                     rejected_rows,
@@ -735,6 +739,181 @@ def save_data_quality_run(
             conn.commit()
 
             return result
+def get_latest_successful_dq_run(
+    file_id: int,
+):
+    query = """
+        SELECT
+            dqr.dq_run_id,
+            dqr.file_id,
+            dqr.attempt_id,
+            dqr.rule_version,
+            dqr.total_rows,
+            dqr.valid_rows,
+            dqr.rejected_rows,
+            dqr.silver_path,
+            dqr.quarantine_path,
+            dqr.created_at
+        FROM data_quality_runs dqr
+        JOIN processing_attempts pa
+            ON pa.attempt_id = dqr.attempt_id
+        WHERE dqr.file_id = %s
+          AND pa.stage = 'SILVER'
+          AND pa.status = 'SUCCESS'
+        ORDER BY dqr.created_at DESC
+        LIMIT 1;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (file_id,),
+            )
+
+            return cursor.fetchone()
+
+def save_gold_run(
+    file_id: int,
+    attempt_id: int,
+    source_dq_run_id: int,
+    gold_type: str,
+    row_count: int,
+    gold_path: str,
+):
+    query = """
+        INSERT INTO gold_runs (
+            file_id,
+            attempt_id,
+            source_dq_run_id,
+            gold_type,
+            row_count,
+            gold_path
+        )
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING
+            gold_run_id,
+            file_id,
+            attempt_id,
+            source_dq_run_id,
+            gold_type,
+            row_count,
+            gold_path,
+            created_at;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    file_id,
+                    attempt_id,
+                    source_dq_run_id,
+                    gold_type,
+                    row_count,
+                    gold_path,
+                ),
+            )
+
+            return cursor.fetchone()
+
+def get_latest_successful_gold_run(
+    file_id: int,
+):
+    query = """
+        SELECT
+            gr.gold_run_id,
+            gr.file_id,
+            gr.attempt_id,
+            gr.source_dq_run_id,
+            gr.gold_type,
+            gr.row_count,
+            gr.gold_path,
+            gr.created_at
+        FROM gold_runs gr
+        JOIN processing_attempts pa
+            ON pa.attempt_id = gr.attempt_id
+        WHERE gr.file_id = %s
+          AND pa.stage = 'GOLD'
+          AND pa.status = 'SUCCESS'
+        ORDER BY gr.created_at DESC
+        LIMIT 1;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (file_id,),
+            )
+            return cursor.fetchone()
+
+def get_rule_version(file_id: int) -> int:
+    query = """
+        SELECT rule_version
+        FROM physical_files
+        WHERE file_id = %s;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query, (file_id,))
+            row = cursor.fetchone()
+
+            if not row:
+                raise ValueError(
+                    f"Physical file {file_id} not found"
+                )
+
+            return row[0]
+
+
+def increment_rule_version(file_id: int) -> int:
+    query = """
+        UPDATE physical_files
+        SET rule_version = rule_version + 1
+        WHERE file_id = %s
+        RETURNING rule_version;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query, (file_id,))
+            row = cursor.fetchone()
+
+            if not row:
+                raise ValueError(
+                    f"Physical file {file_id} not found"
+                )
+
+            return row[0]
+
+def get_business_rule_answer(
+    file_id: int,
+    column_name: str,
+    rule_type: str,
+):
+    query = """
+        SELECT answer
+        FROM business_rule_answers
+        WHERE file_id = %s
+          AND column_name = %s
+          AND rule_type = %s;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    file_id,
+                    column_name,
+                    rule_type,
+                ),
+            )
+            return cursor.fetchone()
+
 def save_data_quality_issue(
     dq_run_id: int,
     column_name: str,
@@ -749,14 +928,13 @@ def save_data_quality_issue(
             violation_count
         )
         VALUES (%s, %s, %s, %s)
-        ON CONFLICT (
+        RETURNING
+            dq_issue_id,
             dq_run_id,
             column_name,
-            rule_type
-        )
-        DO UPDATE SET
-            violation_count = EXCLUDED.violation_count
-        RETURNING *;
+            rule_type,
+            violation_count,
+            created_at;
     """
 
     with get_connection() as conn:
@@ -772,7 +950,43 @@ def save_data_quality_issue(
             )
 
             result = cursor.fetchone()
+            conn.commit()
 
-        conn.commit()
+            return result
 
-    return result
+def get_successful_gold_run_for_dq_run(
+    file_id: int,
+    source_dq_run_id: int,
+):
+    query = """
+        SELECT
+            gr.gold_run_id,
+            gr.file_id,
+            gr.attempt_id,
+            gr.source_dq_run_id,
+            gr.gold_type,
+            gr.row_count,
+            gr.gold_path,
+            gr.created_at
+        FROM gold_runs gr
+        JOIN processing_attempts pa
+            ON pa.attempt_id = gr.attempt_id
+        WHERE gr.file_id = %s
+          AND gr.source_dq_run_id = %s
+          AND pa.stage = 'GOLD'
+          AND pa.status = 'SUCCESS'
+        ORDER BY gr.created_at DESC
+        LIMIT 1;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    file_id,
+                    source_dq_run_id,
+                ),
+            )
+
+            return cursor.fetchone()

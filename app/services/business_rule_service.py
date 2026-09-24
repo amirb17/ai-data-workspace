@@ -13,7 +13,11 @@ from app.db.file_repository import (
     update_physical_file_status,
 )
 from app.db.file_repository import deactivate_business_rule
-
+from app.db.file_repository import (
+    get_business_rule_answer,
+    get_rule_version,
+    increment_rule_version,
+)
 
 def get_business_rule_questions(file_id: int) -> dict:
     physical_file = get_physical_file_by_id(file_id)
@@ -119,6 +123,11 @@ def submit_business_rule_answers(
     saved_rules = []
     skipped_answers = []
 
+    # NEW:
+    # Tracks whether this submission changes the effective
+    # rule configuration.
+    rules_changed = False
+
     for item in answers:
 
         key = (
@@ -132,6 +141,23 @@ def submit_business_rule_answers(
                 f"Rule '{item.rule_type}' for column "
                 f"'{item.column_name}' was not suggested"
             )
+
+        # NEW:
+        # Read the previous answer BEFORE overwriting it.
+        existing_answer = get_business_rule_answer(
+            file_id=file_id,
+            column_name=item.column_name,
+            rule_type=item.rule_type,
+        )
+
+        # NEW:
+        # New answer or changed answer means that the
+        # rule configuration has changed.
+        if existing_answer is None:
+            rules_changed = True
+
+        elif existing_answer[0] != item.answer:
+            rules_changed = True
 
         # Save the user's answer for audit/history
         save_business_rule_answer(
@@ -172,12 +198,24 @@ def submit_business_rule_answers(
                 "answer": item.answer,
             })
 
+    # NEW:
+    # Increment ONCE for the entire configuration change,
+    # not once for every changed answer.
+    if rules_changed:
+        rule_version = increment_rule_version(file_id)
+    else:
+        rule_version = get_rule_version(file_id)
+
     return {
         "file_id": file_id,
         "saved_rule_count": len(saved_rules),
         "skipped_answer_count": len(skipped_answers),
         "saved_rules": saved_rules,
         "skipped_answers": skipped_answers,
+
+        # NEW
+        "rules_changed": rules_changed,
+        "rule_version": rule_version,
     }
 def finalize_business_rules(file_id: int) -> dict:
     physical_file = get_physical_file_by_id(file_id)
@@ -272,4 +310,97 @@ def finalize_business_rules(file_id: int) -> dict:
             "Business rules finalized. "
             "Dataset is ready for Silver processing."
         ),
+    }
+
+def update_business_rule_answer(
+    file_id: int,
+    item,
+) -> dict:
+
+    physical_file = get_physical_file_by_id(file_id)
+
+    if not physical_file:
+        raise ValueError(
+            f"File {file_id} not found"
+        )
+
+    status = physical_file[5]
+
+    if status not in (
+        "PROCESSING",
+        "SUCCESS",
+        "FAILED",
+    ):
+        raise ValueError(
+            f"Business rules cannot be edited. "
+            f"Current file status: {status}"
+        )
+
+    existing_answer = get_business_rule_answer(
+        file_id=file_id,
+        column_name=item.column_name,
+        rule_type=item.rule_type,
+    )
+
+    if not existing_answer:
+        raise ValueError(
+            f"No existing rule answer found for "
+            f"{item.column_name}:{item.rule_type}"
+        )
+
+    old_answer = existing_answer[0]
+
+    # Idempotent edit
+    if old_answer == item.answer:
+        return {
+            "file_id": file_id,
+            "column_name": item.column_name,
+            "rule_type": item.rule_type,
+            "old_answer": old_answer,
+            "new_answer": item.answer,
+            "rules_changed": False,
+            "rule_version": get_rule_version(file_id),
+        }
+
+    config = convert_answer_to_rule_config(
+        rule_type=item.rule_type,
+        answer=item.answer,
+    )
+
+    save_business_rule_answer(
+        file_id=file_id,
+        column_name=item.column_name,
+        rule_type=item.rule_type,
+        answer=item.answer,
+    )
+
+    if config is not None:
+
+        save_business_rule(
+            file_id=file_id,
+            column_name=item.column_name,
+            rule_type=item.rule_type,
+            rule_config=config,
+        )
+
+    else:
+
+        deactivate_business_rule(
+            file_id=file_id,
+            column_name=item.column_name,
+            rule_type=item.rule_type,
+        )
+
+    new_rule_version = increment_rule_version(
+        file_id
+    )
+
+    return {
+        "file_id": file_id,
+        "column_name": item.column_name,
+        "rule_type": item.rule_type,
+        "old_answer": old_answer,
+        "new_answer": item.answer,
+        "rules_changed": True,
+        "rule_version": new_rule_version,
     }

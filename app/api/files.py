@@ -33,6 +33,11 @@ from app.services.business_rule_service import (
     submit_business_rule_answers,
 )
 from app.services.processing_service import run_silver_processing
+from app.schemas.business_rules import BusinessRuleUpdate
+from app.services.business_rule_service import update_business_rule_answer
+from app.services.processing_service import (
+    run_gold_processing,
+)
 class FileCompleteRequest(BaseModel):
     user_id: int
     object_key: str
@@ -331,4 +336,57 @@ def process_file_silver(file_id: int):
         raise HTTPException(
             status_code=500,
             detail=message,
+        )
+
+@router.patch(
+    "/{file_id}/business-rules"
+)
+def update_business_rule(
+    file_id: int,
+    request: BusinessRuleUpdate,
+):
+
+    try:
+        result = update_business_rule_answer(
+            file_id=file_id,
+            item=request,
+        )
+
+        return result
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+
+@router.post("/{file_id}/gold/process")
+def process_file_gold(
+    file_id: int,
+):
+    try:
+        result = run_gold_processing(
+            file_id=file_id,
+            bucket_name="ai-data-workspace-amir-dev",
+        )
+
+        return {
+            "message": (
+                "Gold processing completed successfully."
+                if not result["already_processed"]
+                else "Gold already processed. Existing result returned."
+            ),
+            **result,
+        }
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=str(exc),
         )
