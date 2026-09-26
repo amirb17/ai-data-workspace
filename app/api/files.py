@@ -1,50 +1,46 @@
 import os
 import tempfile
-from unittest import result
-from app.services.processing_service import start_processing
-from app.services.file_service import (
-    register_file,
-    finalize_presigned_upload,
+from uuid import uuid4
+
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from pydantic import BaseModel
+
+from app.services.processing_service import (
+    start_processing,
+    run_silver_processing,
+    run_gold_processing,
 )
 from app.services.file_service import (
     register_file,
     finalize_presigned_upload,
+    validate_upload_context,
+)
+from app.services.business_rule_service import (
+    get_business_rule_questions,
+    submit_business_rule_answers,
+    finalize_business_rules,
+    update_business_rule_answer,
 )
 from app.storage.s3_service import (
     generate_presigned_upload_url,
     get_object_metadata,
 )
-from pydantic import BaseModel
-from uuid import uuid4
-from app.services.business_rule_service import (
-    get_business_rule_questions,
-)
-
-from app.storage.s3_service import generate_presigned_upload_url
-from app.services.business_rule_service import (
-    finalize_business_rules,
-)
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-
 from app.utils.hashing import calculate_file_hash
-from app.services.file_service import register_file
-from app.schemas.business_rules import BusinessRuleSubmission
-from app.services.business_rule_service import (
-    submit_business_rule_answers,
-)
-from app.services.processing_service import run_silver_processing
-from app.schemas.business_rules import BusinessRuleUpdate
-from app.services.business_rule_service import update_business_rule_answer
-from app.services.processing_service import (
-    run_gold_processing,
+from app.schemas.business_rules import (
+    BusinessRuleSubmission,
+    BusinessRuleUpdate,
 )
 class FileCompleteRequest(BaseModel):
     user_id: int
+    workspace_id: int | None = None
+    dataset_id: int | None = None
     object_key: str
     expected_file_size: int
 
 class FileInitiateRequest(BaseModel):
     user_id: int
+    workspace_id: int | None = None
+    dataset_id: int | None = None
     file_name: str
     file_size: int
     content_type: str | None = None
@@ -58,6 +54,8 @@ router = APIRouter(
 @router.post("/upload")
 async def upload_file(
     user_id: int = Form(...),
+    workspace_id: int | None = Form(None),
+    dataset_id: int | None = Form(None),
     file: UploadFile = File(...),
 ):
     allowed_extensions = {".csv"}
@@ -99,6 +97,8 @@ async def upload_file(
             file_size=file_size,
             file_hash=file_hash,
             local_file_path=temp_path,
+            workspace_id=workspace_id,
+            dataset_id=dataset_id,
         )
 
         physical_file = result["file"]
@@ -110,9 +110,7 @@ async def upload_file(
                 if result["is_duplicate"]
                 else "New physical file uploaded successfully"
             ),
-
             "is_duplicate": result["is_duplicate"],
-
             "file": {
                 "file_id": physical_file[0],
                 "file_name": physical_file[1],
@@ -121,22 +119,39 @@ async def upload_file(
                 "storage_path": physical_file[4],
                 "status": physical_file[5],
             },
-
             "upload_request": {
                 "upload_id": upload[0],
                 "user_id": upload[1],
                 "file_id": upload[2],
-                "status": upload[3],
-                "created_at": upload[4],
-            }
+                "workspace_id": upload[3],
+                "dataset_id": upload[4],
+                "status": upload[5],
+                "created_at": upload[6],
+            },
         }
-
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
 
 @router.post("/initiate")
 def initiate_upload(request: FileInitiateRequest):
+
+    try:
+        validate_upload_context(
+            user_id=request.user_id,
+            workspace_id=request.workspace_id,
+            dataset_id=request.dataset_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
 
     upload_token = str(uuid4())
 
@@ -171,6 +186,8 @@ def complete_upload(request: FileCompleteRequest):
             user_id=request.user_id,
             object_key=request.object_key,
             expected_file_size=request.expected_file_size,
+            workspace_id=request.workspace_id,
+            dataset_id=request.dataset_id,
         )
 
     except ValueError as exc:
@@ -212,9 +229,11 @@ def complete_upload(request: FileCompleteRequest):
             "upload_id": upload[0],
             "user_id": upload[1],
             "file_id": upload[2],
-            "status": upload[3],
-            "created_at": upload[4],
-        }
+            "workspace_id": upload[3],
+            "dataset_id": upload[4],
+            "status": upload[5],
+            "created_at": upload[6],
+        },
     }
 
 @router.post("/{file_id}/process")
@@ -234,15 +253,9 @@ def process_file(file_id: int):
             status_code=400,
             detail=str(exc),
         )
-    except RuntimeError as exc:
-        raise HTTPException(
-        status_code=409,
-        detail=str(exc),
-    )
 
     attempt = result["attempt"]
     bronze = result["bronze"]
-    attempt = result["attempt"]
 
     return {
         "message": (
