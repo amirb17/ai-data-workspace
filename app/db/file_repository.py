@@ -1,6 +1,5 @@
 import json
 from app.db.database import get_connection
-from app.db.database import get_connection
 
 
 def find_physical_file_by_hash(file_hash: str):
@@ -59,6 +58,8 @@ def create_physical_file(
 def create_upload_request(
     user_id: int,
     file_id: int,
+    workspace_id: int | None = None,
+    dataset_id: int | None = None,
 ):
     conn = get_connection()
 
@@ -66,19 +67,45 @@ def create_upload_request(
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO upload_requests
-                    (user_id, file_id, status)
-                VALUES
-                    (%s, %s, 'UPLOADED')
-                RETURNING upload_id, user_id, file_id, status, created_at;
+                INSERT INTO upload_requests (
+                    user_id,
+                    file_id,
+                    workspace_id,
+                    dataset_id,
+                    status
+                )
+                VALUES (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    'UPLOADED'
+                )
+                RETURNING
+                    upload_id,
+                    user_id,
+                    file_id,
+                    workspace_id,
+                    dataset_id,
+                    status,
+                    created_at;
                 """,
-                (user_id, file_id),
+                (
+                    user_id,
+                    file_id,
+                    workspace_id,
+                    dataset_id,
+                ),
             )
 
             upload_request = cur.fetchone()
             conn.commit()
 
             return upload_request
+
+    except Exception:
+        conn.rollback()
+        raise
 
     finally:
         conn.close()
@@ -125,6 +152,18 @@ def create_uploaded_physical_file(
     file_hash: str,
     storage_path: str,
 ):
+    """
+    Insert a newly-promoted physical file.
+
+    Two concurrent presigned-upload completions for identical bytes can
+    both pass the earlier `find_physical_file_by_hash` check and race
+    here. `file_hash` is unique, so we resolve the race with
+    ON CONFLICT DO NOTHING and fall back to selecting the row the
+    other request inserted, instead of surfacing a constraint-violation
+    error to the caller.
+
+    Returns (physical_file, was_inserted).
+    """
     conn = get_connection()
 
     try:
@@ -139,6 +178,7 @@ def create_uploaded_physical_file(
                     status
                 )
                 VALUES (%s, %s, %s, %s, 'UPLOADED')
+                ON CONFLICT (file_hash) DO NOTHING
                 RETURNING
                     file_id,
                     file_name,
@@ -156,9 +196,33 @@ def create_uploaded_physical_file(
             )
 
             physical_file = cur.fetchone()
+            was_inserted = physical_file is not None
+
+            if physical_file is None:
+                cur.execute(
+                    """
+                    SELECT
+                        file_id,
+                        file_name,
+                        file_size,
+                        file_hash,
+                        storage_path,
+                        status
+                    FROM physical_files
+                    WHERE file_hash = %s;
+                    """,
+                    (file_hash,),
+                )
+
+                physical_file = cur.fetchone()
+
             conn.commit()
 
-            return physical_file
+            return physical_file, was_inserted
+
+    except Exception:
+        conn.rollback()
+        raise
 
     finally:
         conn.close()
