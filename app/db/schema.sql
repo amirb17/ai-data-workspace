@@ -1,3 +1,17 @@
+-- =========================================================
+-- SUPERSEDED - DO NOT USE AS A REFERENCE FOR THE CURRENT SCHEMA
+-- =========================================================
+--
+-- This file only ever described physical_files/upload_requests/
+-- processing_attempts and was never updated as workspaces, datasets,
+-- dataset_versions, dataset_version_files, dataset_relationships,
+-- profiling, business rules, and DQ/Gold run tables were added.
+--
+-- See migrations/0001_baseline.sql for an accurate snapshot of the
+-- live schema, and add any future schema change there as a new
+-- numbered migration file.
+-- =========================================================
+
 -- ============================================
 -- 1. PHYSICAL FILES
 -- Represents unique physical file/content
