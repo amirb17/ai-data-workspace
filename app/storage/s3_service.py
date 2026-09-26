@@ -1,18 +1,15 @@
-import boto3
 import hashlib
 
-BUCKET_NAME = "ai-data-workspace-amir-dev"
-AWS_REGION = "ap-south-1"
-AWS_PROFILE = "ai-data-workspace"
+from app.config import S3_BUCKET_NAME, get_boto3_session
+
+# Re-exported for backward compatibility with existing callers
+# (e.g. app.processing.bronze_processor) that import BUCKET_NAME
+# directly from this module.
+BUCKET_NAME = S3_BUCKET_NAME
 
 
 def get_s3_client():
-    session = boto3.Session(
-        profile_name=AWS_PROFILE,
-        region_name=AWS_REGION
-    )
-
-    return session.client("s3")
+    return get_boto3_session().client("s3")
 
 
 def upload_file_to_s3(
@@ -124,3 +121,17 @@ def delete_s3_object(object_key: str):
 
 def build_s3_uri(object_key: str):
     return f"s3://{BUCKET_NAME}/{object_key}"
+
+
+def parse_s3_uri(uri: str) -> str:
+    """
+    Extract the object key from an s3://<bucket>/<key> URI produced
+    by build_s3_uri, validating it belongs to the configured bucket.
+    """
+
+    prefix = f"s3://{BUCKET_NAME}/"
+
+    if not uri.startswith(prefix):
+        raise ValueError(f"Unexpected S3 URI (wrong bucket?): {uri}")
+
+    return uri[len(prefix):]

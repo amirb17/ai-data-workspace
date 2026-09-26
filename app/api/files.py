@@ -30,6 +30,7 @@ from app.schemas.business_rules import (
     BusinessRuleSubmission,
     BusinessRuleUpdate,
 )
+from app.config import S3_BUCKET_NAME
 class FileCompleteRequest(BaseModel):
     user_id: int
     workspace_id: int | None = None
@@ -323,7 +324,7 @@ def process_file_silver(file_id: int):
     try:
         result = run_silver_processing(
             file_id=file_id,
-            bucket_name="ai-data-workspace-amir-dev",
+            bucket_name=S3_BUCKET_NAME,
         )
 
         return {
@@ -380,7 +381,7 @@ def process_file_gold(
     try:
         result = run_gold_processing(
             file_id=file_id,
-            bucket_name="ai-data-workspace-amir-dev",
+            bucket_name=S3_BUCKET_NAME,
         )
 
         return {

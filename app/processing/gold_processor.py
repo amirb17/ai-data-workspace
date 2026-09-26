@@ -1,18 +1,12 @@
 import io
 from datetime import datetime, timezone
 
-import boto3
 import pandas as pd
 
+from app.config import get_boto3_session
 
-session = boto3.Session(
-    profile_name="ai-data-workspace"
-)
 
-s3_client = session.client(
-    "s3",
-    region_name="ap-south-1",
-)
+s3_client = get_boto3_session().client("s3")
 
 
 SILVER_ONLY_COLUMNS = [

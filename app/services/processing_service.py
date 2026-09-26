@@ -23,6 +23,7 @@ from app.db.file_repository import save_dataset_profiles
 from app.processing.bronze_processor import run_bronze_stage
 from app.db.file_repository import save_dataset_profile_summary
 from app.db.file_repository import save_data_quality_issue
+from app.storage.s3_service import parse_s3_uri
 
 def start_processing(file_id: int):
     physical_file = get_physical_file_by_id(file_id)
@@ -67,10 +68,7 @@ def start_processing(file_id: int):
 
     attempt_id = attempt[0]
 
-    raw_object_key = storage_path.replace(
-        "s3://ai-data-workspace-amir-dev/",
-        "",
-    )
+    raw_object_key = parse_s3_uri(storage_path)
 
     try:
         bronze_result = run_bronze_stage(

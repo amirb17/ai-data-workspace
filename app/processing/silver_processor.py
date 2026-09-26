@@ -1,9 +1,9 @@
 import io
 import json
 
-import boto3
 import pandas as pd
 
+from app.config import get_boto3_session
 from app.db.file_repository import get_active_business_rules
 from app.processing.silver_validator import (
     apply_business_rules,
@@ -15,14 +15,7 @@ from app.processing.silver_transformer import (
 )
 
 
-session = boto3.Session(
-    profile_name="ai-data-workspace"
-)
-
-s3_client = session.client(
-    "s3",
-    region_name="ap-south-1",
-)
+s3_client = get_boto3_session().client("s3")
 
 
 def _prepare_for_parquet(df: pd.DataFrame) -> pd.DataFrame:
