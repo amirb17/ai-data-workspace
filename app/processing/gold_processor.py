@@ -4,7 +4,9 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from app.config import get_boto3_session
-
+from app.db.file_repository import get_dataset_profiles
+from app.processing.gold_planner import build_gold_plan
+from app.processing.gold_mart_builder import build_mart
 
 s3_client = get_boto3_session().client("s3")
 
@@ -14,6 +16,34 @@ SILVER_ONLY_COLUMNS = [
     "_dq_violation_count",
     "_dq_is_valid",
 ]
+
+
+def _write_parquet_to_s3(
+    df: pd.DataFrame,
+    bucket_name: str,
+    object_key: str,
+) -> None:
+    """
+    Serialize a dataframe to Parquet and publish it to S3.
+    """
+
+    buffer = io.BytesIO()
+
+    df.to_parquet(
+        buffer,
+        index=False,
+        engine="pyarrow",
+    )
+
+    buffer.seek(0)
+
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key=object_key,
+        Body=buffer.getvalue(),
+        ContentType="application/octet-stream",
+    )
+
 
 
 def process_gold(
@@ -75,25 +105,73 @@ def process_gold(
     f"data.parquet"
 )
 
-    buffer = io.BytesIO()
-
-    gold_df.to_parquet(
-        buffer,
-        index=False,
-        engine="pyarrow",
+    _write_parquet_to_s3(
+        df=gold_df,
+        bucket_name=bucket_name,
+        object_key=gold_key,
     )
+    # ---------------------------------------------------------
+    # Build analytical Gold plan
+    # ---------------------------------------------------------
+    profiles = get_dataset_profiles(file_id)
 
-    buffer.seek(0)
+    if not profiles:
+        raise ValueError(
+            f"No dataset profiles found for file_id={file_id}"
+        )
 
-    s3_client.put_object(
-        Bucket=bucket_name,
-        Key=gold_key,
-        Body=buffer.getvalue(),
-        ContentType="application/octet-stream",
-    )
+    gold_plan = build_gold_plan(profiles)
+
+    # BASE is always the first Gold artifact.
+    artifacts = [
+        {
+            "artifact_type": "BASE",
+            "artifact_name": "base",
+            "storage_path": gold_key,
+            "row_count": len(gold_df),
+        }
+    ]
+
+    # ---------------------------------------------------------
+    # Build and publish analytical Gold marts
+    # ---------------------------------------------------------
+    for artifact_plan in gold_plan.artifacts:
+
+        mart_df = build_mart(
+            df=gold_df,
+            plan=artifact_plan,
+        )
+
+        mart_key = (
+            f"gold/marts/"
+            f"{artifact_plan.artifact_name}/"
+            f"dataset_version_id={dataset_version_id}/"
+            f"file_id={file_id}/"
+            f"rule_version={rule_version}/"
+            f"data.parquet"
+        )
+
+        _write_parquet_to_s3(
+            df=mart_df,
+            bucket_name=bucket_name,
+            object_key=mart_key,
+        )
+
+        artifacts.append(
+            {
+                "artifact_type":
+                    artifact_plan.artifact_type,
+                "artifact_name":
+                    artifact_plan.artifact_name,
+                "storage_path": mart_key,
+                "row_count": len(mart_df),
+            }
+        )
 
     return {
         "gold_df": gold_df,
         "row_count": len(gold_df),
         "gold_key": gold_key,
+        "gold_plan": gold_plan.to_dict(),
+        "artifacts": artifacts,
     }

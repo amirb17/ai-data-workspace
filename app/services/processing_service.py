@@ -4,6 +4,7 @@ from app.processing.bronze_processor import run_bronze_stage
 
 from app.db.file_repository import (
     get_active_processing_attempt_for_dataset_version_file,
+    get_dataset_profiles,
     get_latest_successful_dq_run_for_dataset_version_file,
     get_next_attempt_number_for_dataset_version_file,
     get_successful_gold_run_for_dq_run_and_dataset_version_file,
@@ -24,6 +25,8 @@ from app.db.file_repository import (
     save_data_quality_issue,
     update_physical_file_schema_hash,
     get_upload_request_by_id,
+    save_gold_artifact,
+    get_gold_artifacts_for_run,
 )
 
 from app.db.dataset_repository import (
@@ -36,7 +39,7 @@ from app.db.dataset_repository import (
 from app.services.dataset_service import (
     resolve_dataset_version_by_id,
 )
-
+from app.processing.gold_planner import build_gold_plan
 from app.storage.s3_service import parse_s3_uri
 
 def start_processing(upload_id: int):
@@ -458,6 +461,44 @@ def run_silver_processing(
         raise RuntimeError(
             f"Silver processing failed: {exc}"
         ) from exc
+
+def _get_expected_gold_artifact_names(
+    file_id: int,
+) -> set[str]:
+    profiles = get_dataset_profiles(file_id)
+
+    if not profiles:
+        raise ValueError(
+            f"No dataset profiles found for file_id={file_id}"
+        )
+
+    gold_plan = build_gold_plan(profiles)
+
+    return {
+        "base",
+        *[
+            artifact.artifact_name
+            for artifact in gold_plan.artifacts
+        ],
+    }
+
+def _is_gold_publication_complete(
+    gold_run_id: int,
+    expected_artifact_names: set[str],
+) -> bool:
+    stored_artifacts = get_gold_artifacts_for_run(
+        gold_run_id
+    )
+
+    stored_artifact_names = {
+        artifact[3]
+        for artifact in stored_artifacts
+    }
+
+    return (
+        stored_artifact_names
+        == expected_artifact_names
+    )
 def run_gold_processing(
     dataset_version_file_id: int,
     bucket_name: str,
@@ -518,41 +559,111 @@ def run_gold_processing(
         )
     )
 
+    # ---------------------------------------------------------
+    # Check Gold publication completeness
+    # ---------------------------------------------------------
+    expected_artifact_names = (
+        _get_expected_gold_artifact_names(
+            file_id
+        )
+    )
+
     if existing_gold_run is not None:
 
-        # Self-heal lifecycle state if required.
-        if status != "SUCCESS":
-            update_dataset_version_file_status(
-                dataset_version_file_id=
-                    dataset_version_file_id,
-                status="SUCCESS",
+        existing_gold_run_id = (
+            existing_gold_run[0]
+        )
+
+        publication_complete = (
+            _is_gold_publication_complete(
+                gold_run_id=existing_gold_run_id,
+                expected_artifact_names=
+                    expected_artifact_names,
+            )
+        )
+
+        if publication_complete:
+
+            existing_artifacts = (
+                get_gold_artifacts_for_run(
+                    existing_gold_run_id
+                )
             )
 
-        return {
-            "dataset_version_file_id":
-                dataset_version_file_id,
-            "dataset_version_id":
-                dataset_version_id,
-            "file_id": file_id,
-            "stage": "GOLD",
-            "status": "SUCCESS",
-            "already_processed": True,
-            "gold_run_id": existing_gold_run[0],
-            "attempt_id": existing_gold_run[2],
-            "source_dq_run_id": existing_gold_run[3],
-            "source_rule_version":
-                source_rule_version,
-            "gold_type": existing_gold_run[4],
-            "row_count": existing_gold_run[5],
-            "gold_path": existing_gold_run[6],
-        }
+            # Self-heal lifecycle state only when the
+            # Gold publication is actually complete.
+            if status != "SUCCESS":
+                update_dataset_version_file_status(
+                    dataset_version_file_id=
+                        dataset_version_file_id,
+                    status="SUCCESS",
+                )
+            return {
+                "message":
+                    "Gold already processed for this "
+                    "dataset-version-file and "
+                    "Silver/DQ run.",
+                "dataset_version_file_id":
+                    dataset_version_file_id,
+                "dataset_version_id":
+                    dataset_version_id,
+                "file_id":
+                    file_id,
+                "stage":
+                    "GOLD",
+                "status":
+                    "SUCCESS",
+                "already_processed":
+                    True,
+                "gold_run_id":
+                    existing_gold_run[0],
+                "attempt_id":
+                    existing_gold_run[2],
+                "source_dq_run_id":
+                    existing_gold_run[3],
+                "source_rule_version":
+                    source_rule_version,
+                "gold_type":
+                    existing_gold_run[4],
+                "row_count":
+                    existing_gold_run[5],
+                "gold_path":
+                    existing_gold_run[6],
+                "artifact_count":
+                    len(existing_artifacts),
+                "artifacts": [
+                    {
+                        "gold_artifact_id":
+                            artifact[0],
+                        "artifact_type":
+                            artifact[2],
+                        "artifact_name":
+                            artifact[3],
+                        "storage_path":
+                            artifact[4],
+                        "row_count":
+                            artifact[5],
+                    }
+                    for artifact
+                    in existing_artifacts
+                ],
+            }
+        # A Gold run exists, but it does not satisfy
+        # the current Gold publication contract.
+        # Reuse this Gold run during recovery.
+        recovery_gold_run = existing_gold_run
 
+    else:
+        # No previous Gold run exists.
+        # This will be a normal new Gold publication.
+        recovery_gold_run = None
     # ---------------------------------------------------------
     # 4. Validate DVF lifecycle
     # ---------------------------------------------------------
     if status not in (
         "READY_FOR_GOLD",
         "GOLD_FAILED",
+        "SUCCESS",
     ):
         raise ValueError(
             "Dataset-version-file is not ready for Gold "
@@ -617,16 +728,64 @@ def run_gold_processing(
         # -----------------------------------------------------
         # 8. Persist Gold lineage
         # -----------------------------------------------------
-        gold_run = save_gold_run(
-            file_id=file_id,
-            attempt_id=attempt_id,
-            source_dq_run_id=dq_run_id,
-            gold_type="BASE",
-            row_count=result["row_count"],
-            gold_path=result["gold_key"],
-            dataset_version_file_id=
-                dataset_version_file_id,
+        if recovery_gold_run is not None:
+            gold_run = recovery_gold_run
+        else:
+            gold_run = save_gold_run(
+                file_id=file_id,
+                attempt_id=attempt_id,
+                source_dq_run_id=dq_run_id,
+                gold_type="BASE",
+                row_count=result["row_count"],
+                gold_path=result["gold_key"],
+                dataset_version_file_id=
+                    dataset_version_file_id,
+            )
+
+        gold_run_id = gold_run[0]
+
+        persisted_artifacts = []
+
+        for artifact in result["artifacts"]:
+            saved_artifact = save_gold_artifact(
+                gold_run_id=gold_run_id,
+                artifact_type=artifact["artifact_type"],
+                artifact_name=artifact["artifact_name"],
+                storage_path=artifact["storage_path"],
+                row_count=artifact["row_count"],
+            )
+
+            persisted_artifacts.append(
+                saved_artifact
+            )
+        stored_artifacts = (
+            get_gold_artifacts_for_run(
+                gold_run_id
+            )
         )
+
+        expected_artifact_names = {
+            artifact["artifact_name"]
+            for artifact in result["artifacts"]
+        }
+
+        stored_artifact_names = {
+            artifact[3]
+            for artifact in stored_artifacts
+        }
+
+        if (
+            stored_artifact_names
+            != expected_artifact_names
+        ):
+            raise RuntimeError(
+                "Gold artifact persistence incomplete. "
+                f"Expected artifacts="
+                f"{sorted(expected_artifact_names)}, "
+                f"stored artifacts="
+                f"{sorted(stored_artifact_names)}, "
+                f"gold_run_id={gold_run_id}"
+            )
 
         # -----------------------------------------------------
         # 9. Complete processing attempt
@@ -641,7 +800,9 @@ def run_gold_processing(
                 dataset_version_file_id,
             status="SUCCESS",
         )
-
+        recovered_existing_run = (
+                    recovery_gold_run is not None
+                )
         return {
             "dataset_version_file_id":
                 dataset_version_file_id,
@@ -651,15 +812,40 @@ def run_gold_processing(
             "stage": "GOLD",
             "status": "SUCCESS",
             "already_processed": False,
+            "recovered_existing_run": recovered_existing_run,
             "attempt_id": attempt_id,
             "attempt_number": attempt_number,
             "gold_run_id": gold_run[0],
+            "original_gold_attempt_id": (
+                recovery_gold_run[2]
+                if recovery_gold_run is not None
+                else None
+            ),
             "source_dq_run_id": dq_run_id,
             "source_rule_version":
                 source_rule_version,
             "gold_type": "BASE",
             "row_count": result["row_count"],
             "gold_path": result["gold_key"],
+            "artifact_count": len(stored_artifacts),
+            "artifacts": [
+                {
+                    "gold_artifact_id":
+                        artifact[0],
+                    "artifact_type":
+                        artifact[2],
+                    "artifact_name":
+                        artifact[3],
+                    "storage_path":
+                        artifact[4],
+                    "row_count":
+                        artifact[5],
+                }
+                for artifact in stored_artifacts
+            ],
+
+            "gold_plan":
+                result["gold_plan"],
         }
 
     except Exception as exc:

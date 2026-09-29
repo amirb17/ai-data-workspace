@@ -1511,3 +1511,113 @@ def get_latest_successful_gold_run_for_dataset_version_file(
             )
 
             return cursor.fetchone()
+
+def save_gold_artifact(
+    gold_run_id: int,
+    artifact_type: str,
+    artifact_name: str,
+    storage_path: str,
+    row_count: int,
+):
+    query = """
+        INSERT INTO gold_artifacts (
+            gold_run_id,
+            artifact_type,
+            artifact_name,
+            storage_path,
+            row_count
+        )
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (
+            gold_run_id,
+            artifact_name
+        )
+        DO UPDATE SET
+            artifact_type = EXCLUDED.artifact_type,
+            storage_path = EXCLUDED.storage_path,
+            row_count = EXCLUDED.row_count
+        RETURNING
+            gold_artifact_id,
+            gold_run_id,
+            artifact_type,
+            artifact_name,
+            storage_path,
+            row_count,
+            created_at;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    gold_run_id,
+                    artifact_type,
+                    artifact_name,
+                    storage_path,
+                    row_count,
+                ),
+            )
+
+            result = cursor.fetchone()
+            conn.commit()
+
+            return result
+
+
+def get_gold_artifacts_for_run(
+    gold_run_id: int,
+):
+    query = """
+        SELECT
+            gold_artifact_id,
+            gold_run_id,
+            artifact_type,
+            artifact_name,
+            storage_path,
+            row_count,
+            created_at
+        FROM gold_artifacts
+        WHERE gold_run_id = %s
+        ORDER BY gold_artifact_id;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (gold_run_id,),
+            )
+
+            return cursor.fetchall()
+
+
+def get_gold_artifact(
+    gold_run_id: int,
+    artifact_name: str,
+):
+    query = """
+        SELECT
+            gold_artifact_id,
+            gold_run_id,
+            artifact_type,
+            artifact_name,
+            storage_path,
+            row_count,
+            created_at
+        FROM gold_artifacts
+        WHERE gold_run_id = %s
+          AND artifact_name = %s;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    gold_run_id,
+                    artifact_name,
+                ),
+            )
+
+            return cursor.fetchone()
