@@ -1,5 +1,6 @@
 from app.db.dataset_repository import (
     create_dataset,
+    get_dataset_by_id,
     get_dataset_by_workspace_and_name,
     get_dataset_version_by_schema,
     create_next_dataset_version,
@@ -63,6 +64,54 @@ def resolve_dataset_version(
         )
 
     dataset_id = dataset[0]
+
+    existing_version = get_dataset_version_by_schema(
+        dataset_id=dataset_id,
+        schema_hash=schema_hash,
+    )
+
+    if existing_version is not None:
+        return {
+            "workspace_id": workspace_id,
+            "dataset_id": dataset_id,
+            "dataset_version_id": existing_version[0],
+            "version_number": existing_version[2],
+            "schema_hash": existing_version[3],
+            "created": False,
+        }
+
+    new_version = create_next_dataset_version(
+        dataset_id=dataset_id,
+        schema_hash=schema_hash,
+    )
+
+    return {
+        "workspace_id": workspace_id,
+        "dataset_id": dataset_id,
+        "dataset_version_id": new_version[0],
+        "version_number": new_version[2],
+        "schema_hash": new_version[3],
+        "created": True,
+    }
+
+def resolve_dataset_version_by_id(
+    workspace_id: int,
+    dataset_id: int,
+    schema_hash: str,
+):
+    dataset = get_dataset_by_id(dataset_id)
+
+    if dataset is None:
+        raise ValueError(
+            f"Dataset {dataset_id} not found"
+        )
+
+    # get_dataset_by_id currently returns workspace_id at index 7.
+    if dataset[7] != workspace_id:
+        raise ValueError(
+            f"Dataset {dataset_id} does not belong "
+            f"to workspace {workspace_id}"
+        )
 
     existing_version = get_dataset_version_by_schema(
         dataset_id=dataset_id,

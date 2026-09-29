@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from app.db.database import get_connection
 from app.api.files import router as files_router
+from app.api.workspaces import router as workspaces_router
 app = FastAPI(
     title="AI Data Workspace",
     version="0.1.0"
 )
 app.include_router(files_router)
+app.include_router(files_router)
+app.include_router(workspaces_router)
 
 @app.get("/health")
 def health_check():

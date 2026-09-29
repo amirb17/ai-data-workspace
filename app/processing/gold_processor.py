@@ -18,6 +18,8 @@ SILVER_ONLY_COLUMNS = [
 
 def process_gold(
     file_id: int,
+    dataset_version_id: int,
+    rule_version: int,
     bucket_name: str,
     silver_key: str,
     attempt_id: int,
@@ -66,9 +68,12 @@ def process_gold(
 
     # Attempt-specific output
     gold_key = (
-        f"gold/base/file_id={file_id}/"
-        f"attempt_id={attempt_id}/data.parquet"
-    )
+    f"gold/base/"
+    f"dataset_version_id={dataset_version_id}/"
+    f"file_id={file_id}/"
+    f"rule_version={rule_version}/"
+    f"data.parquet"
+)
 
     buffer = io.BytesIO()
 

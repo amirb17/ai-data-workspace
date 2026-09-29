@@ -240,7 +240,8 @@ def get_physical_file_by_id(file_id: int):
                     file_size,
                     file_hash,
                     storage_path,
-                    status
+                    status,
+                    schema_hash
                 FROM physical_files
                 WHERE file_id = %s;
                 """,
@@ -278,6 +279,7 @@ def create_processing_attempt(
     attempt_number: int,
     stage: str = "BRONZE",
     status: str = "PROCESSING",
+    dataset_version_file_id: int | None = None,
 ):
     conn = get_connection()
 
@@ -290,9 +292,10 @@ def create_processing_attempt(
                     attempt_number,
                     stage,
                     status,
+                    dataset_version_file_id,
                     started_at
                 )
-                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+                VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 RETURNING
                     attempt_id,
                     file_id,
@@ -308,6 +311,7 @@ def create_processing_attempt(
                     attempt_number,
                     stage,
                     status,
+                    dataset_version_file_id,
                 ),
             )
 
@@ -412,6 +416,61 @@ def complete_processing_attempt(
             conn.commit()
 
             return result
+
+    finally:
+        conn.close()
+
+def get_next_attempt_number_for_dataset_version_file(
+    dataset_version_file_id: int,
+):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COALESCE(MAX(attempt_number), 0) + 1
+                FROM processing_attempts
+                WHERE dataset_version_file_id = %s;
+                """,
+                (dataset_version_file_id,),
+            )
+
+            return cur.fetchone()[0]
+
+    finally:
+        conn.close()
+
+
+def get_active_processing_attempt_for_dataset_version_file(
+    dataset_version_file_id: int,
+):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    attempt_id,
+                    file_id,
+                    attempt_number,
+                    stage,
+                    status,
+                    error_message,
+                    started_at,
+                    completed_at,
+                    dataset_version_file_id
+                FROM processing_attempts
+                WHERE dataset_version_file_id = %s
+                  AND status = 'PROCESSING'
+                ORDER BY attempt_number DESC
+                LIMIT 1;
+                """,
+                (dataset_version_file_id,),
+            )
+
+            return cur.fetchone()
 
     finally:
         conn.close()
@@ -748,6 +807,227 @@ def deactivate_business_rule(
             conn.commit()
 
             return result
+
+def save_business_rule_for_dataset_version(
+    dataset_version_id: int,
+    column_name: str,
+    rule_type: str,
+    rule_config: dict,
+):
+    query = """
+        INSERT INTO business_rules (
+            dataset_version_id,
+            column_name,
+            rule_type,
+            rule_config,
+            is_active
+        )
+        VALUES (%s, %s, %s, %s::jsonb, TRUE)
+
+        ON CONFLICT (
+            dataset_version_id,
+            column_name,
+            rule_type
+        )
+        DO UPDATE SET
+            rule_config = EXCLUDED.rule_config,
+            is_active = TRUE,
+            updated_at = CURRENT_TIMESTAMP
+
+        RETURNING
+            rule_id,
+            dataset_version_id,
+            column_name,
+            rule_type,
+            rule_config,
+            is_active,
+            created_at,
+            updated_at;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    dataset_version_id,
+                    column_name,
+                    rule_type,
+                    json.dumps(rule_config),
+                ),
+            )
+
+            result = cursor.fetchone()
+            conn.commit()
+
+            return result
+
+
+def save_business_rule_answer_for_dataset_version(
+    dataset_version_id: int,
+    column_name: str,
+    rule_type: str,
+    answer: str,
+):
+    query = """
+        INSERT INTO business_rule_answers (
+            dataset_version_id,
+            column_name,
+            rule_type,
+            answer
+        )
+        VALUES (%s, %s, %s, %s)
+
+        ON CONFLICT (
+            dataset_version_id,
+            column_name,
+            rule_type
+        )
+        DO UPDATE SET
+            answer = EXCLUDED.answer,
+            updated_at = CURRENT_TIMESTAMP
+
+        RETURNING
+            answer_id,
+            dataset_version_id,
+            column_name,
+            rule_type,
+            answer,
+            created_at,
+            updated_at;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    dataset_version_id,
+                    column_name,
+                    rule_type,
+                    answer.upper(),
+                ),
+            )
+
+            result = cursor.fetchone()
+            conn.commit()
+
+            return result
+
+
+def get_business_rule_answers_for_dataset_version(
+    dataset_version_id: int,
+):
+    query = """
+        SELECT
+            answer_id,
+            dataset_version_id,
+            column_name,
+            rule_type,
+            answer,
+            created_at,
+            updated_at
+        FROM business_rule_answers
+        WHERE dataset_version_id = %s
+        ORDER BY answer_id;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (dataset_version_id,),
+            )
+
+            return cursor.fetchall()
+
+
+def get_business_rule_answer_for_dataset_version(
+    dataset_version_id: int,
+    column_name: str,
+    rule_type: str,
+):
+    query = """
+        SELECT answer
+        FROM business_rule_answers
+        WHERE dataset_version_id = %s
+          AND column_name = %s
+          AND rule_type = %s;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    dataset_version_id,
+                    column_name,
+                    rule_type,
+                ),
+            )
+
+            return cursor.fetchone()
+
+
+def get_active_business_rules_for_dataset_version(
+    dataset_version_id: int,
+):
+    query = """
+        SELECT
+            rule_id,
+            dataset_version_id,
+            column_name,
+            rule_type,
+            rule_config,
+            is_active
+        FROM business_rules
+        WHERE dataset_version_id = %s
+          AND is_active = TRUE
+        ORDER BY rule_id;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (dataset_version_id,),
+            )
+
+            return cursor.fetchall()
+
+
+def deactivate_business_rule_for_dataset_version(
+    dataset_version_id: int,
+    column_name: str,
+    rule_type: str,
+):
+    query = """
+        UPDATE business_rules
+        SET
+            is_active = FALSE,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE dataset_version_id = %s
+          AND column_name = %s
+          AND rule_type = %s
+          AND is_active = TRUE
+        RETURNING rule_id;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    dataset_version_id,
+                    column_name,
+                    rule_type,
+                ),
+            )
+
+            result = cursor.fetchone()
+            conn.commit()
+
+            return result
 def save_data_quality_run(
     file_id: int,
     attempt_id: int,
@@ -757,6 +1037,7 @@ def save_data_quality_run(
     rejected_rows: int,
     silver_path: str,
     quarantine_path: str | None,
+    dataset_version_file_id: int,
 ):
     query = """
         INSERT INTO data_quality_runs (
@@ -767,9 +1048,10 @@ def save_data_quality_run(
             valid_rows,
             rejected_rows,
             silver_path,
-            quarantine_path
+            quarantine_path,
+            dataset_version_file_id
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING
             dq_run_id,
             file_id,
@@ -780,6 +1062,7 @@ def save_data_quality_run(
             rejected_rows,
             silver_path,
             quarantine_path,
+            dataset_version_file_id,
             created_at;
     """
 
@@ -796,6 +1079,7 @@ def save_data_quality_run(
                     rejected_rows,
                     silver_path,
                     quarantine_path,
+                    dataset_version_file_id,
                 ),
             )
 
@@ -837,6 +1121,40 @@ def get_latest_successful_dq_run(
 
             return cursor.fetchone()
 
+def get_latest_successful_dq_run_for_dataset_version_file(
+    dataset_version_file_id: int,
+):
+    query = """
+        SELECT
+            dqr.dq_run_id,
+            dqr.file_id,
+            dqr.attempt_id,
+            dqr.rule_version,
+            dqr.total_rows,
+            dqr.valid_rows,
+            dqr.rejected_rows,
+            dqr.silver_path,
+            dqr.quarantine_path,
+            dqr.dataset_version_file_id,
+            dqr.created_at
+        FROM data_quality_runs dqr
+        JOIN processing_attempts pa
+            ON pa.attempt_id = dqr.attempt_id
+        WHERE dqr.dataset_version_file_id = %s
+          AND pa.stage = 'SILVER'
+          AND pa.status = 'SUCCESS'
+        ORDER BY dqr.created_at DESC
+        LIMIT 1;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (dataset_version_file_id,),
+            )
+
+            return cursor.fetchone()
 def save_gold_run(
     file_id: int,
     attempt_id: int,
@@ -844,6 +1162,7 @@ def save_gold_run(
     gold_type: str,
     row_count: int,
     gold_path: str,
+    dataset_version_file_id: int,
 ):
     query = """
         INSERT INTO gold_runs (
@@ -852,9 +1171,10 @@ def save_gold_run(
             source_dq_run_id,
             gold_type,
             row_count,
-            gold_path
+            gold_path,
+            dataset_version_file_id
         )
-        VALUES (%s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         RETURNING
             gold_run_id,
             file_id,
@@ -863,6 +1183,7 @@ def save_gold_run(
             gold_type,
             row_count,
             gold_path,
+            dataset_version_file_id,
             created_at;
     """
 
@@ -877,11 +1198,14 @@ def save_gold_run(
                     gold_type,
                     row_count,
                     gold_path,
+                    dataset_version_file_id,
                 ),
             )
 
-            return cursor.fetchone()
+            result = cursor.fetchone()
+            conn.commit()
 
+            return result
 def get_latest_successful_gold_run(
     file_id: int,
 ):
@@ -1051,6 +1375,139 @@ def get_successful_gold_run_for_dq_run(
                     file_id,
                     source_dq_run_id,
                 ),
+            )
+
+            return cursor.fetchone()
+
+def update_physical_file_schema_hash(
+    file_id: int,
+    schema_hash: str,
+):
+    query = """
+        UPDATE physical_files
+        SET
+            schema_hash = %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE file_id = %s
+        RETURNING
+            file_id,
+            schema_hash,
+            updated_at;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    schema_hash,
+                    file_id,
+                ),
+            )
+
+            result = cursor.fetchone()
+
+            if result is None:
+                raise ValueError(
+                    f"Physical file {file_id} not found"
+                )
+
+            conn.commit()
+
+            return result
+
+def get_upload_request_by_id(
+    upload_id: int,
+):
+    query = """
+        SELECT
+            upload_id,
+            user_id,
+            file_id,
+            workspace_id,
+            dataset_id,
+            status,
+            created_at
+        FROM upload_requests
+        WHERE upload_id = %s;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (upload_id,),
+            )
+
+            return cursor.fetchone()
+
+def get_successful_gold_run_for_dq_run_and_dataset_version_file(
+    dataset_version_file_id: int,
+    source_dq_run_id: int,
+):
+    query = """
+        SELECT
+            gr.gold_run_id,
+            gr.file_id,
+            gr.attempt_id,
+            gr.source_dq_run_id,
+            gr.gold_type,
+            gr.row_count,
+            gr.gold_path,
+            gr.dataset_version_file_id,
+            gr.created_at
+        FROM gold_runs gr
+        JOIN processing_attempts pa
+            ON pa.attempt_id = gr.attempt_id
+        WHERE gr.dataset_version_file_id = %s
+          AND gr.source_dq_run_id = %s
+          AND pa.stage = 'GOLD'
+          AND pa.status = 'SUCCESS'
+        ORDER BY gr.created_at DESC
+        LIMIT 1;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    dataset_version_file_id,
+                    source_dq_run_id,
+                ),
+            )
+
+            return cursor.fetchone()
+
+def get_latest_successful_gold_run_for_dataset_version_file(
+    dataset_version_file_id: int,
+):
+    query = """
+        SELECT
+            gr.gold_run_id,
+            gr.file_id,
+            gr.attempt_id,
+            gr.source_dq_run_id,
+            gr.gold_type,
+            gr.row_count,
+            gr.gold_path,
+            gr.dataset_version_file_id,
+            gr.created_at
+        FROM gold_runs gr
+        JOIN processing_attempts pa
+            ON pa.attempt_id = gr.attempt_id
+        WHERE gr.dataset_version_file_id = %s
+          AND pa.stage = 'GOLD'
+          AND pa.status = 'SUCCESS'
+        ORDER BY gr.created_at DESC
+        LIMIT 1;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (dataset_version_file_id,),
             )
 
             return cursor.fetchone()

@@ -237,11 +237,10 @@ def complete_upload(request: FileCompleteRequest):
         },
     }
 
-@router.post("/{file_id}/process")
-def process_file(file_id: int):
-
+@router.post("/uploads/{upload_id}/process")
+def process_file(upload_id: int):
     try:
-        result = start_processing(file_id)
+        result = start_processing(upload_id)
 
     except RuntimeError as exc:
         raise HTTPException(
@@ -257,14 +256,12 @@ def process_file(file_id: int):
 
     attempt = result["attempt"]
     bronze = result["bronze"]
+    dataset_version = result["dataset_version"]
+    dataset_version_file = result["dataset_version_file"]
+    processing_attempt = None
 
-    return {
-        "message": (
-            "Bronze processing and dataset profiling completed. "
-            "Business rule configuration is required before Silver processing."
-            ),
-        "pipeline_status": "AWAITING_RULES",
-        "processing_attempt": {
+    if attempt is not None:
+        processing_attempt = {
             "attempt_id": attempt[0],
             "file_id": attempt[1],
             "attempt_number": attempt[2],
@@ -273,19 +270,44 @@ def process_file(file_id: int):
             "error_message": attempt[5],
             "started_at": attempt[6],
             "completed_at": attempt[7],
-        },
-        "bronze": {
-            "object_key": bronze["bronze_object_key"],
-            "row_count": bronze["row_count"],
-            "columns": bronze["column_names"],
-            "schema": bronze["schema"],
         }
+
+    return {
+        "message": (
+            "Bronze processing and dataset profiling completed. "
+            "Business rule configuration is required before Silver processing."
+            ),
+        "pipeline_status": "AWAITING_RULES",
+        "processing_attempt": processing_attempt,
+        "bronze": {
+            "object_key": bronze.get("bronze_object_key"),
+            "row_count": bronze.get("row_count"),
+            "columns": bronze.get("column_names"),
+            "schema": bronze.get("schema"),
+            "schema_hash": bronze["schema_hash"],
+            "reused": bronze.get("reused", False),
+        },
+        "context": {
+            "upload_id": result["upload_id"],
+            "workspace_id": result["workspace_id"],
+            "dataset_id": result["dataset_id"],
+            "dataset_version_id": dataset_version["dataset_version_id"],
+            "dataset_version_number": dataset_version["version_number"],
+            "dataset_version_created": dataset_version["created"],
+            "dataset_version_file_id": dataset_version_file[0],
+        },
     }
 
-@router.get("/{file_id}/business-rules/suggestions")
-def get_rule_suggestions(file_id: int):
+@router.get(
+    "/dataset-version-files/{dataset_version_file_id}/business-rules/suggestions"
+)
+def get_rule_suggestions(
+    dataset_version_file_id: int,
+):
     try:
-        return get_business_rule_questions(file_id)
+        return get_business_rule_questions(
+            dataset_version_file_id
+        )
 
     except ValueError as exc:
         raise HTTPException(
@@ -293,14 +315,16 @@ def get_rule_suggestions(file_id: int):
             detail=str(exc),
         )
 
-@router.post("/{file_id}/business-rules")
+@router.post(
+    "/dataset-version-files/{dataset_version_file_id}/business-rules"
+)
 def submit_business_rules(
-    file_id: int,
+    dataset_version_file_id: int,
     submission: BusinessRuleSubmission,
 ):
     try:
         return submit_business_rule_answers(
-            file_id=file_id,
+            dataset_version_file_id=dataset_version_file_id,
             answers=submission.answers,
         )
 
@@ -309,26 +333,44 @@ def submit_business_rules(
             status_code=400,
             detail=str(exc),
         )
-@router.post("/{file_id}/business-rules/finalize")
-def finalize_rules(file_id: int):
+@router.post(
+    "/dataset-version-files/"
+    "{dataset_version_file_id}/business-rules/finalize"
+)
+def finalize_rules(
+    dataset_version_file_id: int,
+):
     try:
-        return finalize_business_rules(file_id)
+        return finalize_business_rules(
+            dataset_version_file_id
+        )
 
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
             detail=str(exc),
         )
-@router.post("/{file_id}/silver/process")
-def process_file_silver(file_id: int):
+@router.post(
+    "/dataset-version-files/{dataset_version_file_id}/silver/process"
+)
+def process_file_silver(
+    dataset_version_file_id: int,
+):
     try:
         result = run_silver_processing(
-            file_id=file_id,
+            dataset_version_file_id=dataset_version_file_id,
             bucket_name=S3_BUCKET_NAME,
         )
 
         return {
-            "message": "Silver processing completed successfully.",
+            "message": (
+                "Silver processing completed successfully."
+                if not result["already_processed"]
+                else (
+                    "Silver already processed for the current "
+                    "dataset rule version."
+                )
+            ),
             **result,
         }
 
@@ -339,30 +381,22 @@ def process_file_silver(file_id: int):
         )
 
     except RuntimeError as exc:
-        message = str(exc)
-
-        if "already being processed" in message:
-            raise HTTPException(
-                status_code=409,
-                detail=message,
-            )
-
         raise HTTPException(
-            status_code=500,
-            detail=message,
+            status_code=409,
+            detail=str(exc),
         )
-
 @router.patch(
-    "/{file_id}/business-rules"
+    "/dataset-version-files/"
+    "{dataset_version_file_id}/business-rules"
 )
 def update_business_rule(
-    file_id: int,
+    dataset_version_file_id: int,
     request: BusinessRuleUpdate,
 ):
 
     try:
         result = update_business_rule_answer(
-            file_id=file_id,
+            dataset_version_file_id=dataset_version_file_id,
             item=request,
         )
 
@@ -373,14 +407,15 @@ def update_business_rule(
             status_code=400,
             detail=str(exc),
         )
-
-@router.post("/{file_id}/gold/process")
+@router.post(
+    "/dataset-version-files/{dataset_version_file_id}/gold/process"
+)
 def process_file_gold(
-    file_id: int,
+    dataset_version_file_id: int,
 ):
     try:
         result = run_gold_processing(
-            file_id=file_id,
+            dataset_version_file_id=dataset_version_file_id,
             bucket_name=S3_BUCKET_NAME,
         )
 
@@ -388,7 +423,10 @@ def process_file_gold(
             "message": (
                 "Gold processing completed successfully."
                 if not result["already_processed"]
-                else "Gold already processed. Existing result returned."
+                else (
+                    "Gold already processed for this "
+                    "dataset-version-file and Silver/DQ run."
+                )
             ),
             **result,
         }
@@ -401,6 +439,6 @@ def process_file_gold(
 
     except RuntimeError as exc:
         raise HTTPException(
-            status_code=500,
+            status_code=409,
             detail=str(exc),
         )

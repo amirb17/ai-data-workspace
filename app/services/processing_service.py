@@ -1,44 +1,128 @@
 from app.processing.gold_processor import process_gold
-from app.db.file_repository import (
-    get_latest_successful_dq_run,
-    get_latest_successful_gold_run,
-    get_physical_file_by_id,
-    get_next_attempt_number,
-    create_processing_attempt,
-    get_rule_version,
-    get_successful_gold_run_for_dq_run,
-)
 from app.processing.silver_processor import process_silver
+from app.processing.bronze_processor import run_bronze_stage
+
 from app.db.file_repository import (
+    get_active_processing_attempt_for_dataset_version_file,
+    get_latest_successful_dq_run_for_dataset_version_file,
+    get_next_attempt_number_for_dataset_version_file,
+    get_successful_gold_run_for_dq_run_and_dataset_version_file,
+
+    # Physical Bronze-scoped functions
     get_physical_file_by_id,
     get_next_attempt_number,
-    create_processing_attempt,
     get_active_processing_attempt,
     update_physical_file_status,
+
+    # Shared processing persistence
+    create_processing_attempt,
     complete_processing_attempt,
     save_data_quality_run,
     save_gold_run,
+    save_dataset_profiles,
+    save_dataset_profile_summary,
+    save_data_quality_issue,
+    update_physical_file_schema_hash,
+    get_upload_request_by_id,
 )
-from app.db.file_repository import save_dataset_profiles
-from app.processing.bronze_processor import run_bronze_stage
-from app.db.file_repository import save_dataset_profile_summary
-from app.db.file_repository import save_data_quality_issue
+
+from app.db.dataset_repository import (
+    assign_physical_file_to_dataset_version,
+    get_dataset_version_file_by_id,
+    update_dataset_version_file_status,
+    get_dataset_version_rule_version,
+)
+
+from app.services.dataset_service import (
+    resolve_dataset_version_by_id,
+)
+
 from app.storage.s3_service import parse_s3_uri
 
-def start_processing(file_id: int):
+def start_processing(upload_id: int):
+    upload_request = get_upload_request_by_id(upload_id)
+
+    if upload_request is None:
+        raise ValueError(
+            f"Upload request {upload_id} not found"
+        )
+
+    file_id = upload_request[2]
+    workspace_id = upload_request[3]
+    dataset_id = upload_request[4]
+
+    if workspace_id is None or dataset_id is None:
+        raise ValueError(
+            f"Upload request {upload_id} is missing "
+            "workspace/dataset context"
+        )
+
     physical_file = get_physical_file_by_id(file_id)
 
-    if not physical_file:
+    if physical_file is None:
         raise ValueError("Physical file not found")
 
     storage_path = physical_file[4]
-    file_status = physical_file[5]
+    schema_hash = physical_file[6]
 
     if not storage_path:
         raise ValueError(
             "Physical file does not have a storage path"
         )
 
+    # ---------------------------------------------------------
+    # CASE 1:
+    # Physical file has already completed Bronze previously.
+    # Reuse its physical/schema metadata instead of running
+    # Bronze again for another workspace/dataset context.
+    # ---------------------------------------------------------
+    if schema_hash:
+        dataset_version = resolve_dataset_version_by_id(
+            workspace_id=workspace_id,
+            dataset_id=dataset_id,
+            schema_hash=schema_hash,
+        )
+
+        dataset_version_file = (
+            assign_physical_file_to_dataset_version(
+                file_id=file_id,
+                dataset_version_id=dataset_version[
+                    "dataset_version_id"
+                ],
+            )
+        )
+
+        if dataset_version_file is None:
+            raise RuntimeError(
+                "Failed to resolve dataset-version-file association"
+            )
+
+        dataset_version_file = (
+            update_dataset_version_file_status(
+                dataset_version_file_id=dataset_version_file[0],
+                status="AWAITING_RULES",
+            )
+        )
+
+        return {
+            "file": physical_file,
+            "attempt": None,
+            "bronze": {
+                "reused": True,
+                "schema_hash": schema_hash,
+            },
+            "upload_id": upload_id,
+            "workspace_id": workspace_id,
+            "dataset_id": dataset_id,
+            "dataset_version": dataset_version,
+            "dataset_version_file": dataset_version_file,
+        }
+
+    # ---------------------------------------------------------
+    # CASE 2:
+    # Physical file has never completed Bronze.
+    # Run physical Bronze processing once.
+    # ---------------------------------------------------------
     active_attempt = get_active_processing_attempt(file_id)
 
     if active_attempt:
@@ -47,22 +131,12 @@ def start_processing(file_id: int):
             f"in attempt {active_attempt[2]}"
         )
 
-    if file_status not in ("UPLOADED", "FAILED"):
-        raise ValueError(
-            f"File cannot be processed. "
-            f"Current status: {file_status}"
-        )
-
     attempt_number = get_next_attempt_number(file_id)
 
     attempt = create_processing_attempt(
         file_id=file_id,
         attempt_number=attempt_number,
         stage="BRONZE",
-        status="PROCESSING",
-    )
-    update_physical_file_status(
-        file_id=file_id,
         status="PROCESSING",
     )
 
@@ -75,14 +149,50 @@ def start_processing(file_id: int):
             file_id=file_id,
             raw_object_key=raw_object_key,
         )
-        save_dataset_profiles(
-        file_id=file_id,
-        profiles=bronze_result["profiles"],
+
+        update_physical_file_schema_hash(
+            file_id=file_id,
+            schema_hash=bronze_result["schema_hash"],
         )
+
+        save_dataset_profiles(
+            file_id=file_id,
+            profiles=bronze_result["profiles"],
+        )
+
         save_dataset_profile_summary(
-        file_id=file_id,
-        total_rows=bronze_result["row_count"],
-        total_columns=len(bronze_result["column_names"]),
+            file_id=file_id,
+            total_rows=bronze_result["row_count"],
+            total_columns=len(
+                bronze_result["column_names"]
+            ),
+        )
+
+        dataset_version = resolve_dataset_version_by_id(
+            workspace_id=workspace_id,
+            dataset_id=dataset_id,
+            schema_hash=bronze_result["schema_hash"],
+        )
+
+        dataset_version_file = (
+            assign_physical_file_to_dataset_version(
+                file_id=file_id,
+                dataset_version_id=dataset_version[
+                    "dataset_version_id"
+                ],
+            )
+        )
+
+        if dataset_version_file is None:
+            raise RuntimeError(
+                "Failed to resolve dataset-version-file association"
+            )
+
+        dataset_version_file = (
+            update_dataset_version_file_status(
+                dataset_version_file_id=dataset_version_file[0],
+                status="AWAITING_RULES",
+            )
         )
 
         completed_attempt = complete_processing_attempt(
@@ -90,15 +200,26 @@ def start_processing(file_id: int):
             status="SUCCESS",
         )
 
+        # Physical file remains physically available.
+        # AWAITING_RULES belongs to dataset_version_files,
+        # not to the shared physical file.
         update_physical_file_status(
-        file_id=file_id,
-        status="AWAITING_RULES",
+            file_id=file_id,
+            status="UPLOADED",
         )
 
         return {
-            "file": physical_file,
+            "file": get_physical_file_by_id(file_id),
             "attempt": completed_attempt,
-            "bronze": bronze_result,
+            "bronze": {
+                **bronze_result,
+                "reused": False,
+            },
+            "upload_id": upload_id,
+            "workspace_id": workspace_id,
+            "dataset_id": dataset_id,
+            "dataset_version": dataset_version,
+            "dataset_version_file": dataset_version_file,
         }
 
     except Exception as exc:
@@ -115,49 +236,68 @@ def start_processing(file_id: int):
 
         raise RuntimeError(
             f"Bronze processing failed: {exc}"
-        )    
-
-    update_physical_file_status(
-        file_id=file_id,
-        status="PROCESSING",
-    )
-
-    return {
-        "file": physical_file,
-        "attempt": attempt,
-    }
+        )
 def run_silver_processing(
-    file_id: int,
+    dataset_version_file_id: int,
     bucket_name: str,
 ):
     # ---------------------------------------------------------
-    # 1. Verify physical file exists
+    # 1. Resolve dataset-version-file context
+    # ---------------------------------------------------------
+    context = get_dataset_version_file_by_id(
+        dataset_version_file_id
+    )
+
+    if context is None:
+        raise ValueError(
+            f"Dataset-version-file "
+            f"{dataset_version_file_id} not found"
+        )
+
+    dataset_version_id = context[1]
+    file_id = context[2]
+    status = context[3]
+
+    # ---------------------------------------------------------
+    # 2. Verify physical file exists
     # ---------------------------------------------------------
     physical_file = get_physical_file_by_id(file_id)
 
-    if not physical_file:
-        raise ValueError("Physical file not found")
-
-    file_status = physical_file[5]
-
-    # ---------------------------------------------------------
-    # 2. Get current rule version
-    # ---------------------------------------------------------
-    current_rule_version = get_rule_version(file_id)
+    if physical_file is None:
+        raise ValueError(
+            f"Physical file {file_id} not found"
+        )
 
     # ---------------------------------------------------------
-    # 3. SILVER IDEMPOTENCY CHECK
+    # 3. Get rule version for THIS dataset version
+    # ---------------------------------------------------------
+    current_rule_version = (
+        get_dataset_version_rule_version(
+            dataset_version_id
+        )
+    )
+
+    # ---------------------------------------------------------
+    # 4. SILVER IDEMPOTENCY CHECK
     #
-    # If Silver has already succeeded using the current
-    # rule version, do NOT process it again.
+    # Check Silver history for THIS dataset-version-file,
+    # not globally for the shared physical file.
     # ---------------------------------------------------------
-    latest_dq_run = get_latest_successful_dq_run(file_id)
+    latest_dq_run = (
+        get_latest_successful_dq_run_for_dataset_version_file(
+            dataset_version_file_id
+        )
+    )
 
-    if latest_dq_run:
+    if latest_dq_run is not None:
         silver_rule_version = latest_dq_run[3]
 
         if silver_rule_version == current_rule_version:
             return {
+                "dataset_version_file_id":
+                    dataset_version_file_id,
+                "dataset_version_id":
+                    dataset_version_id,
                 "file_id": file_id,
                 "stage": "SILVER",
                 "status": "SUCCESS",
@@ -173,69 +313,66 @@ def run_silver_processing(
             }
 
     # ---------------------------------------------------------
-    # 4. Silver needs processing/reprocessing
+    # 5. Validate DVF lifecycle
     # ---------------------------------------------------------
-    #
-    # PROCESSING:
-    #   normal flow after rules finalized
-    #
-    # FAILED:
-    #   retry failed Silver/Gold processing
-    #
-    # SUCCESS:
-    #   important!
-    #   allows Silver reprocessing when rules changed after
-    #   the previous complete pipeline.
-    # ---------------------------------------------------------
-    if file_status not in (
-        "PROCESSING",
-        "FAILED",
+    if status not in (
+        "READY_FOR_SILVER",
+        "SILVER_FAILED",
+        "READY_FOR_GOLD",
         "SUCCESS",
     ):
         raise ValueError(
-            f"Silver processing cannot start. "
-            f"Current file status: {file_status}"
-        )
-
-    # ---------------------------------------------------------
-    # 5. Prevent concurrent processing
-    # ---------------------------------------------------------
-    active_attempt = get_active_processing_attempt(file_id)
-
-    if active_attempt:
-        raise RuntimeError(
-            f"File is already being processed "
-            f"in attempt {active_attempt[2]}"
+            "Silver processing cannot start. "
+            f"Current dataset-version-file status: {status}"
         )
 
     # ---------------------------------------------------------
     # 6. Get next attempt number
+    #
+    # Attempt numbering is still file-based for now.
+    # The attempt itself is scoped using DVF ID.
     # ---------------------------------------------------------
-    attempt_number = get_next_attempt_number(file_id)
+    attempt_number = (
+    get_next_attempt_number_for_dataset_version_file(
+        dataset_version_file_id
+    )
+)
 
     # ---------------------------------------------------------
-    # 7. Create SILVER processing attempt
+    # 7. Create SILVER attempt with DVF lineage
     # ---------------------------------------------------------
     attempt = create_processing_attempt(
         file_id=file_id,
         attempt_number=attempt_number,
         stage="SILVER",
         status="PROCESSING",
+        dataset_version_file_id=dataset_version_file_id,
     )
 
     attempt_id = attempt[0]
 
+    # ---------------------------------------------------------
+    # 8. Mark only THIS DVF as processing
+    # ---------------------------------------------------------
+    update_dataset_version_file_status(
+        dataset_version_file_id=
+            dataset_version_file_id,
+        status="SILVER_PROCESSING",
+    )
+
     try:
         # -----------------------------------------------------
-        # 8. Run Silver processing
+        # 9. Run Silver
         # -----------------------------------------------------
         result = process_silver(
             file_id=file_id,
+            dataset_version_id=dataset_version_id,
+            rule_version=current_rule_version,
             bucket_name=bucket_name,
         )
 
         # -----------------------------------------------------
-        # 9. Save DQ run WITH rule version
+        # 10. Persist DQ run with DVF lineage
         # -----------------------------------------------------
         dq_run = save_data_quality_run(
             file_id=file_id,
@@ -246,30 +383,46 @@ def run_silver_processing(
             rejected_rows=result["rejected_rows"],
             silver_path=result["silver_key"],
             quarantine_path=result["quarantine_key"],
+            dataset_version_file_id=
+                dataset_version_file_id,
         )
 
         dq_run_id = dq_run[0]
 
         # -----------------------------------------------------
-        # 10. Save DQ issue metrics
+        # 11. Persist DQ issues
         # -----------------------------------------------------
         for issue in result["dq_issues"]:
             save_data_quality_issue(
                 dq_run_id=dq_run_id,
                 column_name=issue["column_name"],
                 rule_type=issue["rule_type"],
-                violation_count=issue["violation_count"],
+                violation_count=
+                    issue["violation_count"],
             )
 
         # -----------------------------------------------------
-        # 11. Mark attempt successful
+        # 12. Complete attempt
         # -----------------------------------------------------
         complete_processing_attempt(
             attempt_id=attempt_id,
             status="SUCCESS",
         )
 
+        # -----------------------------------------------------
+        # 13. This DVF is now ready for Gold
+        # -----------------------------------------------------
+        update_dataset_version_file_status(
+            dataset_version_file_id=
+                dataset_version_file_id,
+            status="READY_FOR_GOLD",
+        )
+
         return {
+            "dataset_version_file_id":
+                dataset_version_file_id,
+            "dataset_version_id":
+                dataset_version_id,
             "file_id": file_id,
             "stage": "SILVER",
             "status": "SUCCESS",
@@ -282,55 +435,64 @@ def run_silver_processing(
             "valid_rows": result["valid_rows"],
             "rejected_rows": result["rejected_rows"],
             "silver_path": result["silver_key"],
-            "quarantine_path": result["quarantine_key"],
+            "quarantine_path":
+                result["quarantine_key"],
         }
 
     except Exception as exc:
-
         complete_processing_attempt(
             attempt_id=attempt_id,
             status="FAILED",
             error_message=str(exc),
         )
 
-        update_physical_file_status(
-            file_id=file_id,
-            status="FAILED",
+        # IMPORTANT:
+        # Do not mark physical_files FAILED.
+        # Other datasets/users may share that physical file.
+        update_dataset_version_file_status(
+            dataset_version_file_id=
+                dataset_version_file_id,
+            status="SILVER_FAILED",
         )
 
         raise RuntimeError(
             f"Silver processing failed: {exc}"
         ) from exc
 def run_gold_processing(
-    file_id: int,
+    dataset_version_file_id: int,
     bucket_name: str,
 ) -> dict:
 
     # ---------------------------------------------------------
-    # 1. Verify physical file exists
+    # 1. Resolve logical dataset-file context
     # ---------------------------------------------------------
-    physical_file = get_physical_file_by_id(
-        file_id
+    context = get_dataset_version_file_by_id(
+        dataset_version_file_id
     )
 
-    if not physical_file:
+    if context is None:
         raise ValueError(
-            f"Physical file {file_id} not found"
+            f"Dataset-version-file "
+            f"{dataset_version_file_id} not found"
         )
 
-    file_status = physical_file[5]
+    dataset_version_id = context[1]
+    file_id = context[2]
+    status = context[3]
 
     # ---------------------------------------------------------
-    # 2. Find latest successful Silver/DQ source
+    # 2. Find Silver/DQ source for THIS DVF only
     # ---------------------------------------------------------
-    dq_run = get_latest_successful_dq_run(
-        file_id
+    dq_run = (
+        get_latest_successful_dq_run_for_dataset_version_file(
+            dataset_version_file_id
+        )
     )
 
-    if not dq_run:
+    if dq_run is None:
         raise ValueError(
-            f"No successful Silver/DQ run found "
-            f"for file {file_id}"
+            "No successful Silver/DQ run found for "
+            f"dataset-version-file {dataset_version_file_id}"
         )
 
     dq_run_id = dq_run[0]
@@ -344,20 +506,33 @@ def run_gold_processing(
         )
 
     # ---------------------------------------------------------
-    # 3. GOLD IDEMPOTENCY CHECK
+    # 3. Gold idempotency
     #
-    # Gold is reusable only if it was built from this exact
-    # successful Silver/DQ run.
+    # Reuse Gold only when it belongs to THIS DVF and was
+    # created from THIS exact successful DQ run.
     # ---------------------------------------------------------
     existing_gold_run = (
-        get_successful_gold_run_for_dq_run(
-            file_id=file_id,
+        get_successful_gold_run_for_dq_run_and_dataset_version_file(
+            dataset_version_file_id=dataset_version_file_id,
             source_dq_run_id=dq_run_id,
         )
     )
 
-    if existing_gold_run:
+    if existing_gold_run is not None:
+
+        # Self-heal lifecycle state if required.
+        if status != "SUCCESS":
+            update_dataset_version_file_status(
+                dataset_version_file_id=
+                    dataset_version_file_id,
+                status="SUCCESS",
+            )
+
         return {
+            "dataset_version_file_id":
+                dataset_version_file_id,
+            "dataset_version_id":
+                dataset_version_id,
             "file_id": file_id,
             "stage": "GOLD",
             "status": "SUCCESS",
@@ -365,31 +540,33 @@ def run_gold_processing(
             "gold_run_id": existing_gold_run[0],
             "attempt_id": existing_gold_run[2],
             "source_dq_run_id": existing_gold_run[3],
-            "source_rule_version": source_rule_version,
+            "source_rule_version":
+                source_rule_version,
             "gold_type": existing_gold_run[4],
             "row_count": existing_gold_run[5],
             "gold_path": existing_gold_run[6],
         }
 
     # ---------------------------------------------------------
-    # 4. Gold actually needs processing
+    # 4. Validate DVF lifecycle
     # ---------------------------------------------------------
-    if file_status not in (
-        "PROCESSING",
-        "FAILED",
-        "SUCCESS",
+    if status not in (
+        "READY_FOR_GOLD",
+        "GOLD_FAILED",
     ):
         raise ValueError(
-            f"File {file_id} is not ready for Gold processing. "
-            f"Current status: {file_status}"
+            "Dataset-version-file is not ready for Gold "
+            f"processing. Current status: {status}"
         )
 
     # ---------------------------------------------------------
-    # 5. Prevent concurrent processing
+    # 5. Prevent concurrent processing for THIS DVF
     # ---------------------------------------------------------
-    active_attempt = get_active_processing_attempt(
-        file_id
+    active_attempt = (
+    get_active_processing_attempt_for_dataset_version_file(
+        dataset_version_file_id
     )
+)
 
     if active_attempt:
         raise RuntimeError(
@@ -398,34 +575,47 @@ def run_gold_processing(
         )
 
     # ---------------------------------------------------------
-    # 6. Create new Gold attempt
+    # 6. Create Gold attempt
     # ---------------------------------------------------------
-    attempt_number = get_next_attempt_number(
-        file_id
+    attempt_number = (
+    get_next_attempt_number_for_dataset_version_file(
+        dataset_version_file_id
     )
+)
 
     attempt = create_processing_attempt(
         file_id=file_id,
         attempt_number=attempt_number,
         stage="GOLD",
         status="PROCESSING",
+        dataset_version_file_id=
+            dataset_version_file_id,
     )
 
     attempt_id = attempt[0]
 
+    update_dataset_version_file_status(
+        dataset_version_file_id=
+            dataset_version_file_id,
+        status="GOLD_PROCESSING",
+    )
+
     try:
+
         # -----------------------------------------------------
-        # 7. Build Gold from the exact Silver source
+        # 7. Build Gold from exact Silver output
         # -----------------------------------------------------
         result = process_gold(
             file_id=file_id,
+            dataset_version_id=dataset_version_id,
+            rule_version=source_rule_version,
             bucket_name=bucket_name,
             silver_key=silver_key,
             attempt_id=attempt_id,
         )
 
         # -----------------------------------------------------
-        # 8. Register Gold lineage
+        # 8. Persist Gold lineage
         # -----------------------------------------------------
         gold_run = save_gold_run(
             file_id=file_id,
@@ -434,22 +624,29 @@ def run_gold_processing(
             gold_type="BASE",
             row_count=result["row_count"],
             gold_path=result["gold_key"],
+            dataset_version_file_id=
+                dataset_version_file_id,
         )
 
         # -----------------------------------------------------
-        # 9. Complete attempt
+        # 9. Complete processing attempt
         # -----------------------------------------------------
         complete_processing_attempt(
             attempt_id=attempt_id,
             status="SUCCESS",
         )
 
-        update_physical_file_status(
-            file_id=file_id,
+        update_dataset_version_file_status(
+            dataset_version_file_id=
+                dataset_version_file_id,
             status="SUCCESS",
         )
 
         return {
+            "dataset_version_file_id":
+                dataset_version_file_id,
+            "dataset_version_id":
+                dataset_version_id,
             "file_id": file_id,
             "stage": "GOLD",
             "status": "SUCCESS",
@@ -458,7 +655,8 @@ def run_gold_processing(
             "attempt_number": attempt_number,
             "gold_run_id": gold_run[0],
             "source_dq_run_id": dq_run_id,
-            "source_rule_version": source_rule_version,
+            "source_rule_version":
+                source_rule_version,
             "gold_type": "BASE",
             "row_count": result["row_count"],
             "gold_path": result["gold_key"],
@@ -472,9 +670,13 @@ def run_gold_processing(
             error_message=str(exc),
         )
 
-        update_physical_file_status(
-            file_id=file_id,
-            status="FAILED",
+        # IMPORTANT:
+        # Failure belongs to this logical DVF, not the
+        # shared physical file.
+        update_dataset_version_file_status(
+            dataset_version_file_id=
+                dataset_version_file_id,
+            status="GOLD_FAILED",
         )
 
         raise RuntimeError(

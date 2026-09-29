@@ -4,7 +4,9 @@ import json
 import pandas as pd
 
 from app.config import get_boto3_session
-from app.db.file_repository import get_active_business_rules
+from app.db.file_repository import (
+    get_active_business_rules_for_dataset_version,
+)
 from app.processing.silver_validator import (
     apply_business_rules,
     calculate_dq_issue_counts,
@@ -55,6 +57,8 @@ def _write_parquet_to_s3(
 
 def process_silver(
     file_id: int,
+    dataset_version_id: int,
+    rule_version: int,
     bucket_name: str,
 ):
     # Locate Bronze dataset
@@ -83,12 +87,13 @@ def process_silver(
 
     # Load active business rules
 
-    rules = get_active_business_rules(file_id)
-
+    rules = get_active_business_rules_for_dataset_version(
+        dataset_version_id
+    )
     if not rules:
         raise ValueError(
             f"No active business rules found "
-            f"for file_id={file_id}"
+            f"for dataset_version_id={dataset_version_id}"
         )
 
     # Apply DQ rules
@@ -138,11 +143,19 @@ def process_silver(
     # Define output locations
 
     silver_key = (
-        f"silver/file_id={file_id}/data.parquet"
+        f"silver/"
+        f"dataset_version_id={dataset_version_id}/"
+        f"file_id={file_id}/"
+        f"rule_version={rule_version}/"
+        f"data.parquet"
     )
 
     quarantine_key = (
-        f"quarantine/file_id={file_id}/data.parquet"
+        f"quarantine/"
+        f"dataset_version_id={dataset_version_id}/"
+        f"file_id={file_id}/"
+        f"rule_version={rule_version}/"
+        f"data.parquet"
     )
 
     # Write valid rows to Silver
