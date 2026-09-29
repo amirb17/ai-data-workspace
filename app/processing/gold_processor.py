@@ -2,7 +2,10 @@ import io
 from datetime import datetime, timezone
 
 import pandas as pd
-
+from app.processing.gold_catalog_builder import (
+    build_gold_artifact_catalog,
+    enrich_catalog_data_types,
+)
 from app.config import get_boto3_session
 from app.db.file_repository import get_dataset_profiles
 from app.processing.gold_planner import build_gold_plan
@@ -141,6 +144,14 @@ def process_gold(
             df=gold_df,
             plan=artifact_plan,
         )
+        catalog = build_gold_artifact_catalog(
+            artifact_plan
+        )
+
+        catalog = enrich_catalog_data_types(
+            catalog=catalog,
+            df=mart_df,
+        )
 
         mart_key = (
             f"gold/marts/"
@@ -158,15 +169,16 @@ def process_gold(
         )
 
         artifacts.append(
-            {
-                "artifact_type":
-                    artifact_plan.artifact_type,
-                "artifact_name":
-                    artifact_plan.artifact_name,
-                "storage_path": mart_key,
-                "row_count": len(mart_df),
-            }
-        )
+    {
+        "artifact_type":
+            artifact_plan.artifact_type,
+        "artifact_name":
+            artifact_plan.artifact_name,
+        "storage_path": mart_key,
+        "row_count": len(mart_df),
+        "catalog": catalog.to_dict(),
+    }
+)
 
     return {
         "gold_df": gold_df,

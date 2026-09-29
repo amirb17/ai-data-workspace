@@ -1,3 +1,4 @@
+from app.processing.gold_catalog_builder import build_gold_artifact_catalog
 from app.processing.gold_processor import process_gold
 from app.processing.silver_processor import process_silver
 from app.processing.bronze_processor import run_bronze_stage
@@ -27,6 +28,10 @@ from app.db.file_repository import (
     get_upload_request_by_id,
     save_gold_artifact,
     get_gold_artifacts_for_run,
+    save_gold_artifact_model,
+    save_gold_artifact_column,
+    get_gold_artifact_model,
+    get_gold_artifact_columns,
 )
 
 from app.db.dataset_repository import (
@@ -39,7 +44,9 @@ from app.db.dataset_repository import (
 from app.services.dataset_service import (
     resolve_dataset_version_by_id,
 )
-from app.processing.gold_planner import build_gold_plan
+from app.processing.gold_planner import (
+    build_gold_plan,
+)
 from app.storage.s3_service import parse_s3_uri
 
 def start_processing(upload_id: int):
@@ -484,10 +491,39 @@ def _get_expected_gold_artifact_names(
 
 def _is_gold_publication_complete(
     gold_run_id: int,
-    expected_artifact_names: set[str],
+    file_id: int,
 ) -> bool:
-    stored_artifacts = get_gold_artifacts_for_run(
-        gold_run_id
+    """
+    Validate the complete Gold publication contract.
+
+    A Gold run is complete only when:
+        1. All expected physical artifacts exist.
+        2. Every expected MART has a semantic model.
+        3. MART grain matches the planner contract.
+        4. Semantic column names and ordering match exactly.
+
+    BASE semantic metadata is not required yet.
+    """
+
+    profiles = get_dataset_profiles(file_id)
+
+    if not profiles:
+        return False
+
+    gold_plan = build_gold_plan(profiles)
+
+    expected_artifact_names = {
+        "base",
+        *[
+            artifact.artifact_name
+            for artifact in gold_plan.artifacts
+        ],
+    }
+
+    stored_artifacts = (
+        get_gold_artifacts_for_run(
+            gold_run_id
+        )
     )
 
     stored_artifact_names = {
@@ -495,10 +531,78 @@ def _is_gold_publication_complete(
         for artifact in stored_artifacts
     }
 
-    return (
+    # Exact physical publication contract.
+    if (
         stored_artifact_names
-        == expected_artifact_names
-    )
+        != expected_artifact_names
+    ):
+        return False
+
+    stored_by_name = {
+        artifact[3]: artifact
+        for artifact in stored_artifacts
+    }
+
+    # Validate every MART against its planner contract.
+    for artifact_plan in gold_plan.artifacts:
+
+        stored_artifact = stored_by_name.get(
+            artifact_plan.artifact_name
+        )
+
+        if stored_artifact is None:
+            return False
+
+        gold_artifact_id = stored_artifact[0]
+
+        model = get_gold_artifact_model(
+            gold_artifact_id
+        )
+
+        if model is None:
+            return False
+
+        expected_catalog = (
+            build_gold_artifact_catalog(
+                artifact_plan
+            )
+        )
+
+        # Adjust this index only if your repository model tuple
+        # returns grain in a different position.
+        stored_grain = model[2]
+
+        if stored_grain != expected_catalog.grain:
+            return False
+
+        stored_columns = (
+            get_gold_artifact_columns(
+                gold_artifact_id
+            )
+        )
+
+        if not stored_columns:
+            return False
+
+        expected_column_names = [
+            column.column_name
+            for column in expected_catalog.columns
+        ]
+
+        # Adjust these tuple indexes only if your repository
+        # function returns a different SELECT ordering.
+        stored_column_names = [
+            column[2]
+            for column in stored_columns
+        ]
+
+        if (
+            stored_column_names
+            != expected_column_names
+        ):
+            return False
+
+    return True
 def run_gold_processing(
     dataset_version_file_id: int,
     bucket_name: str,
@@ -575,12 +679,11 @@ def run_gold_processing(
         )
 
         publication_complete = (
-            _is_gold_publication_complete(
-                gold_run_id=existing_gold_run_id,
-                expected_artifact_names=
-                    expected_artifact_names,
-            )
-        )
+        _is_gold_publication_complete(
+        gold_run_id=existing_gold_run_id,
+        file_id=file_id,
+    )
+)
 
         if publication_complete:
 
@@ -758,6 +861,31 @@ def run_gold_processing(
             persisted_artifacts.append(
                 saved_artifact
             )
+            # -----------------------------------------------------
+            # Persist semantic catalog for analytical MARTs
+            # -----------------------------------------------------
+            catalog = artifact.get("catalog")
+
+            if catalog is not None:
+                gold_artifact_id = saved_artifact[0]
+
+                save_gold_artifact_model(
+                    gold_artifact_id=gold_artifact_id,
+                    grain=catalog["grain"],
+                )
+
+                for column in catalog["columns"]:
+                    save_gold_artifact_column(
+                        gold_artifact_id=gold_artifact_id,
+                        column_name=column["column_name"],
+                        column_role=column["column_role"],
+                        source_column=column["source_column"],
+                        aggregation_type=
+                            column["aggregation_type"],
+                        ordinal_position=
+                            column["ordinal_position"],
+                        data_type=column["data_type"],
+                    )
         stored_artifacts = (
             get_gold_artifacts_for_run(
                 gold_run_id

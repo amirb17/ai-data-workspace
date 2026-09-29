@@ -32,6 +32,12 @@ TIME_NAME_HINTS = (
     "created_at",
     "updated_at",
 )
+DEFAULT_MEASURE_AGGREGATIONS = (
+    "sum",
+    "mean",
+    "min",
+    "max",
+)
 
 
 @dataclass(frozen=True)
@@ -40,6 +46,7 @@ class GoldArtifactPlan:
     artifact_name: str
     dimensions: list[str]
     measures: list[str]
+    aggregations: list[str]
     reason: str
 
 
@@ -172,12 +179,15 @@ def build_gold_plan(
                 ),
                 dimensions=[primary_identifier],
                 measures=measures.copy(),
+                aggregations=list(
+                    DEFAULT_MEASURE_AGGREGATIONS
+                ),
                 reason=(
                     "Identifier and numeric measures are "
                     "available for entity-level aggregation."
                 ),
             )
-        )
+)
 
     # ---------------------------------------------------------
     # Categorical aggregate
@@ -190,6 +200,9 @@ def build_gold_plan(
                     artifact_name=f"{dimension}_summary",
                     dimensions=[dimension],
                     measures=measures.copy(),
+                    aggregations=list(
+                        DEFAULT_MEASURE_AGGREGATIONS
+                    ),
                     reason=(
                         "Categorical dimension has suitable "
                         "cardinality for analytical aggregation."
@@ -207,6 +220,9 @@ def build_gold_plan(
                 artifact_name="time_summary",
                 dimensions=[time_dimensions[0]],
                 measures=measures.copy(),
+                aggregations=list(
+                    DEFAULT_MEASURE_AGGREGATIONS
+                ),
                 reason=(
                     "Datetime dimension and numeric measures "
                     "are available for time-based aggregation."

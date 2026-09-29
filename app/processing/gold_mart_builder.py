@@ -6,6 +6,7 @@ from app.processing.gold_planner import GoldArtifactPlan
 def _build_aggregations(
     df: pd.DataFrame,
     measures: list[str],
+    aggregation_types: list[str],
 ) -> dict:
     """
     Build deterministic analytical aggregations for numeric
@@ -26,12 +27,9 @@ def _build_aggregations(
                 f"Measure '{measure}' not found in dataframe"
             )
 
-        aggregations[measure] = [
-            "sum",
-            "mean",
-            "min",
-            "max",
-        ]
+        aggregations[measure] = (
+            aggregation_types.copy()
+        )
 
     return aggregations
 
@@ -67,11 +65,23 @@ def build_mart(
             "Mart dimensions not found in dataframe: "
             f"{missing_dimensions}"
         )
+    if not plan.measures:
+        raise ValueError(
+            f"Mart '{plan.artifact_name}' "
+            f"has no measures"
+        )
+
+    if not plan.aggregations:
+        raise ValueError(
+            f"Mart '{plan.artifact_name}' "
+            f"has no aggregations"
+        )
 
     aggregations = _build_aggregations(
-        df=df,
-        measures=plan.measures,
-    )
+    df=df,
+    measures=plan.measures,
+    aggregation_types=plan.aggregations,
+)
 
     mart = (
         df.groupby(

@@ -1621,3 +1621,183 @@ def get_gold_artifact(
             )
 
             return cursor.fetchone()
+
+def save_gold_artifact_model(
+    gold_artifact_id: int,
+    grain: str,
+):
+    query = """
+        INSERT INTO gold_artifact_models (
+            gold_artifact_id,
+            grain
+        )
+        VALUES (%s, %s)
+        ON CONFLICT (gold_artifact_id)
+        DO UPDATE SET
+            grain = EXCLUDED.grain
+        RETURNING
+            gold_artifact_model_id,
+            gold_artifact_id,
+            grain,
+            created_at;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    gold_artifact_id,
+                    grain,
+                ),
+            )
+
+            result = cursor.fetchone()
+            conn.commit()
+
+            return result
+
+
+def save_gold_artifact_column(
+    gold_artifact_id: int,
+    column_name: str,
+    column_role: str,
+    source_column: str | None,
+    aggregation_type: str | None,
+    ordinal_position: int,
+    data_type: str | None,
+):
+    query = """
+        INSERT INTO gold_artifact_columns (
+            gold_artifact_id,
+            column_name,
+            column_role,
+            source_column,
+            aggregation_type,
+            ordinal_position,
+            data_type
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (
+            gold_artifact_id,
+            column_name
+        )
+        DO UPDATE SET
+            column_role = EXCLUDED.column_role,
+            source_column = EXCLUDED.source_column,
+            aggregation_type = EXCLUDED.aggregation_type,
+            ordinal_position = EXCLUDED.ordinal_position,
+            data_type = EXCLUDED.data_type
+        RETURNING
+            gold_artifact_column_id,
+            gold_artifact_id,
+            column_name,
+            column_role,
+            source_column,
+            aggregation_type,
+            ordinal_position,
+            data_type,
+            created_at;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    gold_artifact_id,
+                    column_name,
+                    column_role,
+                    source_column,
+                    aggregation_type,
+                    ordinal_position,
+                    data_type,
+                ),
+            )
+
+            result = cursor.fetchone()
+            conn.commit()
+
+            return result
+
+
+def get_gold_artifact_model(
+    gold_artifact_id: int,
+):
+    query = """
+        SELECT
+            gold_artifact_model_id,
+            gold_artifact_id,
+            grain,
+            created_at
+        FROM gold_artifact_models
+        WHERE gold_artifact_id = %s;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (gold_artifact_id,),
+            )
+
+            return cursor.fetchone()
+
+
+def get_gold_artifact_columns(
+    gold_artifact_id: int,
+):
+    query = """
+        SELECT
+            gold_artifact_column_id,
+            gold_artifact_id,
+            column_name,
+            column_role,
+            source_column,
+            aggregation_type,
+            ordinal_position,
+            data_type,
+            created_at
+        FROM gold_artifact_columns
+        WHERE gold_artifact_id = %s
+        ORDER BY ordinal_position;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (gold_artifact_id,),
+            )
+
+            return cursor.fetchall()
+
+def get_gold_artifact_by_run_and_name(
+    gold_run_id: int,
+    artifact_name: str,
+):
+    query = """
+        SELECT
+            gold_artifact_id,
+            gold_run_id,
+            artifact_type,
+            artifact_name,
+            storage_path,
+            row_count,
+            created_at
+        FROM gold_artifacts
+        WHERE gold_run_id = %s
+          AND artifact_name = %s;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    gold_run_id,
+                    artifact_name,
+                ),
+            )
+
+            return cursor.fetchone()
