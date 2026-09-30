@@ -18,6 +18,7 @@ class GoldArtifactCatalog:
     artifact_name: str
     grain: str
     columns: list[GoldCatalogColumn]
+    time_grain: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -121,6 +122,7 @@ def build_gold_artifact_catalog(
         artifact_name=plan.artifact_name,
         grain=grain,
         columns=columns,
+        time_grain=plan.time_grain,
     )
 
 def validate_catalog_against_dataframe(

@@ -1625,20 +1625,24 @@ def get_gold_artifact(
 def save_gold_artifact_model(
     gold_artifact_id: int,
     grain: str,
+    time_grain: str | None = None,
 ):
     query = """
         INSERT INTO gold_artifact_models (
             gold_artifact_id,
-            grain
+            grain,
+            time_grain
         )
-        VALUES (%s, %s)
+        VALUES (%s, %s, %s)
         ON CONFLICT (gold_artifact_id)
         DO UPDATE SET
-            grain = EXCLUDED.grain
+            grain = EXCLUDED.grain,
+            time_grain = EXCLUDED.time_grain
         RETURNING
             gold_artifact_model_id,
             gold_artifact_id,
             grain,
+            time_grain,
             created_at;
     """
 
@@ -1649,6 +1653,7 @@ def save_gold_artifact_model(
                 (
                     gold_artifact_id,
                     grain,
+                    time_grain,
                 ),
             )
 
@@ -1656,8 +1661,6 @@ def save_gold_artifact_model(
             conn.commit()
 
             return result
-
-
 def save_gold_artifact_column(
     gold_artifact_id: int,
     column_name: str,
@@ -1729,6 +1732,7 @@ def get_gold_artifact_model(
             gold_artifact_model_id,
             gold_artifact_id,
             grain,
+            time_grain,
             created_at
         FROM gold_artifact_models
         WHERE gold_artifact_id = %s;
@@ -1742,7 +1746,6 @@ def get_gold_artifact_model(
             )
 
             return cursor.fetchone()
-
 
 def get_gold_artifact_columns(
     gold_artifact_id: int,

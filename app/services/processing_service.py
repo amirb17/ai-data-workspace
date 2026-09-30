@@ -571,6 +571,13 @@ def _is_gold_publication_complete(
         # Adjust this index only if your repository model tuple
         # returns grain in a different position.
         stored_grain = model[2]
+        stored_time_grain = model[3]
+
+        if stored_grain != expected_catalog.grain:
+            return False
+
+        if stored_time_grain != expected_catalog.time_grain:
+            return False
 
         if stored_grain != expected_catalog.grain:
             return False
@@ -872,6 +879,7 @@ def run_gold_processing(
                 save_gold_artifact_model(
                     gold_artifact_id=gold_artifact_id,
                     grain=catalog["grain"],
+                    time_grain=catalog.get("time_grain"),
                 )
 
                 for column in catalog["columns"]:

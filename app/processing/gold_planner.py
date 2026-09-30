@@ -48,7 +48,7 @@ class GoldArtifactPlan:
     measures: list[str]
     aggregations: list[str]
     reason: str
-
+    time_grain: str | None = None
 
 @dataclass(frozen=True)
 class GoldPlan:
@@ -213,22 +213,44 @@ def build_gold_plan(
     # ---------------------------------------------------------
     # Time aggregate
     # ---------------------------------------------------------
+# ---------------------------------------------------------
+# Time-based analytical aggregates
+# ---------------------------------------------------------
     if time_dimensions and measures:
-        artifacts.append(
-            GoldArtifactPlan(
-                artifact_type="MART",
-                artifact_name="time_summary",
-                dimensions=[time_dimensions[0]],
-                measures=measures.copy(),
-                aggregations=list(
-                    DEFAULT_MEASURE_AGGREGATIONS
-                ),
-                reason=(
-                    "Datetime dimension and numeric measures "
-                    "are available for time-based aggregation."
-                ),
+        primary_time_dimension = time_dimensions[0]
+
+        for time_grain in (
+            "DAY",
+            "MONTH",
+            "YEAR",
+        ):
+            artifact_name = (
+                f"{primary_time_dimension}_"
+                f"{time_grain.lower()}_summary"
             )
-        )
+
+            artifacts.append(
+                GoldArtifactPlan(
+                    artifact_type="MART",
+                    artifact_name=artifact_name,
+                    dimensions=[
+                        primary_time_dimension
+                    ],
+                    measures=measures.copy(),
+                    aggregations=[
+                        "sum",
+                        "mean",
+                        "min",
+                        "max",
+                    ],
+                    reason=(
+                        "Datetime dimension and numeric "
+                        f"measures support {time_grain.lower()}-"
+                        "level analytical aggregation."
+                    ),
+                    time_grain=time_grain,
+                )
+            )
 
     return GoldPlan(
     base_required=True,
