@@ -11,6 +11,28 @@ as defaults, so existing deployments keep working unchanged).
 """
 
 import os
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv(
+    "GEMINI_API_KEY"
+)
+
+GEMINI_MODEL = os.getenv(
+    "GEMINI_MODEL",
+    "gemini-3.5-flash-lite",
+)
+
+GEMINI_FALLBACK_MODELS = [
+    model.strip()
+    for model in os.getenv(
+        "GEMINI_FALLBACK_MODELS",
+        "gemini-3.7-flash,gemini-3.8-flash",
+    ).split(",")
+    if model.strip()
+]
 
 AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
 AWS_PROFILE = os.getenv("AWS_PROFILE", "ai-data-workspace")
