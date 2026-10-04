@@ -3,16 +3,20 @@ import {
   Upload,
 } from "lucide-react"
 import {
-  useMemo,
   useState,
 } from "react"
 import { useOutletContext, useParams } from "react-router-dom"
 import { UploadFileDialog } from "../../../features/files/components/UploadFileDialog"
 import { Button } from "../../../components/ui/Button"
 import { FileStatusBadge } from "../../../features/files/components/FileStatusBadge"
-import { filesByDatasetMock } from "../../../features/files/data/files.mock"
+import { readDatasetFiles } from "../../../features/files/data/storage"
 
 import type { DatasetListItem } from "../../../features/datasets/types"
+
+function formatUploadedAt(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
+}
 
 function formatFileSize(
   bytes: number,
@@ -41,17 +45,14 @@ export function DatasetFilesPage() {
   const dataset = useOutletContext<DatasetListItem>()
   const [uploadOpen, setUploadOpen] =
   useState(false)
-  const files = useMemo(() => {
-    if (!datasetId) {
-      return []
-    }
-
-    return (
-      filesByDatasetMock[
-        datasetId
-      ]?.filter((file) => String(file.workspaceId) === workspaceId && String(file.datasetId) === datasetId) ?? []
-    )
-  }, [datasetId, workspaceId])
+  const [, refreshFiles] = useState(0)
+  let files: ReturnType<typeof readDatasetFiles> = []
+  let storageError = ""
+  try {
+    if (workspaceId && datasetId) files = readDatasetFiles(workspaceId, datasetId)
+  } catch (caughtError) {
+    storageError = caughtError instanceof Error ? caughtError.message : "Unable to read browser file storage."
+  }
 
   return (
     <div className="space-y-5">
@@ -76,6 +77,7 @@ export function DatasetFilesPage() {
         </Button>
       </section>
 
+      {storageError && <p role="alert" className="text-sm text-red-700">{storageError}</p>}
       {files.length === 0 ? (
         <section className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
@@ -190,7 +192,7 @@ export function DatasetFilesPage() {
 
                       <td className="px-5 py-4 text-slate-500">
                         {
-                          file.uploadedAt
+                          formatUploadedAt(file.uploadedAt)
                         }
                       </td>
                     </tr>
@@ -267,7 +269,7 @@ export function DatasetFilesPage() {
 
                     <p className="mt-1 font-medium text-slate-900">
                       {
-                        file.uploadedAt
+                        formatUploadedAt(file.uploadedAt)
                       }
                     </p>
                   </div>
@@ -284,6 +286,7 @@ export function DatasetFilesPage() {
     workspaceId={workspaceId}
     datasetName={dataset.name}
     datasetId={datasetId}
+    onAccepted={() => refreshFiles((version) => version + 1)}
     onClose={() =>
       setUploadOpen(false)
     }

@@ -11,6 +11,7 @@ import {
 
 import { Button } from "../../../components/ui/Button"
 import type { CsvInspectionResult } from "../types"
+import { acceptDatasetFile } from "../data/storage"
 import { inspectCsv } from "../utils/inspectCsv"
 import { contractStorageKey, getDatasetContract } from "../../datasets/contracts/storage"
 import {
@@ -24,6 +25,7 @@ type UploadFileDialogProps = {
   workspaceId: string
   datasetName: string
   datasetId: string
+  onAccepted: () => void
   onClose: () => void
 }
 
@@ -54,8 +56,11 @@ export function UploadFileDialog({
   workspaceId,
   datasetName,
   datasetId,
+  onAccepted,
   onClose,
 }: UploadFileDialogProps) {
+  const acceptanceIdRef = useRef("")
+  const acceptedRef = useRef(false)
   const requestRef = useRef(0)
   useEffect(() => () => { requestRef.current += 1 }, [])
   const inputRef =
@@ -105,42 +110,35 @@ export function UploadFileDialog({
     reset()
     onClose()
   }
-  function establishInitialContract() {
-  if (!inspection || schemaMatch?.status !== "NO_CONTRACT") {
-    return
-  }
-
-  const contract: DatasetContract = {
-    datasetId: Number(datasetId),
-    datasetName,
-
-    columns:
-      inspection.columns.map(
-        (column) => ({
-          name: column,
-          dataType: "STRING",
-          required: false,
-        }),
-      ),
-
-    primaryKey: [],
-
-    loadMode: "APPEND",
-  }
-
-  try {
-    if (getDatasetContract(workspaceId, datasetId)) {
-      setError("A contract now exists. Choose the file again to compare it.")
-      setInspection(null)
-      setSchemaMatch(null)
-      return
+  function acceptInspection() {
+    if (!inspection || !schemaMatch || acceptedRef.current ||
+        schemaMatch.status === "BREAKING" || schemaMatch.status === "WRONG_DATASET_LIKELY") return
+    try {
+      const existingContract = getDatasetContract(workspaceId, datasetId)
+      const currentMatch = compareSchema(inspection.columns, existingContract)
+      if (currentMatch.status === "BREAKING" || currentMatch.status === "WRONG_DATASET_LIKELY") {
+        setSchemaMatch(currentMatch)
+        setError("The dataset contract changed. This file cannot be accepted.")
+        return
+      }
+      if (!existingContract) {
+        const contract: DatasetContract = {
+          datasetId: Number(datasetId),
+          datasetName,
+          columns: inspection.columns.map((name) => ({ name, dataType: "STRING", required: false })),
+          primaryKey: [],
+          loadMode: "APPEND",
+        }
+        localStorage.setItem(contractStorageKey(workspaceId, datasetId), JSON.stringify(contract))
+      }
+      acceptDatasetFile(workspaceId, datasetId, inspection, acceptanceIdRef.current)
+      acceptedRef.current = true
+      onAccepted()
+      handleClose()
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Unable to save this file in browser storage.")
     }
-    localStorage.setItem(contractStorageKey(workspaceId, datasetId), JSON.stringify(contract))
-    handleClose()
-  } catch (caughtError) {
-    setError(caughtError instanceof Error ? caughtError.message : "Unable to save the initial contract.")
   }
-}
 
   async function handleFile(
     file: File,
@@ -172,6 +170,8 @@ export function UploadFileDialog({
         await inspectCsv(file)
 
       if (request !== requestRef.current) return
+      acceptanceIdRef.current = crypto.randomUUID()
+      acceptedRef.current = false
       setInspection(result)
       const contract =
       getDatasetContract(
@@ -599,22 +599,12 @@ export function UploadFileDialog({
         schemaMatch.status ===
           "WRONG_DATASET_LIKELY"
       }
-      onClick={() => {
-        if (
-          schemaMatch.status ===
-          "NO_CONTRACT"
-        ) {
-          establishInitialContract()
-          return
-        }
-
-        handleClose()
-      }}
+      onClick={acceptInspection}
     >
       {schemaMatch.status ===
         "NO_CONTRACT"
-        ? "Use as Initial Structure"
-        : "Done"}
+        ? "Establish Structure & Accept"
+        : "Accept File"}
     </Button>
   )}
         </div>

@@ -13,6 +13,7 @@ export type DatasetFileStatus =
   | "FAILED"
 
 export type DatasetFile = {
+  acceptanceId?: string
   id: number
   datasetId: number
   workspaceId: number
