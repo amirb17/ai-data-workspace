@@ -47,7 +47,7 @@ temp/
 *.tmp
 
 # Local uploaded / test datasets
-datasets/
+/datasets/
 uploads/
 
 # Build / package artifacts
