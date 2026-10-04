@@ -110,7 +110,7 @@ export function compareSchema(
       "WRONG_DATASET_LIKELY"
   } else if (
     missingRequiredColumns.length >
-    0
+    0 || (contract.schemaEvolutionPolicy === "STRICT" && unexpectedColumns.length > 0)
   ) {
     status = "BREAKING"
   } else if (

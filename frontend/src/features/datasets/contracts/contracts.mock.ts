@@ -5,6 +5,8 @@ export const datasetContractsMock: Record<
   DatasetContract
 > = {
   "1": {
+    workspaceId: 1,
+    schemaEvolutionPolicy: "ALLOW_ADDITIVE",
     datasetId: 1,
     datasetName: "Customer Orders",
 
@@ -44,6 +46,8 @@ export const datasetContractsMock: Record<
   },
 
   "2": {
+    workspaceId: 1,
+    schemaEvolutionPolicy: "ALLOW_ADDITIVE",
     datasetId: 2,
     datasetName: "Customer Master",
 

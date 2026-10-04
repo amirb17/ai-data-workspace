@@ -21,6 +21,7 @@ import { WorkspaceProcessingPage } from "./pages/Workspace/Processing/WorkspaceP
 import { WorkspaceDataQualityPage } from "./pages/Workspace/DataQuality/WorkspaceDataQualityPage"
 import { WorkspaceAnalyticsPage } from "./pages/Workspace/Analytics/WorkspaceAnalyticsPage"
 import { DatasetOverviewPage } from "./pages/Dataset/Overview/DatasetOverviewPage"
+import { DatasetContractPage } from "./pages/Dataset/Contract/DatasetContractPage"
 import { DatasetFilesPage } from "./pages/Dataset/Files/DatasetFilesPage"
 import { DatasetRulesPage } from "./pages/Dataset/Rules/DatasetRulesPage"
 import { DatasetProcessingPage } from "./pages/Dataset/Processing/DatasetProcessingPage"
@@ -79,6 +80,8 @@ function AppLayout() {
         path="files"
         element={<DatasetFilesPage />}
       />
+
+      <Route path="contract" element={<DatasetContractPage />} />
 
       <Route
         path="rules"

@@ -30,6 +30,10 @@ const tabs = [
     to: "files",
   },
   {
+    label: "Contract",
+    to: "contract",
+  },
+  {
     label: "Rules",
     to: "rules",
   },

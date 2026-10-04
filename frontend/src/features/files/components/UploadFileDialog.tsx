@@ -12,8 +12,11 @@ import {
 import { Button } from "../../../components/ui/Button"
 import type { CsvInspectionResult } from "../types"
 import { acceptDatasetFile } from "../data/storage"
+import { DatasetCompatibility } from "./DatasetCompatibility"
 import { inspectCsv } from "../utils/inspectCsv"
-import { contractStorageKey, getDatasetContract } from "../../datasets/contracts/storage"
+import { DatasetContractForm } from "../../datasets/contracts/components/DatasetContractForm"
+import { createInitialContract } from "../../datasets/contracts/validation"
+import { contractStorageKey, saveDatasetContract, getDatasetContract } from "../../datasets/contracts/storage"
 import {
   compareSchema,
   type SchemaMatchResult,
@@ -59,6 +62,7 @@ export function UploadFileDialog({
   onAccepted,
   onClose,
 }: UploadFileDialogProps) {
+  const [configuring, setConfiguring] = useState(false)
   const acceptanceIdRef = useRef("")
   const acceptedRef = useRef(false)
   const requestRef = useRef(0)
@@ -90,6 +94,25 @@ export function UploadFileDialog({
   const [inspecting, setInspecting] =
     useState(false)
 
+  useEffect(() => {
+    if (!inspection) return
+    const update = () => {
+      try {
+        setSchemaMatch(compareSchema(inspection.columns, getDatasetContract(workspaceId, datasetId)))
+        setError("")
+      } catch (caught) {
+        setSchemaMatch(null)
+        setError(caught instanceof Error ? caught.message : "Unable to read the contract.")
+      }
+    }
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === contractStorageKey(workspaceId, datasetId)) update()
+    }
+    window.addEventListener("storage", onStorage)
+    window.addEventListener("datarise-contract-changed", update)
+    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("datarise-contract-changed", update) }
+  }, [inspection, workspaceId, datasetId])
+
   if (!open) {
     return null
   }
@@ -97,6 +120,7 @@ export function UploadFileDialog({
   function reset() {
     requestRef.current += 1
     setInspection(null)
+    setConfiguring(false)
     setError("")
     setInspecting(false)
     setSchemaMatch(null)
@@ -122,14 +146,9 @@ export function UploadFileDialog({
         return
       }
       if (!existingContract) {
-        const contract: DatasetContract = {
-          datasetId: Number(datasetId),
-          datasetName,
-          columns: inspection.columns.map((name) => ({ name, dataType: "STRING", required: false })),
-          primaryKey: [],
-          loadMode: "APPEND",
-        }
-        localStorage.setItem(contractStorageKey(workspaceId, datasetId), JSON.stringify(contract))
+        setSchemaMatch(currentMatch)
+        setConfiguring(true)
+        return
       }
       acceptDatasetFile(workspaceId, datasetId, inspection, acceptanceIdRef.current)
       acceptedRef.current = true
@@ -138,6 +157,20 @@ export function UploadFileDialog({
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to save this file in browser storage.")
     }
+  }
+
+  function saveInitialContract(contract: DatasetContract) {
+    if (!inspection) return
+    if (getDatasetContract(workspaceId, datasetId)) {
+      setConfiguring(false)
+      setSchemaMatch(compareSchema(inspection.columns, getDatasetContract(workspaceId, datasetId)))
+      setError("A contract now exists. Review the comparison before accepting this file.")
+      return
+    }
+    saveDatasetContract(workspaceId, datasetId, contract)
+    setSchemaMatch(compareSchema(inspection.columns, contract))
+    setConfiguring(false)
+    setError("")
   }
 
   async function handleFile(
@@ -234,7 +267,14 @@ export function UploadFileDialog({
         </div>
 
         <div className="space-y-5 p-5">
-          {!inspection && (
+          {configuring && inspection && (
+            <section aria-labelledby="contract-setup-title" className="space-y-4">
+              <h3 id="contract-setup-title" tabIndex={-1} ref={(element) => element?.focus()} className="text-lg font-semibold text-slate-950">Configure Dataset Contract</h3>
+              <DatasetContractForm initialContract={createInitialContract(workspaceId, datasetId, datasetName, inspection.columns)}
+                onSave={saveInitialContract} onCancel={() => setConfiguring(false)} />
+            </section>
+          )}
+          {!inspection && !configuring && (
             <>
               <input
                 ref={inputRef}
@@ -290,7 +330,7 @@ export function UploadFileDialog({
             </div>
           )}
 
-          {inspection && (
+          {inspection && !configuring && (
             <div className="space-y-5">
               <section className="rounded-xl border border-slate-200 p-4">
                 <div className="flex items-start gap-3">
@@ -369,144 +409,7 @@ export function UploadFileDialog({
                   )}
                 </div>
               </section>
-              {schemaMatch && (
-  <section className="rounded-xl border border-slate-200 p-4">
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h3 className="text-sm font-semibold text-slate-900">
-          Dataset Compatibility
-        </h3>
-
-        <p className="mt-1 text-sm text-slate-500">
-          DataRise compared the incoming columns with the trusted dataset structure.
-        </p>
-      </div>
-
-      {schemaMatch.status !==
-        "NO_CONTRACT" && (
-        <div className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-900">
-          {
-            schemaMatch.matchPercentage
-          }
-          % match
-        </div>
-      )}
-    </div>
-
-    <div className="mt-4">
-      {schemaMatch.status ===
-        "NO_CONTRACT" && (
-        <div className="rounded-lg bg-blue-50 p-4">
-          <p className="text-sm font-semibold text-blue-900">
-            No dataset contract yet
-          </p>
-
-          <p className="mt-1 text-sm leading-6 text-blue-700">
-            This dataset does not have a trusted schema yet. The first accepted upload can be used to establish its initial structure.
-          </p>
-        </div>
-      )}
-
-      {schemaMatch.status ===
-        "MATCH" && (
-        <div className="rounded-lg bg-green-50 p-4">
-          <p className="text-sm font-semibold text-green-800">
-            Schema matches
-          </p>
-
-          <p className="mt-1 text-sm text-green-700">
-            The incoming file matches the current dataset contract.
-          </p>
-        </div>
-      )}
-
-      {schemaMatch.status ===
-        "WARNING" && (
-        <div className="rounded-lg bg-amber-50 p-4">
-          <p className="text-sm font-semibold text-amber-800">
-            Compatible with warnings
-          </p>
-
-          <p className="mt-1 text-sm text-amber-700">
-            The required fields are present, but additional or missing optional columns differ from the contract.
-          </p>
-        </div>
-      )}
-
-      {schemaMatch.status ===
-        "BREAKING" && (
-        <div className="rounded-lg bg-red-50 p-4">
-          <p className="text-sm font-semibold text-red-800">
-            Breaking schema change
-          </p>
-
-          <p className="mt-1 text-sm text-red-700">
-            One or more required columns are missing. Processing must not continue until the mapping or dataset contract is reviewed.
-          </p>
-        </div>
-      )}
-
-      {schemaMatch.status ===
-        "WRONG_DATASET_LIKELY" && (
-        <div className="rounded-lg bg-red-50 p-4">
-          <p className="text-sm font-semibold text-red-800">
-            This may be the wrong dataset
-          </p>
-
-          <p className="mt-1 text-sm leading-6 text-red-700">
-            The incoming structure is significantly different from the trusted structure of this dataset.
-          </p>
-        </div>
-      )}
-    </div>
-
-    {schemaMatch.missingRequiredColumns.length >
-      0 && (
-      <div className="mt-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Missing required columns
-        </p>
-
-        <div className="mt-2 flex flex-wrap gap-2">
-          {schemaMatch.missingRequiredColumns.map(
-            (column) => (
-              <span
-                key={column}
-                className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700"
-              >
-                {column}
-              </span>
-            ),
-          )}
-        </div>
-      </div>
-    )}
-
-    {schemaMatch.unexpectedColumns.length >
-      0 &&
-      schemaMatch.status !==
-        "NO_CONTRACT" && (
-        <div className="mt-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Additional columns
-          </p>
-
-          <div className="mt-2 flex flex-wrap gap-2">
-            {schemaMatch.unexpectedColumns.map(
-              (column) => (
-                <span
-                  key={column}
-                  className="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700"
-                >
-                  {column}
-                </span>
-              ),
-            )}
-          </div>
-        </div>
-      )}
-  </section>
-)}
+              {schemaMatch && <DatasetCompatibility schemaMatch={schemaMatch} />}
 
               <section>
                 <h3 className="text-sm font-semibold text-slate-900">
@@ -579,7 +482,7 @@ export function UploadFileDialog({
           )}
         </div>
 
-        <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-end">
+        {!configuring && <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="secondary"
@@ -599,15 +502,18 @@ export function UploadFileDialog({
         schemaMatch.status ===
           "WRONG_DATASET_LIKELY"
       }
-      onClick={acceptInspection}
+      onClick={() => {
+        if (schemaMatch.status === "NO_CONTRACT") setConfiguring(true)
+        else acceptInspection()
+      }}
     >
       {schemaMatch.status ===
         "NO_CONTRACT"
-        ? "Establish Structure & Accept"
+        ? "Configure Dataset Contract"
         : "Accept File"}
     </Button>
   )}
-        </div>
+        </div>}
       </div>
     </div>
   )
