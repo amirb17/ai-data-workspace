@@ -10,9 +10,12 @@ import {
 } from "react"
 
 import { Button } from "../../../components/ui/Button"
-import type { CsvInspectionResult } from "../types"
-import { acceptDatasetFile } from "../data/storage"
+import type { CsvInspectionResult, DatasetFile } from "../types"
+import { acceptInspectedCsv } from "../../ingestion/acceptInspectedCsv"
 import { DatasetCompatibility } from "./DatasetCompatibility"
+import { DuplicateFileNotice } from "./DuplicateFileNotice"
+import { DuplicateFileContentError, findFileByContentHash, fileStorageKey } from "../data/storage"
+import { hashFileContent } from "../utils/hashFileContent"
 import { inspectCsv } from "../utils/inspectCsv"
 import { DatasetContractForm } from "../../datasets/contracts/components/DatasetContractForm"
 import { createInitialContract } from "../../datasets/contracts/validation"
@@ -62,6 +65,7 @@ export function UploadFileDialog({
   onAccepted,
   onClose,
 }: UploadFileDialogProps) {
+  const [duplicateFile, setDuplicateFile] = useState<DatasetFile | null>(null)
   const [configuring, setConfiguring] = useState(false)
   const acceptanceIdRef = useRef("")
   const acceptedRef = useRef(false)
@@ -98,7 +102,15 @@ export function UploadFileDialog({
     if (!inspection) return
     const update = () => {
       try {
-        setSchemaMatch(compareSchema(inspection.columns, getDatasetContract(workspaceId, datasetId)))
+        const duplicate = inspection.contentHash ? findFileByContentHash(workspaceId, datasetId, inspection.contentHash) : undefined
+        if (duplicate && duplicate.acceptanceId !== acceptanceIdRef.current) {
+          setDuplicateFile(duplicate)
+          setConfiguring(false)
+          setSchemaMatch(null)
+        } else {
+          setDuplicateFile(null)
+          setSchemaMatch(compareSchema(inspection.columns, getDatasetContract(workspaceId, datasetId)))
+        }
         setError("")
       } catch (caught) {
         setSchemaMatch(null)
@@ -106,11 +118,12 @@ export function UploadFileDialog({
       }
     }
     const onStorage = (event: StorageEvent) => {
-      if (event.key === null || event.key === contractStorageKey(workspaceId, datasetId)) update()
+      if (event.key === null || event.key === contractStorageKey(workspaceId, datasetId) || event.key === fileStorageKey(workspaceId, datasetId)) update()
     }
     window.addEventListener("storage", onStorage)
+    window.addEventListener("datarise-files-changed", update)
     window.addEventListener("datarise-contract-changed", update)
-    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("datarise-contract-changed", update) }
+    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("datarise-contract-changed", update); window.removeEventListener("datarise-files-changed", update) }
   }, [inspection, workspaceId, datasetId])
 
   if (!open) {
@@ -119,6 +132,7 @@ export function UploadFileDialog({
 
   function reset() {
     requestRef.current += 1
+    setDuplicateFile(null)
     setInspection(null)
     setConfiguring(false)
     setError("")
@@ -135,9 +149,11 @@ export function UploadFileDialog({
     onClose()
   }
   function acceptInspection() {
-    if (!inspection || !schemaMatch || acceptedRef.current ||
+    if (duplicateFile || !inspection || !schemaMatch || acceptedRef.current ||
         schemaMatch.status === "BREAKING" || schemaMatch.status === "WRONG_DATASET_LIKELY") return
     try {
+      const duplicate = inspection.contentHash ? findFileByContentHash(workspaceId, datasetId, inspection.contentHash) : undefined
+      if (duplicate && duplicate.acceptanceId !== acceptanceIdRef.current) throw new DuplicateFileContentError(duplicate)
       const existingContract = getDatasetContract(workspaceId, datasetId)
       const currentMatch = compareSchema(inspection.columns, existingContract)
       if (currentMatch.status === "BREAKING" || currentMatch.status === "WRONG_DATASET_LIKELY") {
@@ -150,17 +166,30 @@ export function UploadFileDialog({
         setConfiguring(true)
         return
       }
-      acceptDatasetFile(workspaceId, datasetId, inspection, acceptanceIdRef.current)
+      acceptInspectedCsv(workspaceId, datasetId, inspection, acceptanceIdRef.current)
       acceptedRef.current = true
       onAccepted()
       handleClose()
     } catch (caughtError) {
+      if (caughtError instanceof DuplicateFileContentError) {
+        setDuplicateFile(caughtError.existingFile)
+        setSchemaMatch(null)
+        setError("")
+        return
+      }
       setError(caughtError instanceof Error ? caughtError.message : "Unable to save this file in browser storage.")
     }
   }
 
   function saveInitialContract(contract: DatasetContract) {
-    if (!inspection) return
+    if (!inspection || duplicateFile) return
+    const duplicate = inspection.contentHash ? findFileByContentHash(workspaceId, datasetId, inspection.contentHash) : undefined
+    if (duplicate && duplicate.acceptanceId !== acceptanceIdRef.current) {
+      setDuplicateFile(duplicate)
+      setConfiguring(false)
+      setSchemaMatch(null)
+      return
+    }
     if (getDatasetContract(workspaceId, datasetId)) {
       setConfiguring(false)
       setSchemaMatch(compareSchema(inspection.columns, getDatasetContract(workspaceId, datasetId)))
@@ -178,6 +207,7 @@ export function UploadFileDialog({
   ) {
     const request = ++requestRef.current
     setError("")
+    setDuplicateFile(null)
     setInspection(null)
     setSchemaMatch(null)
     setInspecting(false)
@@ -202,10 +232,13 @@ export function UploadFileDialog({
       const result =
         await inspectCsv(file)
 
+      result.contentHash = await hashFileContent(file)
       if (request !== requestRef.current) return
       acceptanceIdRef.current = crypto.randomUUID()
       acceptedRef.current = false
       setInspection(result)
+      const duplicate = findFileByContentHash(workspaceId, datasetId, result.contentHash)
+      if (duplicate) { setDuplicateFile(duplicate); return }
       const contract =
       getDatasetContract(
         workspaceId, datasetId,
@@ -222,6 +255,7 @@ export function UploadFileDialog({
     )
     } catch (caughtError) {
       if (request !== requestRef.current) return
+      setDuplicateFile(null)
       setInspection(null)
       setSchemaMatch(null)
       setError(
@@ -330,7 +364,8 @@ export function UploadFileDialog({
             </div>
           )}
 
-          {inspection && !configuring && (
+          {duplicateFile && <DuplicateFileNotice file={duplicateFile} workspaceId={workspaceId} datasetId={datasetId} />}
+          {inspection && !configuring && !duplicateFile && (
             <div className="space-y-5">
               <section className="rounded-xl border border-slate-200 p-4">
                 <div className="flex items-start gap-3">
@@ -475,7 +510,7 @@ export function UploadFileDialog({
                 </p>
 
                 <p className="mt-1 text-sm leading-6 text-indigo-700">
-                  Schema comparison is complete. This local preview does not upload the file, create an ingestion batch, or start processing.
+                  Schema comparison is complete. Accepting saves source metadata and creates one ingestion batch ready for future processing. No backend upload or processing starts.
                 </p>
               </section>
             </div>
@@ -488,11 +523,11 @@ export function UploadFileDialog({
             variant="secondary"
             onClick={handleClose}
           >
-            Cancel
+            {duplicateFile ? "Close" : "Cancel"}
           </Button>
 
           {inspection && <Button type="button" variant="secondary" onClick={reset}>Choose another CSV</Button>}
-          {inspection &&
+          {inspection && !duplicateFile &&
   schemaMatch && (
     <Button
       type="button"

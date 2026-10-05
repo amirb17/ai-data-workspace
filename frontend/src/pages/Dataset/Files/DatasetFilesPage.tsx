@@ -3,13 +3,14 @@ import {
   Upload,
 } from "lucide-react"
 import {
+  useEffect,
   useState,
 } from "react"
 import { useOutletContext, useParams } from "react-router-dom"
 import { UploadFileDialog } from "../../../features/files/components/UploadFileDialog"
 import { Button } from "../../../components/ui/Button"
 import { FileStatusBadge } from "../../../features/files/components/FileStatusBadge"
-import { readDatasetFiles } from "../../../features/files/data/storage"
+import { fileStorageKey, readDatasetFiles } from "../../../features/files/data/storage"
 
 import type { DatasetListItem } from "../../../features/datasets/types"
 
@@ -46,6 +47,15 @@ export function DatasetFilesPage() {
   const [uploadOpen, setUploadOpen] =
   useState(false)
   const [, refreshFiles] = useState(0)
+  useEffect(() => {
+    const update = () => refreshFiles((version) => version + 1)
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === fileStorageKey(workspaceId ?? "", datasetId ?? "")) update()
+    }
+    window.addEventListener("storage", onStorage)
+    window.addEventListener("datarise-files-changed", update)
+    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("datarise-files-changed", update) }
+  }, [workspaceId, datasetId])
   let files: ReturnType<typeof readDatasetFiles> = []
   let storageError = ""
   try {

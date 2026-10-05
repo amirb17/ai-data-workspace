@@ -13,6 +13,7 @@ export type DatasetFileStatus =
   | "FAILED"
 
 export type DatasetFile = {
+  contentHash?: string
   acceptanceId?: string
   id: number
   datasetId: number
@@ -32,6 +33,7 @@ export type DatasetFile = {
   batchId?: number
 }
 export type CsvInspectionResult = {
+  contentHash?: string
   fileName: string
   sizeBytes: number
   fileType: "CSV"

@@ -1,0 +1,102 @@
+// Run with node tests/ingestion-batches.cjs; no additional test framework.
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const ts = require('typescript')
+require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS },
+}).outputText, filename)
+const { acceptInspectedCsv } = require('../src/features/ingestion/acceptInspectedCsv.ts')
+const { readDatasetBatches, batchStorageKey, ensureBatchForAcceptedFile } = require('../src/features/ingestion/data/storage.ts')
+const { readDatasetFiles, fileStorageKey } = require('../src/features/files/data/storage.ts')
+const { createInitialContract } = require('../src/features/datasets/contracts/validation.ts')
+const { saveDatasetContract, contractStorageKey } = require('../src/features/datasets/contracts/storage.ts')
+const values = new Map()
+let failingKey
+const write = (key, value) => { if (key === failingKey) throw new Error('Quota exceeded'); values.set(key, value) }
+global.localStorage = { getItem: (key) => values.get(key) ?? null, setItem: write }
+global.window = new EventTarget()
+const scope = ['1', '99']
+const contract = createInitialContract(...scope, 'Customers', ['id', 'name', 'city'])
+contract.columns[0].required = true
+contract.primaryKey = ['id']
+contract.loadMode = 'UPSERT'
+const inspection = { contentHash: 'a'.repeat(64), fileName: 'customers.csv', fileType: 'CSV', sizeBytes: 100, rowCount: 2, columnCount: 3, columns: ['id', 'name', 'city'], previewRows: [] }
+const different = (columns) => ({ ...inspection, contentHash: 'b'.repeat(64), columns, columnCount: columns.length })
+
+failingKey = contractStorageKey('1', '100')
+assert.throws(() => saveDatasetContract('1', '100', createInitialContract('1', '100', 'Other', inspection.columns)), /Quota/)
+assert.throws(() => acceptInspectedCsv('1', '100', inspection, 'failed-contract'), /NO_CONTRACT/)
+assert.equal(readDatasetBatches('1', '100').length, 0)
+failingKey = undefined
+assert.equal(readDatasetBatches(...scope).length, 0)
+assert.throws(() => acceptInspectedCsv(...scope, inspection, 'no-contract'), /NO_CONTRACT/)
+assert.equal(readDatasetFiles(...scope).length, 0)
+saveDatasetContract(...scope, contract)
+assert.equal(readDatasetBatches(...scope).length, 0, 'Contract setup/cancel alone never creates a batch')
+assert.throws(() => acceptInspectedCsv(...scope, different(['name', 'city']), 'breaking'), /BREAKING/)
+assert.throws(() => acceptInspectedCsv(...scope, different(['unrelated']), 'wrong'), /WRONG_DATASET_LIKELY/)
+saveDatasetContract(...scope, { ...contract, schemaEvolutionPolicy: 'STRICT' })
+assert.throws(() => acceptInspectedCsv(...scope, different(['id', 'name', 'city', 'extra']), 'strict-extra'), /BREAKING/)
+assert.equal(readDatasetFiles(...scope).length, 0)
+assert.equal(readDatasetBatches(...scope).length, 0)
+assert.throws(() => acceptInspectedCsv(...scope, { ...inspection, rowCount: 0 }, 'incomplete'), /incomplete/)
+failingKey = fileStorageKey(...scope)
+assert.throws(() => acceptInspectedCsv(...scope, inspection, 'write-failure'), /Quota/)
+assert.equal(readDatasetBatches(...scope).length, 0)
+assert.equal(readDatasetFiles(...scope).length, 0)
+failingKey = undefined
+let notifications = 0
+window.addEventListener('datarise-batches-changed', () => notifications++)
+const batch = acceptInspectedCsv(...scope, inspection, 'selection-1')
+assert.equal(notifications, 1)
+assert.equal(batch.status, 'READY_TO_PROCESS')
+const file = readDatasetFiles(...scope)[0]
+assert.equal(batch.sourceFileId, file.id)
+assert.equal(batch.sourceFileName, file.fileName)
+assert.equal(batch.rowCount, file.rowCount)
+assert.equal(batch.columnCount, file.columnCount)
+assert.equal(batch.workspaceId, file.workspaceId)
+assert.equal(batch.datasetId, file.datasetId)
+assert.ok(Number.isFinite(Date.parse(batch.createdAt)))
+for (const key of ['validRows', 'rejectedRows', 'duplicateRows', 'updatedRows']) assert.equal(batch[key], null)
+assert.deepEqual(readDatasetBatches(...scope)[0], batch, 'Persisted batches survive a fresh read')
+assert.deepEqual(acceptInspectedCsv(...scope, inspection, 'selection-1'), batch)
+assert.equal(readDatasetBatches(...scope).length, 1)
+assert.equal(readDatasetFiles(...scope).length, 1)
+assert.equal(notifications, 1)
+assert.equal(readDatasetBatches('1', '100').length, 0)
+assert.equal(readDatasetBatches('2', '99').length, 0)
+assert.throws(() => ensureBatchForAcceptedFile('2', '99', file.id), /persisted accepted CSV/)
+values.set(batchStorageKey('2', '99'), JSON.stringify([batch]))
+assert.throws(() => readDatasetBatches('2', '99'), /different workspace/)
+values.delete(batchStorageKey('2', '99'))
+saveDatasetContract(...scope, contract)
+const warningBatch = acceptInspectedCsv(...scope, different(['id', 'name', 'city', 'extra']), 'warning')
+assert.equal(warningBatch.columnCount, 4)
+assert.equal(readDatasetBatches(...scope).length, 2)
+failingKey = batchStorageKey(...scope)
+assert.throws(() => acceptInspectedCsv(...scope, { ...inspection, contentHash: 'c'.repeat(64) }, 'retry-selection'), /Retry Accept File/)
+assert.equal(readDatasetFiles(...scope).length, 3)
+assert.equal(readDatasetBatches(...scope).length, 2)
+failingKey = undefined
+const recovered = acceptInspectedCsv(...scope, { ...inspection, contentHash: 'c'.repeat(64) }, 'retry-selection')
+assert.equal(readDatasetFiles(...scope).length, 3)
+assert.equal(readDatasetBatches(...scope).length, 3)
+assert.equal(recovered.sourceFileId, readDatasetFiles(...scope).find((item) => item.acceptanceId === 'retry-selection').id)
+acceptInspectedCsv(...scope, { ...inspection, contentHash: 'c'.repeat(64) }, 'retry-selection')
+assert.equal(readDatasetBatches(...scope).length, 3)
+for (const otherScope of [['1', '100'], ['2', '99']]) {
+  saveDatasetContract(...otherScope, createInitialContract(...otherScope, 'Other customers', inspection.columns))
+  const isolated = acceptInspectedCsv(...otherScope, inspection, 'selection-1')
+  assert.equal(String(isolated.workspaceId), otherScope[0])
+  assert.equal(String(isolated.datasetId), otherScope[1])
+  assert.equal(readDatasetBatches(...otherScope).length, 1)
+  assert.equal(readDatasetBatches(...scope).length, 3)
+}
+const stored = values.get(batchStorageKey(...scope))
+values.set(batchStorageKey(...scope), JSON.stringify([batch, batch]))
+assert.throws(() => readDatasetBatches(...scope), /duplicate identities/)
+values.set(batchStorageKey(...scope), JSON.stringify([{ ...batch, validRows: 0 }]))
+assert.throws(() => readDatasetBatches(...scope), /invalid/)
+values.set(batchStorageKey(...scope), stored)
+console.log('Batch persistence, ownership isolation, idempotency, blocked schemas, file linkage, unavailable outcomes, and failed-write recovery checks passed.')
