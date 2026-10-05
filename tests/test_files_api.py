@@ -1,3 +1,5 @@
+import pytest
+from app.api.identity import get_current_user
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -5,6 +7,12 @@ from app.api import files as files_api
 
 
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def development_identity():
+    app.dependency_overrides[get_current_user] = lambda: {"user_id": 1, "owner_key": "dev:test", "display_name": "Test"}
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_upload_endpoint_passes_workspace_and_dataset_ids(monkeypatch):

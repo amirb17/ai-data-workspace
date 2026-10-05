@@ -33,6 +33,8 @@ def test_validate_upload_context_rejects_mismatched_dataset(monkeypatch):
 
 
 def test_validate_upload_context_accepts_matching_dataset(monkeypatch):
+    monkeypatch.setattr(file_service, "get_user_by_id", lambda user_id: {"owner_key": "dev:test"})
+    monkeypatch.setattr(file_service, "get_workspace_by_id", lambda workspace_id: (1, "W", None, "dev:test"))
     monkeypatch.setattr(
         file_service,
         "get_dataset_by_workspace",

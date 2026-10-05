@@ -5,6 +5,8 @@ from app.db.file_repository import (
     update_physical_file_storage,
     create_uploaded_physical_file,
 )
+from app.db.user_repository import get_user_by_id
+from app.db.workspace_repository import get_workspace_by_id
 from app.db.dataset_repository import get_dataset_by_workspace
 from app.storage.s3_service import (
     upload_file_to_s3,
@@ -48,6 +50,11 @@ def validate_upload_context(
         raise ValueError(
             f"Dataset {dataset_id} does not belong to workspace {workspace_id}"
         )
+
+    user = get_user_by_id(user_id)
+    workspace = get_workspace_by_id(workspace_id)
+    if user is None or workspace is None or workspace[3] != user["owner_key"]:
+        raise ValueError("Workspace access denied")
 
 
 def _staging_prefix(user_id: int) -> str:

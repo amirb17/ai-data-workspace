@@ -1,4 +1,7 @@
-from fastapi import FastAPI
+import os
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.api.identity import get_current_user
 from app.db.database import get_connection
 from app.api.files import router as files_router
 from app.api.analytics import router as analytics_router
@@ -8,6 +11,14 @@ app = FastAPI(
     title="AI Data Workspace",
     version="0.1.0"
 )
+if os.getenv("APP_ENV") == "development":
+    app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_credentials=False, allow_methods=["GET", "POST", "PATCH", "OPTIONS"], allow_headers=["Content-Type"])
+
+@app.get("/me")
+def development_me(user: dict = Depends(get_current_user)):
+    return {**user, "identity_mode": "development"}
+
 app.include_router(files_router)
 app.include_router(workspaces_router)
 app.include_router(analytics_router)

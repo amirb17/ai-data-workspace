@@ -1,9 +1,10 @@
 import os
 import tempfile
-from uuid import uuid4
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from pydantic import BaseModel
+from fastapi import Depends, APIRouter, UploadFile, File, Form, HTTPException
+from pydantic import BaseModel, Field
+from app.api.identity import get_current_user
+from app.services.upload_session_service import initiate_upload_session, complete_upload_session
 
 from app.services.processing_service import (
     start_processing,
@@ -12,18 +13,12 @@ from app.services.processing_service import (
 )
 from app.services.file_service import (
     register_file,
-    finalize_presigned_upload,
-    validate_upload_context,
 )
 from app.services.business_rule_service import (
     get_business_rule_questions,
     submit_business_rule_answers,
     finalize_business_rules,
     update_business_rule_answer,
-)
-from app.storage.s3_service import (
-    generate_presigned_upload_url,
-    get_object_metadata,
 )
 from app.utils.hashing import calculate_file_hash
 from app.schemas.business_rules import (
@@ -32,19 +27,15 @@ from app.schemas.business_rules import (
 )
 from app.config import S3_BUCKET_NAME
 class FileCompleteRequest(BaseModel):
-    user_id: int
-    workspace_id: int | None = None
-    dataset_id: int | None = None
-    object_key: str
-    expected_file_size: int
+    upload_request_id: int = Field(gt=0)
 
 class FileInitiateRequest(BaseModel):
-    user_id: int
-    workspace_id: int | None = None
-    dataset_id: int | None = None
-    file_name: str
-    file_size: int
-    content_type: str | None = None
+    user_id: int | None = Field(default=None, gt=0)
+    workspace_id: int = Field(gt=0)
+    dataset_id: int = Field(gt=0)
+    file_name: str = Field(min_length=1, max_length=255)
+    file_size: int = Field(gt=0)
+    content_type: str | None = Field(default=None, max_length=255)
 
 router = APIRouter(
     prefix="/files",
@@ -58,7 +49,10 @@ async def upload_file(
     workspace_id: int | None = Form(None),
     dataset_id: int | None = Form(None),
     file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
 ):
+    if user_id != user["user_id"]:
+        raise HTTPException(status_code=403, detail="User identity does not match current principal")
     allowed_extensions = {".csv"}
 
     if not file.filename:
@@ -140,102 +134,27 @@ async def upload_file(
             os.remove(temp_path)
 
 @router.post("/initiate")
-def initiate_upload(request: FileInitiateRequest):
-
+def initiate_upload(request: FileInitiateRequest, user: dict = Depends(get_current_user)):
+    if request.user_id is not None and request.user_id != user["user_id"]:
+        raise HTTPException(status_code=403, detail="User identity does not match current principal")
     try:
-        validate_upload_context(
-            user_id=request.user_id,
-            workspace_id=request.workspace_id,
-            dataset_id=request.dataset_id,
-        )
+        return initiate_upload_session(user_id=user["user_id"], workspace_id=request.workspace_id,
+            dataset_id=request.dataset_id, file_name=request.file_name, file_size=request.file_size, content_type=request.content_type)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        )
-
-    upload_token = str(uuid4())
-
-    object_key = (
-        f"staging/"
-        f"user-{request.user_id}/"
-        f"{upload_token}/"
-        f"{request.file_name}"
-    )
-
-    presigned_url = generate_presigned_upload_url(
-        object_key=object_key,
-        expires_in=900,
-    )
-
-    return {
-        "message": "Upload session created",
-        "user_id": request.user_id,
-        "file_name": request.file_name,
-        "file_size": request.file_size,
-        "content_type": request.content_type,
-        "object_key": object_key,
-        "presigned_url": presigned_url,
-        "expires_in": 900,
-    }
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Upload initiation unavailable") from exc
 
 @router.post("/complete")
-def complete_upload(request: FileCompleteRequest):
-
+def complete_upload(request: FileCompleteRequest, user: dict = Depends(get_current_user)):
     try:
-        result = finalize_presigned_upload(
-            user_id=request.user_id,
-            object_key=request.object_key,
-            expected_file_size=request.expected_file_size,
-            workspace_id=request.workspace_id,
-            dataset_id=request.dataset_id,
-        )
-
+        return complete_upload_session(request.upload_request_id, user["user_id"])
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail="Upload session access denied") from exc
     except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        )
-
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        print(f"Upload finalization failed: {exc}")
-
-        raise HTTPException(
-            status_code=500,
-            detail="Upload finalization failed",
-        )
-
-    physical_file = result["file"]
-    upload = result["upload_request"]
-
-    return {
-        "message": (
-            "Existing physical file reused"
-            if result["is_duplicate"]
-            else "Upload finalized successfully"
-        ),
-
-        "is_duplicate": result["is_duplicate"],
-
-        "file": {
-            "file_id": physical_file[0],
-            "file_name": physical_file[1],
-            "file_size": physical_file[2],
-            "file_hash": physical_file[3],
-            "storage_path": physical_file[4],
-            "status": physical_file[5],
-        },
-
-        "upload_request": {
-            "upload_id": upload[0],
-            "user_id": upload[1],
-            "file_id": upload[2],
-            "workspace_id": upload[3],
-            "dataset_id": upload[4],
-            "status": upload[5],
-            "created_at": upload[6],
-        },
-    }
+        raise HTTPException(status_code=503, detail="Upload completion failed; retry the same upload_request_id") from exc
 
 @router.post("/uploads/{upload_id}/process")
 def process_file(upload_id: int):

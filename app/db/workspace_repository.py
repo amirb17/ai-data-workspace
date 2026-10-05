@@ -140,3 +140,11 @@ def get_workspace_by_owner_and_name(
 
     finally:
         conn.close()
+def list_workspaces_by_owner(owner: str):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT workspace_id, workspace_name, description, owner, status, created_at, updated_at
+                FROM workspaces WHERE owner = %s ORDER BY workspace_id;
+            """, (owner,))
+            return cur.fetchall()

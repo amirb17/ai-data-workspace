@@ -1,0 +1,3 @@
+customer_id,name,email,city,segment
+C101,Amir,amir@example.com,Pune,Retail
+C102,Rahul,rahul@example.com,Mumbai,Enterprise
