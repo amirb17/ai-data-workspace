@@ -394,6 +394,34 @@ def update_dataset_version_file_status(
             conn.commit()
 
             return result
+
+
+def initialize_dataset_version_file_rules(dataset_version_file_id: int):
+    # Atomic conditional update: a concurrent/repeated Bronze request must not
+    # overwrite finalized rules or downstream progress.
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                UPDATE dataset_version_files
+                SET status = CASE WHEN status = 'UPLOADED' THEN 'AWAITING_RULES' ELSE status END
+                WHERE dataset_version_file_id = %s
+                RETURNING dataset_version_file_id, dataset_version_id, file_id, status, created_at
+            """, (dataset_version_file_id,))
+            return cursor.fetchone()
+
+
+def get_upload_processing_association(dataset_id: int, file_id: int):
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT dvf.dataset_version_file_id, dvf.dataset_version_id,
+                       dvf.file_id, dvf.status, dv.version_number, dv.rule_version
+                FROM dataset_version_files dvf
+                JOIN dataset_versions dv ON dv.dataset_version_id = dvf.dataset_version_id
+                JOIN physical_files pf ON pf.file_id = dvf.file_id
+                WHERE dv.dataset_id = %s AND dvf.file_id = %s AND dv.schema_hash = pf.schema_hash
+            """, (dataset_id, file_id))
+            return cursor.fetchone()
 def get_files_for_dataset_version(
     dataset_version_id: int,
 ):

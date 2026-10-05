@@ -2,6 +2,7 @@ from app.db.file_repository import (
     get_dataset_profiles,
     get_physical_file_by_id,
     get_business_rule_answers_for_dataset_version,
+    get_active_business_rules_for_dataset_version,
     get_business_rule_answer_for_dataset_version,
     save_business_rule_answer_for_dataset_version,
     save_business_rule_for_dataset_version,
@@ -37,12 +38,6 @@ def get_business_rule_questions(
     file_id = context[2]
     status = context[3]
 
-    if status != "AWAITING_RULES":
-        raise ValueError(
-            "Business rules cannot be configured. "
-            f"Current dataset-version-file status: {status}"
-        )
-
     physical_file = get_physical_file_by_id(file_id)
 
     if not physical_file:
@@ -62,6 +57,12 @@ def get_business_rule_questions(
         "status": status,
         "question_count": len(suggestions),
         "questions": suggestions,
+        "rule_version": get_dataset_version_rule_version(dataset_version_id),
+        "answers": [
+            {"column_name": answer[2], "rule_type": answer[3], "answer": answer[4]}
+            for answer in get_business_rule_answers_for_dataset_version(dataset_version_id)
+        ],
+        "active_rule_count": len(get_active_business_rules_for_dataset_version(dataset_version_id)),
     }
 
 def convert_answer_to_rule_config(
@@ -146,9 +147,18 @@ def submit_business_rule_answers(
         (
             suggestion["column_name"],
             suggestion["suggested_rule_type"],
-        )
+        ): suggestion["options"]
         for suggestion in suggestions
     }
+
+    # Validate the entire submission before storing any answer. An option valid
+    # for another question type must not be silently interpreted as NO.
+    seen = set()
+    for item in answers:
+        key = (item.column_name, item.rule_type)
+        if key in seen or item.answer.upper() not in valid_suggestions.get(key, []):
+            raise ValueError("Invalid or duplicate rule answer")
+        seen.add(key)
 
     saved_rules = []
     skipped_answers = []
@@ -348,6 +358,16 @@ def finalize_business_rules(
             "status": status,
             "missing_questions": missing_questions,
             "unresolved_questions": unresolved_questions,
+        }
+
+    if not get_active_business_rules_for_dataset_version(dataset_version_id):
+        return {
+            "dataset_version_file_id": dataset_version_file_id,
+            "dataset_version_id": dataset_version_id,
+            "file_id": file_id,
+            "finalized": False,
+            "status": status,
+            "message": "Silver requires at least one active business rule. Review your answers; no rules were activated.",
         }
 
     updated_context = update_dataset_version_file_status(

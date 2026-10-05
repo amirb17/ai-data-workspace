@@ -26,6 +26,31 @@ from app.schemas.business_rules import (
     BusinessRuleUpdate,
 )
 from app.config import S3_BUCKET_NAME
+from app.services.processing_context_service import (
+    owned_upload, public_rules, read_processing_context,
+    rule_mutation, StaleRuleVersion,
+)
+
+
+def _public_call(operation):
+    try:
+        return operation()
+    except PermissionError as exc:
+        raise HTTPException(403, "Processing context access denied") from exc
+    except LookupError as exc:
+        raise HTTPException(404, "Processing context not found") from exc
+    except StaleRuleVersion as exc:
+        raise HTTPException(409, "Rule context changed; reload before continuing") from exc
+    except ValueError as exc:
+        raise HTTPException(400, "Invalid processing context or rule answer") from exc
+    except RuntimeError as exc:
+        raise HTTPException(409, "Processing is unavailable or already active; reload and retry") from exc
+    except Exception as exc:
+        raise HTTPException(503, "Processing service unavailable; reload and retry") from exc
+
+
+class RuleFinalizeRequest(BaseModel):
+    expected_rule_version: int | None = Field(default=None, ge=0)
 class FileCompleteRequest(BaseModel):
     upload_request_id: int = Field(gt=0)
 
@@ -157,82 +182,27 @@ def complete_upload(request: FileCompleteRequest, user: dict = Depends(get_curre
         raise HTTPException(status_code=503, detail="Upload completion failed; retry the same upload_request_id") from exc
 
 @router.post("/uploads/{upload_id}/process")
-def process_file(upload_id: int):
-    try:
-        result = start_processing(upload_id)
+def process_file(upload_id: int, user: dict = Depends(get_current_user), workspace_id: int | None = None, dataset_id: int | None = None):
+    def operation():
+        owned_upload(upload_id, user, workspace_id, dataset_id)
+        start_processing(upload_id)
+        return read_processing_context(upload_id, user, workspace_id, dataset_id)
+    return _public_call(operation)
 
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail=str(exc),
-        )
 
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        )
-
-    attempt = result["attempt"]
-    bronze = result["bronze"]
-    dataset_version = result["dataset_version"]
-    dataset_version_file = result["dataset_version_file"]
-    processing_attempt = None
-
-    if attempt is not None:
-        processing_attempt = {
-            "attempt_id": attempt[0],
-            "file_id": attempt[1],
-            "attempt_number": attempt[2],
-            "stage": attempt[3],
-            "status": attempt[4],
-            "error_message": attempt[5],
-            "started_at": attempt[6],
-            "completed_at": attempt[7],
-        }
-
-    return {
-        "message": (
-            "Bronze processing and dataset profiling completed. "
-            "Business rule configuration is required before Silver processing."
-            ),
-        "pipeline_status": "AWAITING_RULES",
-        "processing_attempt": processing_attempt,
-        "bronze": {
-            "object_key": bronze.get("bronze_object_key"),
-            "row_count": bronze.get("row_count"),
-            "columns": bronze.get("column_names"),
-            "schema": bronze.get("schema"),
-            "schema_hash": bronze["schema_hash"],
-            "reused": bronze.get("reused", False),
-        },
-        "context": {
-            "upload_id": result["upload_id"],
-            "workspace_id": result["workspace_id"],
-            "dataset_id": result["dataset_id"],
-            "dataset_version_id": dataset_version["dataset_version_id"],
-            "dataset_version_number": dataset_version["version_number"],
-            "dataset_version_created": dataset_version["created"],
-            "dataset_version_file_id": dataset_version_file[0],
-        },
-    }
+@router.get("/uploads/{upload_id}/processing-context")
+def processing_context(upload_id: int, user: dict = Depends(get_current_user), workspace_id: int | None = None, dataset_id: int | None = None):
+    return _public_call(lambda: read_processing_context(upload_id, user, workspace_id, dataset_id))
 
 @router.get(
     "/dataset-version-files/{dataset_version_file_id}/business-rules/suggestions"
 )
 def get_rule_suggestions(
     dataset_version_file_id: int,
+    user: dict = Depends(get_current_user),
+    workspace_id: int | None = None, dataset_id: int | None = None,
 ):
-    try:
-        return get_business_rule_questions(
-            dataset_version_file_id
-        )
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        )
+    return _public_call(lambda: public_rules(dataset_version_file_id, user, workspace_id, dataset_id))
 
 @router.post(
     "/dataset-version-files/{dataset_version_file_id}/business-rules"
@@ -240,35 +210,28 @@ def get_rule_suggestions(
 def submit_business_rules(
     dataset_version_file_id: int,
     submission: BusinessRuleSubmission,
+    user: dict = Depends(get_current_user),
+    workspace_id: int | None = None, dataset_id: int | None = None,
 ):
-    try:
-        return submit_business_rule_answers(
-            dataset_version_file_id=dataset_version_file_id,
-            answers=submission.answers,
-        )
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        )
+    def operation():
+        with rule_mutation(dataset_version_file_id, user, submission.expected_rule_version, workspace_id, dataset_id):
+            result = submit_business_rule_answers(dataset_version_file_id, submission.answers)
+            return {key: result[key] for key in ("rule_version", "rules_changed", "saved_rule_count", "skipped_answer_count")}
+    return _public_call(operation)
 @router.post(
     "/dataset-version-files/"
     "{dataset_version_file_id}/business-rules/finalize"
 )
 def finalize_rules(
     dataset_version_file_id: int,
+    request: RuleFinalizeRequest | None = None,
+    user: dict = Depends(get_current_user),
+    workspace_id: int | None = None, dataset_id: int | None = None,
 ):
-    try:
-        return finalize_business_rules(
-            dataset_version_file_id
-        )
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        )
+    def operation():
+        with rule_mutation(dataset_version_file_id, user, request.expected_rule_version if request else None, workspace_id, dataset_id):
+            return finalize_business_rules(dataset_version_file_id)
+    return _public_call(operation)
 @router.post(
     "/dataset-version-files/{dataset_version_file_id}/silver/process"
 )
@@ -311,21 +274,17 @@ def process_file_silver(
 def update_business_rule(
     dataset_version_file_id: int,
     request: BusinessRuleUpdate,
+    user: dict = Depends(get_current_user),
+    workspace_id: int | None = None, dataset_id: int | None = None,
 ):
-
-    try:
-        result = update_business_rule_answer(
-            dataset_version_file_id=dataset_version_file_id,
-            item=request,
-        )
-
-        return result
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        )
+    def operation():
+        with rule_mutation(dataset_version_file_id, user, request.expected_rule_version, workspace_id, dataset_id):
+            questions = get_business_rule_questions(dataset_version_file_id)["questions"]
+            if not any(q["column_name"] == request.column_name and q["suggested_rule_type"] == request.rule_type
+                       and request.answer in q["options"] for q in questions):
+                raise ValueError("Invalid rule answer")
+            return update_business_rule_answer(dataset_version_file_id, request)
+    return _public_call(operation)
 @router.post(
     "/dataset-version-files/{dataset_version_file_id}/gold/process"
 )

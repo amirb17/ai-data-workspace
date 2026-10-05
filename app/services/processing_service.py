@@ -38,6 +38,7 @@ from app.db.dataset_repository import (
     assign_physical_file_to_dataset_version,
     get_dataset_version_file_by_id,
     update_dataset_version_file_status,
+    initialize_dataset_version_file_rules,
     get_dataset_version_rule_version,
 )
 
@@ -108,9 +109,8 @@ def start_processing(upload_id: int):
             )
 
         dataset_version_file = (
-            update_dataset_version_file_status(
+            initialize_dataset_version_file_rules(
                 dataset_version_file_id=dataset_version_file[0],
-                status="AWAITING_RULES",
             )
         )
 
@@ -199,9 +199,8 @@ def start_processing(upload_id: int):
             )
 
         dataset_version_file = (
-            update_dataset_version_file_status(
+            initialize_dataset_version_file_rules(
                 dataset_version_file_id=dataset_version_file[0],
-                status="AWAITING_RULES",
             )
         )
 

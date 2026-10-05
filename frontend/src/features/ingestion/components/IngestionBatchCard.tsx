@@ -6,7 +6,7 @@ const variants = {
   SUCCESS_WITH_WARNINGS: "warning", FAILED: "error",
 } as const
 
-export function IngestionBatchCard({ batch }: { batch: IngestionBatch }) {
+export function IngestionBatchCard({ batch, processingStatus }: { batch: IngestionBatch; processingStatus?: string }) {
   const metrics = [
     ["Valid rows", batch.validRows], ["Rejected rows", batch.rejectedRows],
     ["Duplicate rows", batch.duplicateRows], ["Updated rows", batch.updatedRows],
@@ -19,7 +19,7 @@ export function IngestionBatchCard({ batch }: { batch: IngestionBatch }) {
           <p className="mt-1 break-all text-sm text-slate-600">{batch.sourceFileName}</p>
           <p className="mt-1 break-all text-xs text-slate-500">Source file #{batch.sourceFileId} · {batch.id}</p>
         </div>
-        <Badge variant={variants[batch.status]}>{batch.status.replaceAll("_", " ")}</Badge>
+        <Badge variant={processingStatus ? "neutral" : variants[batch.status]}>{(processingStatus ?? batch.status).replaceAll("_", " ")}</Badge>
       </div>
       <dl className="grid gap-3 text-sm sm:grid-cols-3">
         <div><dt className="text-slate-500">Rows</dt><dd className="font-medium text-slate-900">{batch.rowCount.toLocaleString()}</dd></div>
@@ -28,7 +28,7 @@ export function IngestionBatchCard({ batch }: { batch: IngestionBatch }) {
       </dl>
       {batch.batchLabel && <p className="break-words text-sm text-slate-600">Label: {batch.batchLabel}</p>}
       {batch.period && <p className="break-words text-sm text-slate-600">Period: {batch.period}</p>}
-      {batch.status === "READY_TO_PROCESS" && <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">Processing has not started. Row outcomes are unavailable.</p>}
+      {!processingStatus && batch.status === "READY_TO_PROCESS" && <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">Processing has not started. Row outcomes are unavailable.</p>}
       <dl className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-4">
         {metrics.map(([label, value]) => <div key={label}><dt className="text-slate-500">{label}</dt><dd className="mt-1 font-medium text-slate-900">{value === null ? "Unavailable" : value.toLocaleString()}</dd></div>)}
       </dl>

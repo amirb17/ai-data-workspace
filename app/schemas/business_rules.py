@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BusinessRuleAnswer(BaseModel):
@@ -21,8 +21,10 @@ class BusinessRuleAnswer(BaseModel):
 
 class BusinessRuleSubmission(BaseModel):
     answers: list[BusinessRuleAnswer]
+    expected_rule_version: int | None = Field(default=None, ge=0)
 
 class BusinessRuleUpdate(BaseModel):
+    expected_rule_version: int | None = Field(default=None, ge=0)
     column_name: str
     rule_type: str
     answer: Literal[
