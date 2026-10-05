@@ -14,6 +14,8 @@ from app.db.dataset_repository import (
     update_dataset_version_file_status,
     get_dataset_version_rule_version,
     increment_dataset_version_rule_version,
+    get_rule_approval_context,
+    approve_association_rules,
 )
 
 from app.services.rule_suggestion_service import (
@@ -50,6 +52,8 @@ def get_business_rule_questions(
     # underlying physical data is identical.
     suggestions = generate_rule_suggestions(file_id)
 
+    approval = get_rule_approval_context(dataset_version_file_id)
+
     return {
         "dataset_version_file_id": dataset_version_file_id,
         "dataset_version_id": dataset_version_id,
@@ -63,6 +67,8 @@ def get_business_rule_questions(
             for answer in get_business_rule_answers_for_dataset_version(dataset_version_id)
         ],
         "active_rule_count": len(get_active_business_rules_for_dataset_version(dataset_version_id)),
+        "rules_reused": approval[4],
+        "applied_rule_version": approval[3],
     }
 
 def convert_answer_to_rule_config(
@@ -285,6 +291,11 @@ def finalize_business_rules(
 
     # Idempotency: finalizing twice should be safe.
     if status == "READY_FOR_SILVER":
+        approval = get_rule_approval_context(dataset_version_file_id)
+        if approval[3] is not None and approval[3] != approval[1]:
+            raise ValueError("The association uses a historical rule version")
+        if approval[3] is None:
+            approve_association_rules(dataset_version_file_id)
         return {
             "dataset_version_file_id": dataset_version_file_id,
             "dataset_version_id": dataset_version_id,
@@ -370,10 +381,7 @@ def finalize_business_rules(
             "message": "Silver requires at least one active business rule. Review your answers; no rules were activated.",
         }
 
-    updated_context = update_dataset_version_file_status(
-        dataset_version_file_id=dataset_version_file_id,
-        status="READY_FOR_SILVER",
-    )
+    updated_context = approve_association_rules(dataset_version_file_id)
 
     return {
         "dataset_version_file_id": dataset_version_file_id,

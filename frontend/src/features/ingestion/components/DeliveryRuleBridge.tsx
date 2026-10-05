@@ -27,5 +27,6 @@ export function DeliveryRuleBridge({ batch, workspaceId, datasetId }: { batch: I
     </div>
     {context?.status === "AWAITING_RULES" && <p className="text-sm text-amber-700">Rules required. Review and explicitly approve the backend questions.</p>}
     {context?.silver_can_proceed && <p className="text-sm text-emerald-700">Rules ready (version {context.rule_version}). Silver prerequisites are satisfied; execution is available in a later phase.</p>}
+    {context?.rules_reused && <p className="text-sm text-emerald-700">Bronze ✓ · Rules ✓ · Approved rule version {context.rule_version} reused for this delivery.</p>}
   </section>
 }

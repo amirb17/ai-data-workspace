@@ -38,7 +38,6 @@ from app.db.dataset_repository import (
     assign_physical_file_to_dataset_version,
     get_dataset_version_file_by_id,
     update_dataset_version_file_status,
-    initialize_dataset_version_file_rules,
     get_dataset_version_rule_version,
 )
 
@@ -49,6 +48,7 @@ from app.processing.gold_planner import (
     build_gold_plan,
 )
 from app.storage.s3_service import parse_s3_uri
+from app.services.rule_reuse_service import initialize_dataset_version_file_rules
 
 def start_processing(upload_id: int):
     upload_request = get_upload_request_by_id(upload_id)

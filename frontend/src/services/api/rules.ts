@@ -4,6 +4,7 @@ export type ProcessingContext = {
   status: string; dataset_version_file_id: number | null; dataset_version_id: number | null
   dataset_version_number: number | null; rule_version: number | null
   rule_state: "DRAFT" | "FINALIZED" | null; active_rule_count: number; silver_can_proceed: boolean
+  rules_reused: boolean; current_rule_version: number | null
 }
 export type RuleAnswer = { column_name: string; rule_type: string; answer: string }
 export type RuleQuestion = { column_name: string; suggested_rule_type: string; question: string; reason?: string; options: string[] }
@@ -11,14 +12,16 @@ export type RuleReview = {
   workspace_id: number; dataset_id: number; dataset_version_file_id: number; dataset_version_id: number
   status: string; rule_state: "DRAFT" | "FINALIZED"; rule_version: number
   questions: RuleQuestion[]; answers: RuleAnswer[]; active_rule_count: number
+  rules_reused?: boolean; applied_rule_version?: number | null
 }
 export const questionKey = (q: RuleQuestion) => JSON.stringify([q.column_name, q.suggested_rule_type])
 export function reviewAnswers(review: RuleReview): Record<string, string> {
   return Object.fromEntries(review.questions.map((q) => [questionKey(q), review.answers.find((a) => a.column_name === q.column_name && a.rule_type === q.suggested_rule_type)?.answer ?? ""]))
 }
 export const answersComplete = (review: RuleReview, answers: Record<string, string>) => review.questions.every((q) => q.options.includes(answers[questionKey(q)]))
+export const requiresRuleApproval = (review: RuleReview) => review.status === "AWAITING_RULES" && !review.rules_reused
 export function canFinalize(review: RuleReview, answers: Record<string, string>, dirty: boolean, busy: boolean) {
-  return review.status === "AWAITING_RULES" && answersComplete(review, answers) && review.active_rule_count > 0 && !dirty && !busy
+  return requiresRuleApproval(review) && answersComplete(review, answers) && review.active_rule_count > 0 && !dirty && !busy
 }
 const scope = (w: string, d: string) => `?workspace_id=${backendId(w)}&dataset_id=${backendId(d)}`
 function verifyScope<T extends { workspace_id: number; dataset_id: number }>(value: T, w: string, d: string): T {

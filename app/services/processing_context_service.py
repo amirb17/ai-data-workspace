@@ -87,10 +87,13 @@ def read_processing_context(upload_id, user, workspace_id=None, dataset_id=None)
         "dataset_version_file_id": association[0] if association else None,
         "dataset_version_id": association[1] if association else None,
         "dataset_version_number": association[4] if association else None,
-        "rule_version": association[5] if association else None,
+        "rule_version": (association[6] if association[6] is not None else association[5]) if association else None,
+        "current_rule_version": association[5] if association else None,
+        "rules_reused": association[7] if association else False,
         "rule_state": rule_state(association[3]) if association else None,
         "active_rule_count": active_count,
-        "silver_can_proceed": status in ("READY_FOR_SILVER", "SILVER_FAILED") and active_count > 0,
+        "silver_can_proceed": status in ("READY_FOR_SILVER", "SILVER_FAILED") and active_count > 0
+                              and association[6] == association[5] == association[8],
     }
 
 

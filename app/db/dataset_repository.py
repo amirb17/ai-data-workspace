@@ -396,17 +396,22 @@ def update_dataset_version_file_status(
             return result
 
 
-def initialize_dataset_version_file_rules(dataset_version_file_id: int):
+def initialize_dataset_version_file_rules(dataset_version_file_id: int, approved_version: int | None = None):
     # Atomic conditional update: a concurrent/repeated Bronze request must not
     # overwrite finalized rules or downstream progress.
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
                 UPDATE dataset_version_files
-                SET status = CASE WHEN status = 'UPLOADED' THEN 'AWAITING_RULES' ELSE status END
+                SET status = CASE WHEN status IN ('UPLOADED','AWAITING_RULES')
+                                  THEN CASE WHEN %s::integer IS NULL THEN 'AWAITING_RULES' ELSE 'READY_FOR_SILVER' END ELSE status END,
+                    applied_rule_version = CASE WHEN status IN ('UPLOADED','AWAITING_RULES') AND %s::integer IS NOT NULL
+                                                THEN %s ELSE applied_rule_version END,
+                    rules_reused = CASE WHEN status IN ('UPLOADED','AWAITING_RULES') AND %s::integer IS NOT NULL
+                                        THEN TRUE ELSE rules_reused END
                 WHERE dataset_version_file_id = %s
                 RETURNING dataset_version_file_id, dataset_version_id, file_id, status, created_at
-            """, (dataset_version_file_id,))
+            """, (approved_version, approved_version, approved_version, approved_version, dataset_version_file_id))
             return cursor.fetchone()
 
 
@@ -415,12 +420,47 @@ def get_upload_processing_association(dataset_id: int, file_id: int):
         with conn.cursor() as cursor:
             cursor.execute("""
                 SELECT dvf.dataset_version_file_id, dvf.dataset_version_id,
-                       dvf.file_id, dvf.status, dv.version_number, dv.rule_version
+                       dvf.file_id, dvf.status, dv.version_number, dv.rule_version,
+                       dvf.applied_rule_version, dvf.rules_reused, dv.approved_rule_version
                 FROM dataset_version_files dvf
                 JOIN dataset_versions dv ON dv.dataset_version_id = dvf.dataset_version_id
                 JOIN physical_files pf ON pf.file_id = dvf.file_id
                 WHERE dv.dataset_id = %s AND dvf.file_id = %s AND dv.schema_hash = pf.schema_hash
             """, (dataset_id, file_id))
+            return cursor.fetchone()
+
+
+def get_rule_approval_context(association_id: int, lock: bool = False):
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT f.dataset_version_id, dv.rule_version, dv.approved_rule_version,
+                       f.applied_rule_version, f.rules_reused, dv.schema_hash = pf.schema_hash AS schema_matches
+                FROM dataset_version_files f
+                JOIN dataset_versions dv ON dv.dataset_version_id = f.dataset_version_id
+                JOIN physical_files pf ON pf.file_id = f.file_id
+                WHERE f.dataset_version_file_id = %s
+            """ + (" FOR UPDATE OF dv, f" if lock else ""), (association_id,))
+            return cursor.fetchone()
+
+
+def approve_association_rules(association_id: int):
+    # Called inside the service's approval transaction/row lock.
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                UPDATE dataset_versions dv SET approved_rule_version = rule_version
+                FROM dataset_version_files f WHERE f.dataset_version_file_id = %s
+                  AND dv.dataset_version_id = f.dataset_version_id
+                RETURNING dv.rule_version
+            """, (association_id,))
+            version = cursor.fetchone()[0]
+            cursor.execute("""
+                UPDATE dataset_version_files SET status = 'READY_FOR_SILVER',
+                    applied_rule_version = %s, rules_reused = FALSE
+                WHERE dataset_version_file_id = %s
+                RETURNING dataset_version_file_id, dataset_version_id, file_id, status, created_at
+            """, (version, association_id))
             return cursor.fetchone()
 def get_files_for_dataset_version(
     dataset_version_id: int,

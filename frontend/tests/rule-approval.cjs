@@ -26,6 +26,10 @@ async function main() {
   assert.equal(api.canFinalize(saved, answers, true, false), false)
   assert.equal(api.canFinalize(saved, answers, false, true), false)
   assert.equal(api.canFinalize({ ...saved, status: 'READY_FOR_SILVER' }, answers, false, false), false)
+  const reused = { ...saved, status: 'READY_FOR_SILVER', rule_state: 'FINALIZED', rules_reused: true, applied_rule_version: 1 }
+  assert.equal(api.requiresRuleApproval(reused), false)
+  assert.equal(api.canFinalize(reused, answers, false, false), false)
+  assert.equal(api.requiresRuleApproval(review), true)
   const calls = []
   const context = { upload_request_id: 40, workspace_id: 10, dataset_id: 20, file_id: 30, status: 'AWAITING_RULES', dataset_version_file_id: 60, rule_version: 3 }
   global.fetch = async (url, options) => {
@@ -44,6 +48,11 @@ async function main() {
   assert.equal(JSON.parse(calls.at(-1).body).expected_rule_version, 3)
   assert.equal(calls.every((c) => c.url.endsWith('?workspace_id=10&dataset_id=20')), true)
   assert.equal(api.reviewAnswers(await api.getRuleReview('10', '20', 60))[api.questionKey(question)], 'YES')
+  global.fetch = async () => new Response(JSON.stringify(reused))
+  const refreshedReuse = await api.getRuleReview('10', '20', 60)
+  assert.equal(refreshedReuse.rules_reused, true)
+  assert.equal(refreshedReuse.applied_rule_version, 1)
+  assert.equal(api.requiresRuleApproval(refreshedReuse), false)
   assert.throws(() => api.saveRuleAnswers('10', '20', review, empty), /Answer each/)
   for (const mismatch of [{ workspace_id: 11 }, { dataset_id: 21 }, { upload_request_id: 41 }]) {
     global.fetch = async () => new Response(JSON.stringify({ ...context, ...mismatch }))

@@ -10,6 +10,7 @@ import pytest
 
 from app.db import database, dataset_repository, file_repository
 from app.services import business_rule_service as rules, processing_context_service as context, processing_service
+from app.services import rule_reuse_service as reuse
 from app.schemas.business_rules import BusinessRuleAnswer
 
 
@@ -35,6 +36,7 @@ def pg(monkeypatch):
             association = conn.execute("INSERT INTO dataset_version_files(dataset_version_id,file_id,status) VALUES (%s,%s,'AWAITING_RULES') RETURNING dataset_version_file_id", (version,file)).fetchone()[0]
         monkeypatch.setattr(database.psycopg, "connect", connect)
         monkeypatch.setattr(rules, "generate_rule_suggestions", lambda _: [{"column_name":"id","suggested_rule_type":"NOT_NULL","options":["YES","NO"]}])
+        monkeypatch.setattr(reuse, "generate_rule_suggestions", rules.generate_rule_suggestions)
         yield connect, {"user_id":user,"owner_key":"dev:test"}, ws, ds, file, version, association
     finally:
         with original_connect(database.DATABASE_URL) as conn:

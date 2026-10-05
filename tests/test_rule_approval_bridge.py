@@ -21,7 +21,7 @@ def scope(monkeypatch):
     monkeypatch.setattr(context, "get_upload_request_by_id", lambda _: (40, 1, 30, 10, 20, "UPLOADED", None))
     monkeypatch.setattr(context, "get_physical_file_by_id", lambda _: (30, "a.csv", 10, "hash", "private", "UPLOADED", "schema"))
     monkeypatch.setattr(context, "get_dataset_version_file_by_id", lambda _: (60, 50, 30, "AWAITING_RULES", None, 20, 10))
-    monkeypatch.setattr(context, "get_upload_processing_association", lambda *args: (60, 50, 30, "AWAITING_RULES", 1, 0))
+    monkeypatch.setattr(context, "get_upload_processing_association", lambda *args: (60, 50, 30, "AWAITING_RULES", 1, 0, None, False, None))
     monkeypatch.setattr(context, "get_active_processing_attempt", lambda _: None)
     monkeypatch.setattr(context, "get_active_business_rules_for_dataset_version", lambda _: [])
     yield TestClient(app)
@@ -101,6 +101,12 @@ def rule_state(monkeypatch):
         return (60, 50, 30, state["status"])
     monkeypatch.setattr(rules, "increment_dataset_version_rule_version", increment)
     monkeypatch.setattr(rules, "update_dataset_version_file_status", transition)
+    monkeypatch.setattr(rules, "get_rule_approval_context", lambda _: (50, state["version"], state.get("approved"), state.get("applied"), False, True))
+    def approve(_):
+        state["approved"] = state["version"]
+        state["applied"] = state["version"]
+        return transition(status="READY_FOR_SILVER")
+    monkeypatch.setattr(rules, "approve_association_rules", approve)
     return state
 
 
@@ -148,7 +154,7 @@ def test_repeated_bronze_uses_non_regressing_initializer(monkeypatch, status):
 
 
 def test_public_state_reports_real_silver_prerequisites(scope, monkeypatch):
-    monkeypatch.setattr(context, "get_upload_processing_association", lambda *args: (60, 50, 30, "READY_FOR_SILVER", 1, 3))
+    monkeypatch.setattr(context, "get_upload_processing_association", lambda *args: (60, 50, 30, "READY_FOR_SILVER", 1, 3, 3, False, 3))
     monkeypatch.setattr(context, "get_active_business_rules_for_dataset_version", lambda _: [(1,)])
     result = scope.get("/files/uploads/40/processing-context").json()
     assert result["rule_version"] == 3 and result["silver_can_proceed"] is True
