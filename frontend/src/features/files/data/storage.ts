@@ -1,8 +1,9 @@
+import { scopedStorageKey, hasBackendScope } from "../../../services/localScope"
 import { filesByDatasetMock } from "./files.mock"
 import type { CsvInspectionResult, DatasetFile } from "../types"
 
 export function fileStorageKey(workspaceId: string, datasetId: string) {
-  return `datarise-workspace-${workspaceId}-dataset-${datasetId}-files`
+  return scopedStorageKey(workspaceId, datasetId, "files")
 }
 
 export function readDatasetFiles(workspaceId: string, datasetId: string): DatasetFile[] {
@@ -10,7 +11,7 @@ export function readDatasetFiles(workspaceId: string, datasetId: string): Datase
     String(file.workspaceId) === workspaceId && String(file.datasetId) === datasetId,
   ) ?? []
   const stored = localStorage.getItem(fileStorageKey(workspaceId, datasetId))
-  if (stored === null) return seed
+  if (stored === null) return hasBackendScope() ? [] : seed
   const value: unknown = JSON.parse(stored)
   if (!Array.isArray(value) || !value.every(isDatasetFile)) {
     throw new Error("The saved file list is invalid. Review local file storage before accepting another file.")
@@ -38,11 +39,13 @@ function isDatasetFile(value: unknown): value is DatasetFile {
     Number.isSafeInteger(file.datasetId) && typeof file.fileName === "string" &&
     ["CSV", "EXCEL"].includes(file.fileType) && Number.isFinite(file.sizeBytes) &&
     file.sizeBytes >= 0 && typeof file.uploadedAt === "string" &&
-    ["UPLOADING", "INSPECTING", "NEEDS_MAPPING", "READY_TO_PROCESS", "PROCESSING", "PROCESSED", "NEEDS_ATTENTION", "FAILED"].includes(file.status) &&
+    ["UPLOADED", "UPLOADING", "INSPECTING", "NEEDS_MAPPING", "READY_TO_PROCESS", "PROCESSING", "PROCESSED", "NEEDS_ATTENTION", "FAILED"].includes(file.status) &&
     (file.rowCount === undefined || (Number.isInteger(file.rowCount) && file.rowCount >= 0)) &&
     (file.columnCount === undefined || (Number.isInteger(file.columnCount) && file.columnCount >= 0)) &&
     (file.contentHash === undefined || (typeof file.contentHash === "string" && /^[a-f0-9]{64}$/.test(file.contentHash))) &&
-    (file.acceptanceId === undefined || typeof file.acceptanceId === "string")
+    (file.acceptanceId === undefined || typeof file.acceptanceId === "string") &&
+    (file.isDuplicate === undefined || typeof file.isDuplicate === "boolean") &&
+    (file.uploadRequestIds === undefined || (Array.isArray(file.uploadRequestIds) && file.uploadRequestIds.every((id) => Number.isSafeInteger(id) && id > 0)))
 }
 
 export function acceptDatasetFile(
@@ -51,6 +54,7 @@ export function acceptDatasetFile(
   inspection: CsvInspectionResult,
   acceptanceId: string,
 ): DatasetFile[] {
+  if (hasBackendScope()) throw new Error("Backend-backed files require successful upload completion.")
   const files = readDatasetFiles(workspaceId, datasetId)
   if (inspection.contentHash !== undefined && !/^[a-f0-9]{64}$/.test(inspection.contentHash)) throw new Error("Invalid file content hash.")
   const accepted = files.find((file) => file.acceptanceId === acceptanceId)
@@ -83,4 +87,11 @@ export function acceptDatasetFile(
   localStorage.setItem(fileStorageKey(workspaceId, datasetId), JSON.stringify(next))
   window.dispatchEvent(new Event("datarise-files-changed"))
   return next
+}
+
+export function saveCompletedFile(workspaceId: string, datasetId: string, file: DatasetFile) {
+  if (!isDatasetFile(file) || file.status !== "UPLOADED" || String(file.workspaceId) !== workspaceId || String(file.datasetId) !== datasetId) throw new Error("Invalid completed file metadata or ownership.")
+  const files = readDatasetFiles(workspaceId, datasetId)
+  localStorage.setItem(fileStorageKey(workspaceId, datasetId), JSON.stringify([file, ...files.filter((item) => item.id !== file.id)]))
+  window.dispatchEvent(new Event("datarise-files-changed"))
 }

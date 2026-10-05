@@ -3,6 +3,7 @@ export type SourceFileType =
   | "EXCEL"
 
 export type DatasetFileStatus =
+  | "UPLOADED"
   | "UPLOADING"
   | "INSPECTING"
   | "NEEDS_MAPPING"
@@ -13,6 +14,8 @@ export type DatasetFileStatus =
   | "FAILED"
 
 export type DatasetFile = {
+  uploadRequestIds?: number[]
+  isDuplicate?: boolean
   contentHash?: string
   acceptanceId?: string
   id: number

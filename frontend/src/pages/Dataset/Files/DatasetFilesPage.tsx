@@ -73,7 +73,7 @@ export function DatasetFilesPage() {
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            Upload and manage source files for this dataset.
+            Completed uploads are cached in this browser. Rows and columns come from CSV inspection; processing has not started.
           </p>
         </div>
 
@@ -170,7 +170,7 @@ export function DatasetFilesPage() {
                             <p className="mt-0.5 text-xs text-slate-500">
                               {
                                 file.fileType
-                              }
+                              } · File #{file.id}
                             </p>
                           </div>
                         </div>
@@ -234,7 +234,7 @@ export function DatasetFilesPage() {
                       </p>
 
                       <p className="mt-1 text-xs text-slate-500">
-                        {file.fileType} ·{" "}
+                        File #{file.id} · {file.fileType} ·{" "}
                         {formatFileSize(
                           file.sizeBytes,
                         )}

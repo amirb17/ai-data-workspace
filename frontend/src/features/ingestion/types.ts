@@ -4,6 +4,7 @@ export type IngestionBatch = {
   id: string
   workspaceId: number
   datasetId: number
+  uploadRequestId?: number
   sourceFileId: number
   sourceFileName: string
   rowCount: number

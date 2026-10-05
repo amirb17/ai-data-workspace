@@ -16,7 +16,10 @@ import {
 
 import { Badge } from "../../components/ui/Badge"
 import { StatCard } from "../../components/ui/StatCard"
-import { readWorkspaceDatasets } from "../../features/datasets/data/storage"
+import { useCallback } from "react"
+import { getDataset } from "../../services/api/datasets"
+import { useApiResource } from "../../services/api/useApiResource"
+import { ApiFeedback } from "../../components/ui/ApiFeedback"
 import type { DatasetListItem } from "../../features/datasets/types"
 
 const tabs = [
@@ -94,43 +97,10 @@ export function DatasetDetailPage() {
     datasetId,
   } = useParams()
 
-  if (!workspaceId || !datasetId) {
-    return (
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-950">
-          Dataset not found
-        </h1>
-      </div>
-    )
-  }
-
-  const datasets = readWorkspaceDatasets(workspaceId)
-
-  const dataset = datasets.find(
-    (item) =>
-      String(item.id) === datasetId,
-  )
-
-  if (!dataset) {
-    return (
-      <div className="mx-auto max-w-[1600px]">
-        <h1 className="text-2xl font-semibold text-slate-950">
-          Dataset not found
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-500">
-          This dataset does not exist in the selected workspace.
-        </p>
-
-        <Link
-          to={`/app/workspaces/${workspaceId}/datasets`}
-          className="mt-4 inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-700"
-        >
-          Back to datasets
-        </Link>
-      </div>
-    )
-  }
+  const load = useCallback((signal: AbortSignal) => getDataset(workspaceId ?? "", datasetId ?? "", signal), [workspaceId, datasetId])
+  const resource = useApiResource(`dataset:${workspaceId}:${datasetId}`, load)
+  if (!resource.data) return <ApiFeedback error={resource.error} retry={resource.retry} />
+  const dataset = resource.data
 
   return (
     <div className="space-y-6">
@@ -174,21 +144,21 @@ export function DatasetDetailPage() {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Latest Version"
-          value={`v${dataset.latestVersion}`}
+          value={dataset.latestVersion === undefined ? "—" : `v${dataset.latestVersion}`}
           helper="Current dataset version"
           icon={<History size={20} />}
         />
 
         <StatCard
           label="Rows"
-          value={dataset.rowCount.toLocaleString()}
+          value={dataset.rowCount?.toLocaleString() ?? "—"}
           helper="Latest processed version"
           icon={<Database size={20} />}
         />
 
         <StatCard
           label="Columns"
-          value={dataset.columnCount}
+          value={dataset.columnCount ?? "—"}
           helper="Detected schema fields"
           icon={<FileText size={20} />}
         />

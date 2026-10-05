@@ -1,3 +1,4 @@
+import { useCurrentUser } from "../../services/identityContext"
 import logo from "../../assets/datarise-ai-logo.png"
 import {
   NavLink,
@@ -48,6 +49,8 @@ type AppShellProps = {
 export function AppShell({
   children,
 }: AppShellProps) {
+  const user = useCurrentUser()
+  const initials = user.displayName.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "U"
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
@@ -258,18 +261,18 @@ export function AppShell({
             </div>
 
           <div className="flex items-center gap-3">
-            <div className="text-right">
+            <div className="max-w-64 truncate text-right">
               <p className="text-sm font-medium text-slate-900">
-                Demo User
+                {user.displayName}
               </p>
 
               <p className="text-xs text-slate-500">
-                Workspace Admin
+                Development user #{user.userId}
               </p>
             </div>
 
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
-              DU
+              {initials}
             </div>
           </div>
         </header>

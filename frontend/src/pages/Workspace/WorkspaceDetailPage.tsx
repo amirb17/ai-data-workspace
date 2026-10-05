@@ -14,9 +14,13 @@ import {
 
 import { Button } from "../../components/ui/Button"
 import { StatCard } from "../../components/ui/StatCard"
-import { readWorkspaceDatasets } from "../../features/datasets/data/storage"
-import { workspacesMock } from "../../features/workspaces/data/workspaces.mock"
-import type { WorkspaceListItem } from "../../features/workspaces/types"
+import { useCallback } from "react"
+import { getWorkspace } from "../../services/api/workspaces"
+import { listDatasets } from "../../services/api/datasets"
+import { useApiResource } from "../../services/api/useApiResource"
+import { ApiFeedback } from "../../components/ui/ApiFeedback"
+
+
 
 const tabs = [
   {
@@ -45,73 +49,14 @@ const tabs = [
 export function WorkspaceDetailPage() {
   const { workspaceId } = useParams()
 
-  const storedWorkspaces = localStorage.getItem(
-    "datarise-workspaces",
-  )
-
-  let workspaces: WorkspaceListItem[] =
-    workspacesMock
-
-  if (storedWorkspaces) {
-    try {
-      workspaces = JSON.parse(
-        storedWorkspaces,
-      ) as WorkspaceListItem[]
-    } catch {
-      workspaces = workspacesMock
-    }
-  }
-
-  const workspace = workspaces.find(
-    (item) =>
-      String(item.id) === workspaceId,
-  )
-
-  if (!workspaceId || !workspace) {
-    return (
-      <div className="mx-auto max-w-[1600px]">
-        <h1 className="text-2xl font-semibold text-slate-950">
-          Workspace not found
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-500">
-          This workspace does not exist or is no longer available.
-        </p>
-
-        <Link
-          to="/app/workspaces"
-          className="mt-4 inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-700"
-        >
-          Back to workspaces
-        </Link>
-      </div>
-    )
-  }
-
-  const datasets = readWorkspaceDatasets(workspaceId)
-
-  const workspaceStats = {
-    datasets: datasets.length,
-
-    analyticsReady: datasets.filter(
-      (dataset) =>
-        dataset.status === "READY",
-    ).length,
-
-    processing: datasets.filter(
-      (dataset) =>
-        dataset.status ===
-        "PROCESSING",
-    ).length,
-
-    qualityIssues: datasets.filter(
-      (dataset) =>
-        dataset.status ===
-          "FAILED" ||
-        dataset.status ===
-          "NEEDS_ATTENTION",
-    ).length,
-  }
+  const load = useCallback(async (signal: AbortSignal) => {
+    const [workspace, datasets] = await Promise.all([getWorkspace(workspaceId ?? "", signal), listDatasets(workspaceId ?? "", signal)])
+    return { workspace, datasets }
+  }, [workspaceId])
+  const resource = useApiResource(`workspace:${workspaceId}`, load)
+  if (!resource.data) return <ApiFeedback error={resource.error} retry={resource.retry} />
+  const { workspace, datasets } = resource.data
+  const workspaceStats = { datasets: datasets.length, analyticsReady: "—", processing: "—", qualityIssues: "—" }
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">
@@ -127,7 +72,7 @@ export function WorkspaceDetailPage() {
             </h1>
 
             <span className="rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
-              Active
+              {workspace.status}
             </span>
           </div>
 
@@ -206,7 +151,7 @@ export function WorkspaceDetailPage() {
         </nav>
       </div>
 
-      <Outlet />
+      <Outlet key={workspaceId} context={{ onDatasetsChanged: resource.retry }} />
     </div>
   )
 }

@@ -60,6 +60,8 @@ export function DatasetsToolbar({
           All statuses
         </option>
 
+        <option value="ACTIVE">Active</option>
+        <option value="ARCHIVED">Archived</option>
         <option value="READY">
           Ready
         </option>

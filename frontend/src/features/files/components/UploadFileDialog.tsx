@@ -11,7 +11,8 @@ import {
 
 import { Button } from "../../../components/ui/Button"
 import type { CsvInspectionResult, DatasetFile } from "../types"
-import { acceptInspectedCsv } from "../../ingestion/acceptInspectedCsv"
+import { createUploadWorkflow, type UploadFeedback } from "../uploadWorkflow"
+import { useCurrentUser } from "../../../services/identityContext"
 import { DatasetCompatibility } from "./DatasetCompatibility"
 import { DuplicateFileNotice } from "./DuplicateFileNotice"
 import { DuplicateFileContentError, findFileByContentHash, fileStorageKey } from "../data/storage"
@@ -65,6 +66,13 @@ export function UploadFileDialog({
   onAccepted,
   onClose,
 }: UploadFileDialogProps) {
+  const user = useCurrentUser()
+  const [uploadFeedback, setUploadFeedback] = useState<UploadFeedback>({ state: "IDLE" })
+  const [workflow] = useState(() => createUploadWorkflow({ workspaceId, datasetId, userId: user.userId }, setUploadFeedback))
+  useEffect(() => { workflow.activate(); return () => workflow.dispose() }, [workflow])
+  const selectedFileRef = useRef<File | null>(null)
+  const busy = ["INITIATING", "UPLOADING", "COMPLETING"].includes(uploadFeedback.state)
+  const locked = busy || workflow.hasSession() || uploadFeedback.state === "SUCCESS"
   const [duplicateFile, setDuplicateFile] = useState<DatasetFile | null>(null)
   const [configuring, setConfiguring] = useState(false)
   const acceptanceIdRef = useRef("")
@@ -131,6 +139,9 @@ export function UploadFileDialog({
   }
 
   function reset() {
+    if (busy) return
+    workflow.reset()
+    selectedFileRef.current = null
     requestRef.current += 1
     setDuplicateFile(null)
     setInspection(null)
@@ -145,10 +156,16 @@ export function UploadFileDialog({
   }
 
   function handleClose() {
+    if (busy) return
     reset()
     onClose()
   }
-  function acceptInspection() {
+  async function acceptInspection() {
+    if (workflow.hasSession() && inspection && selectedFileRef.current) {
+      const accepted = await workflow.accept(selectedFileRef.current, inspection, acceptanceIdRef.current)
+      if (accepted) { acceptedRef.current = true; onAccepted() }
+      return
+    }
     if (duplicateFile || !inspection || !schemaMatch || acceptedRef.current ||
         schemaMatch.status === "BREAKING" || schemaMatch.status === "WRONG_DATASET_LIKELY") return
     try {
@@ -166,10 +183,9 @@ export function UploadFileDialog({
         setConfiguring(true)
         return
       }
-      acceptInspectedCsv(workspaceId, datasetId, inspection, acceptanceIdRef.current)
-      acceptedRef.current = true
-      onAccepted()
-      handleClose()
+      if (!selectedFileRef.current) return
+      const accepted = await workflow.accept(selectedFileRef.current, inspection, acceptanceIdRef.current)
+      if (accepted) { acceptedRef.current = true; onAccepted() }
     } catch (caughtError) {
       if (caughtError instanceof DuplicateFileContentError) {
         setDuplicateFile(caughtError.existingFile)
@@ -205,6 +221,9 @@ export function UploadFileDialog({
   async function handleFile(
     file: File,
   ) {
+    if (locked) return
+    workflow.reset()
+    selectedFileRef.current = null
     const request = ++requestRef.current
     setError("")
     setDuplicateFile(null)
@@ -236,6 +255,7 @@ export function UploadFileDialog({
       if (request !== requestRef.current) return
       acceptanceIdRef.current = crypto.randomUUID()
       acceptedRef.current = false
+      selectedFileRef.current = file
       setInspection(result)
       const duplicate = findFileByContentHash(workspaceId, datasetId, result.contentHash)
       if (duplicate) { setDuplicateFile(duplicate); return }
@@ -292,7 +312,7 @@ export function UploadFileDialog({
 
           <button
             type="button"
-            onClick={handleClose}
+            disabled={busy} onClick={handleClose}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
             aria-label="Close"
           >
@@ -358,6 +378,13 @@ export function UploadFileDialog({
             </div>
           )}
 
+          <div role="status" aria-live="polite" className="text-sm text-slate-700">
+            {uploadFeedback.state === "INITIATING" && "Preparing upload…"}
+            {uploadFeedback.state === "UPLOADING" && "Uploading to secure storage…"}
+            {uploadFeedback.state === "COMPLETING" && "Finalizing upload…"}
+            {uploadFeedback.state === "SUCCESS" && (uploadFeedback.isDuplicate ? "Upload complete. Existing physical file reused. Processing has not started." : "Upload complete. Processing has not started.")}
+          </div>
+          {uploadFeedback.error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{uploadFeedback.error}</p>}
           {error && (
             <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
@@ -510,7 +537,7 @@ export function UploadFileDialog({
                 </p>
 
                 <p className="mt-1 text-sm leading-6 text-indigo-700">
-                  Schema comparison is complete. Accepting saves source metadata and creates one ingestion batch ready for future processing. No backend upload or processing starts.
+                  Schema comparison is complete. Accepting uploads this CSV to secure storage. After backend confirmation, one ingestion batch is ready for future processing.
                 </p>
               </section>
             </div>
@@ -521,28 +548,25 @@ export function UploadFileDialog({
           <Button
             type="button"
             variant="secondary"
-            onClick={handleClose}
+            disabled={busy} onClick={handleClose}
           >
-            {duplicateFile ? "Close" : "Cancel"}
+            {uploadFeedback.state === "SUCCESS" ? "Done" : duplicateFile ? "Close" : "Cancel"}
           </Button>
 
-          {inspection && <Button type="button" variant="secondary" onClick={reset}>Choose another CSV</Button>}
+          {inspection && !locked && <Button type="button" variant="secondary" onClick={reset}>Choose another CSV</Button>}
           {inspection && !duplicateFile &&
-  schemaMatch && (
+  schemaMatch && uploadFeedback.state !== "SUCCESS" && (
     <Button
       type="button"
       disabled={
-        schemaMatch.status ===
-          "BREAKING" ||
-        schemaMatch.status ===
-          "WRONG_DATASET_LIKELY"
+        busy || (!workflow.hasSession() && (schemaMatch.status === "BREAKING" || schemaMatch.status === "WRONG_DATASET_LIKELY"))
       }
       onClick={() => {
-        if (schemaMatch.status === "NO_CONTRACT") setConfiguring(true)
-        else acceptInspection()
+        if (!workflow.hasSession() && schemaMatch.status === "NO_CONTRACT") setConfiguring(true)
+        else void acceptInspection()
       }}
     >
-      {schemaMatch.status ===
+      {uploadFeedback.state === "FAILED" ? "Retry Upload" : busy ? "Uploading…" : schemaMatch.status ===
         "NO_CONTRACT"
         ? "Configure Dataset Contract"
         : "Accept File"}

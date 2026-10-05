@@ -1,8 +1,9 @@
+import { scopedStorageKey } from "../../../services/localScope"
 import { readDatasetFiles } from "../../files/data/storage"
 import { ingestionBatchStatuses, type IngestionBatch } from "../types"
 
 export function batchStorageKey(workspaceId: string, datasetId: string) {
-  return `datarise-workspace-${workspaceId}-dataset-${datasetId}-batches`
+  return scopedStorageKey(workspaceId, datasetId, "batches")
 }
 
 function validBatch(value: unknown): value is IngestionBatch {
@@ -13,6 +14,7 @@ function validBatch(value: unknown): value is IngestionBatch {
     Number.isSafeInteger(batch.workspaceId) && batch.workspaceId > 0 &&
     Number.isSafeInteger(batch.datasetId) && batch.datasetId > 0 &&
     Number.isSafeInteger(batch.sourceFileId) && batch.sourceFileId > 0 &&
+    (batch.uploadRequestId === undefined || (Number.isSafeInteger(batch.uploadRequestId) && batch.uploadRequestId > 0)) &&
     typeof batch.sourceFileName === "string" && !!batch.sourceFileName &&
     count(batch.rowCount) && count(batch.columnCount) &&
     typeof batch.createdAt === "string" && Number.isFinite(Date.parse(batch.createdAt)) &&
@@ -33,7 +35,7 @@ export function readDatasetBatches(workspaceId: string, datasetId: string): Inge
     throw new Error("The saved batches belong to a different workspace or dataset.")
   }
   if (new Set(value.map((batch) => batch.id)).size !== value.length ||
-      new Set(value.map((batch) => batch.sourceFileId)).size !== value.length) {
+      new Set(value.map((batch) => batch.uploadRequestId === undefined ? `file-${batch.sourceFileId}` : `upload-${batch.uploadRequestId}`)).size !== value.length) {
     throw new Error("The saved ingestion batch list contains duplicate identities.")
   }
   return value
@@ -67,6 +69,18 @@ export function ensureBatchForAcceptedFile(workspaceId: string, datasetId: strin
     validRows: null, rejectedRows: null, duplicateRows: null, updatedRows: null,
   }
   if (!validBatch(batch)) throw new Error("The source file has invalid batch metadata.")
+  localStorage.setItem(batchStorageKey(workspaceId, datasetId), JSON.stringify([batch, ...batches]))
+  window.dispatchEvent(new Event("datarise-batches-changed"))
+  return batch
+}
+
+export function saveCompletedBatch(workspaceId: string, datasetId: string, batch: IngestionBatch) {
+  if (!validBatch(batch) || !batch.uploadRequestId || String(batch.workspaceId) !== workspaceId || String(batch.datasetId) !== datasetId) throw new Error("Invalid completed batch metadata or ownership.")
+  const file = readDatasetFiles(workspaceId, datasetId).find((item) => item.id === batch.sourceFileId)
+  if (!file || file.status !== "UPLOADED" || !file.uploadRequestIds?.includes(batch.uploadRequestId)) throw new Error("A persisted completed upload is required for this batch.")
+  const batches = readDatasetBatches(workspaceId, datasetId)
+  const existing = batches.find((item) => item.uploadRequestId === batch.uploadRequestId)
+  if (existing) return existing
   localStorage.setItem(batchStorageKey(workspaceId, datasetId), JSON.stringify([batch, ...batches]))
   window.dispatchEvent(new Event("datarise-batches-changed"))
   return batch

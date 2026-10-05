@@ -1,10 +1,11 @@
+import { scopedStorageKey, hasBackendScope } from "../../../services/localScope"
 import { datasetContractsMock } from "./contracts.mock"
 import { datasetsByWorkspaceMock } from "../data/datasets.mock"
 import type { DatasetContract } from "./types"
 import { validateContract } from "./validation"
 
 export function contractStorageKey(workspaceId: string, datasetId: string) {
-  return `datarise-workspace-${workspaceId}-dataset-${datasetId}-contract`
+  return scopedStorageKey(workspaceId, datasetId, "contract")
 }
 
 export function saveDatasetContract(workspaceId: string, datasetId: string, contract: DatasetContract) {
@@ -35,6 +36,7 @@ export function getDatasetContract(workspaceId: string, datasetId: string): Data
     }
     return contract as DatasetContract
   }
+  if (hasBackendScope()) return undefined
   const isMockDataset = datasetsByWorkspaceMock[workspaceId]?.some((dataset) => String(dataset.id) === datasetId)
   const contract = isMockDataset ? datasetContractsMock[datasetId] : undefined
   return contract && String(contract.workspaceId) === workspaceId ? contract : undefined

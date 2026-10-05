@@ -14,9 +14,9 @@ type DatasetListProps = {
 }
 
 function formatRows(
-  value: number,
+  value: number | undefined,
 ) {
-  return new Intl.NumberFormat().format(value)
+  return value === undefined ? "—" : new Intl.NumberFormat().format(value)
 }
 
 export function DatasetList({
@@ -110,7 +110,7 @@ export function DatasetList({
                 </td>
 
                 <td className="px-5 py-4 text-slate-600">
-                  v{dataset.latestVersion}
+                  {dataset.latestVersion === undefined ? "—" : `v${dataset.latestVersion}`}
                 </td>
 
                 <td className="px-5 py-4 text-slate-600">
@@ -120,7 +120,7 @@ export function DatasetList({
                 </td>
 
                 <td className="px-5 py-4 text-slate-600">
-                  {dataset.columnCount}
+                  {dataset.columnCount ?? "—"}
                 </td>
 
                 <td className="px-5 py-4 text-slate-500">
@@ -173,7 +173,7 @@ export function DatasetList({
                 </p>
 
                 <p className="mt-1 font-medium text-slate-900">
-                  v{dataset.latestVersion}
+                  {dataset.latestVersion === undefined ? "—" : `v${dataset.latestVersion}`}
                 </p>
               </div>
 
@@ -195,7 +195,7 @@ export function DatasetList({
                 </p>
 
                 <p className="mt-1 font-medium text-slate-900">
-                  {dataset.columnCount}
+                  {dataset.columnCount ?? "—"}
                 </p>
               </div>
 

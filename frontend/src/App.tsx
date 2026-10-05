@@ -29,9 +29,11 @@ import { DatasetDataQualityPage } from "./pages/Dataset/DataQuality/DatasetDataQ
 import { DatasetAnalyticsPage } from "./pages/Dataset/Analytics/DatasetAnalyticsPage"
 import { DatasetHistoryPage } from "./pages/Dataset/History/DatasetHistoryPage"
 
+import { IdentityBootstrap } from "./components/layout/IdentityBootstrap"
+
 function AppLayout() {
   return (
-    <AppShell>
+    <IdentityBootstrap><AppShell>
       <Routes>
         <Route
           index
@@ -134,7 +136,7 @@ function AppLayout() {
         />
       </Route>
             </Routes>
-    </AppShell>
+    </AppShell></IdentityBootstrap>
   )
 }
 

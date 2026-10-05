@@ -2,20 +2,23 @@ import {
   Plus,
 } from "lucide-react"
 import {
+  useCallback,
   useMemo,
   useState,
 } from "react"
-import { useParams } from "react-router-dom"
+import { useOutletContext, useParams } from "react-router-dom"
 
 import { CreateDatasetDialog } from "../../../features/datasets/components/CreateDatasetDialog"
-import type { DatasetListItem } from "../../../features/datasets/types"
+import { listDatasets, createDataset } from "../../../services/api/datasets"
+import { useApiResource } from "../../../services/api/useApiResource"
+import { ApiFeedback } from "../../../components/ui/ApiFeedback"
 import { Button } from "../../../components/ui/Button"
 import { DatasetList } from "../../../features/datasets/components/DatasetList"
 import {
   DatasetsToolbar,
   type DatasetStatusFilter,
 } from "../../../features/datasets/components/DatasetsToolbar"
-import { readWorkspaceDatasets, datasetStorageKey } from "../../../features/datasets/data/storage"
+
 
 
 export function WorkspaceDatasetsPage() {
@@ -24,10 +27,12 @@ export function WorkspaceDatasetsPage() {
 }
 
 function WorkspaceDatasetsContent() {
+  const { onDatasetsChanged } = useOutletContext<{ onDatasetsChanged: () => void }>()
   const { workspaceId } =
     useParams()
-  const storageKey = datasetStorageKey(workspaceId ?? "")
-  const [storageError, setStorageError] = useState("")
+  const load = useCallback((signal: AbortSignal) => listDatasets(workspaceId ?? "", signal), [workspaceId])
+  const resource = useApiResource(`datasets:${workspaceId}`, load)
+  const datasets = useMemo(() => resource.data ?? [], [resource.data])
   const [search, setSearch] =
     useState("")
 
@@ -35,8 +40,7 @@ function WorkspaceDatasetsContent() {
     useState<DatasetStatusFilter>(
       "ALL",
     )
-    const [datasets, setDatasets] =
-  useState<DatasetListItem[]>(() => readWorkspaceDatasets(workspaceId ?? ""))
+
 
 const [createOpen, setCreateOpen] =
   useState(false)
@@ -73,36 +77,16 @@ const [createOpen, setCreateOpen] =
         },
       )
     }, [datasets, search, status])
-    function handleCreateDataset(input: {
-        name: string
-        description: string
-        }) {
-        const newDataset: DatasetListItem = {
-            id: Date.now(),
-            name: input.name,
-            description:
-            input.description ||
-            "No description added yet.",
-            status: "EMPTY",
-            latestVersion: 0,
-            rowCount: 0,
-            columnCount: 0,
-            updatedAt: "Just now",
-        }
-
-        const nextDatasets = [newDataset, ...datasets]
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(nextDatasets))
-          setDatasets(nextDatasets)
-          setStorageError("")
-        } catch {
-          setStorageError("Dataset could not be saved. Enable browser storage and retry.")
-        }
-        }
+  async function handleCreateDataset(input: { name: string; description: string }) {
+    await createDataset(workspaceId ?? "", input)
+    onDatasetsChanged()
+    resource.retry()
+  }
+  if (!resource.data) return <ApiFeedback error={resource.error} retry={resource.retry} />
 
   return (
     <div className="space-y-5">
-      {storageError && <p role="alert" className="text-sm text-red-700">{storageError}</p>}
+
       <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-950">

@@ -88,7 +88,7 @@ export function WorkspaceCard({
           </div>
 
           <p className="mt-1 text-sm font-semibold text-slate-900">
-            {workspace.datasetCount}
+            {workspace.datasetCount ?? "—"}
           </p>
         </div>
 
@@ -102,7 +102,7 @@ export function WorkspaceCard({
           </div>
 
           <p className="mt-1 text-sm font-semibold text-slate-900">
-            {workspace.analyticsReadyCount}
+            {workspace.analyticsReadyCount ?? "—"}
           </p>
         </div>
 
@@ -116,7 +116,7 @@ export function WorkspaceCard({
           </div>
 
           <p className="mt-1 text-sm font-semibold text-slate-900">
-            {workspace.processingCount}
+            {workspace.processingCount ?? "—"}
           </p>
         </div>
       </div>

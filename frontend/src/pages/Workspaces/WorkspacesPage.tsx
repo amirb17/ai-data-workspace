@@ -2,45 +2,25 @@ import {
   Plus,
   Search,
 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 
 import { CreateWorkspaceDialog } from "../../features/workspaces/components/CreateWorkspaceDialog"
-import type { WorkspaceListItem } from "../../features/workspaces/types"
+import { listWorkspaces, createWorkspace } from "../../services/api/workspaces"
+import { useApiResource } from "../../services/api/useApiResource"
+import { ApiFeedback } from "../../components/ui/ApiFeedback"
 
 import { Button } from "../../components/ui/Button"
 import { Input } from "../../components/ui/Input"
 import { PageHeader } from "../../components/ui/PageHeader"
 import { WorkspaceCard } from "../../features/workspaces/components/WorkspaceCard"
-import { workspacesMock } from "../../features/workspaces/data/workspaces.mock"
+
 
 export function WorkspacesPage() {
   const [search, setSearch] =
     useState("")
-  const [workspaces, setWorkspaces] =
-  useState<WorkspaceListItem[]>(() => {
-    const saved =
-      localStorage.getItem(
-        "datarise-workspaces",
-      )
-
-    if (saved) {
-      try {
-        return JSON.parse(
-          saved,
-        ) as WorkspaceListItem[]
-      } catch {
-        return workspacesMock
-      }
-    }
-
-    return workspacesMock
-  })
-  useEffect(() => {
-  localStorage.setItem(
-    "datarise-workspaces",
-    JSON.stringify(workspaces),
-  )
-}, [workspaces])
+  const load = useCallback((signal: AbortSignal) => listWorkspaces(signal), [])
+  const resource = useApiResource("workspaces", load)
+  const workspaces = useMemo(() => resource.data ?? [], [resource.data])
 
     const [createOpen, setCreateOpen] = useState(false)
 
@@ -63,28 +43,11 @@ export function WorkspacesPage() {
             .includes(query),
       )
     }, [search,workspaces])
-    function handleCreateWorkspace(input: {
-        name: string
-        description: string
-        }) {
-        const newWorkspace: WorkspaceListItem = {
-            id: Date.now(),
-            name: input.name,
-            description:
-            input.description ||
-            "No description added yet.",
-            status: "ACTIVE",
-            datasetCount: 0,
-            analyticsReadyCount: 0,
-            processingCount: 0,
-            updatedAt: "Just now",
-        }
-
-        setWorkspaces((current) => [
-            newWorkspace,
-            ...current,
-        ])
-        }
+  async function handleCreateWorkspace(input: { name: string; description: string }) {
+    await createWorkspace(input)
+    resource.retry()
+  }
+  if (!resource.data) return <ApiFeedback error={resource.error} retry={resource.retry} />
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">

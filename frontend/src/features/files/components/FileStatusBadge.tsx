@@ -9,6 +9,7 @@ function getVariant(
   status: DatasetFileStatus,
 ) {
   switch (status) {
+    case "UPLOADED":
     case "PROCESSED":
     case "READY_TO_PROCESS":
       return "success"

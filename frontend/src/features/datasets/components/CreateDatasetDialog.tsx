@@ -1,5 +1,5 @@
 import { X } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 import { Button } from "../../../components/ui/Button"
 import { Input } from "../../../components/ui/Input"
@@ -10,7 +10,7 @@ type CreateDatasetDialogProps = {
   onCreate: (dataset: {
     name: string
     description: string
-  }) => void
+  }) => Promise<void>
 }
 
 export function CreateDatasetDialog({
@@ -20,6 +20,8 @@ export function CreateDatasetDialog({
 }: CreateDatasetDialogProps) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const savingRef = useRef(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
   if (!open) {
@@ -33,14 +35,16 @@ export function CreateDatasetDialog({
   }
 
   function handleClose() {
+    if (savingRef.current) return
     resetForm()
     onClose()
   }
 
-  function handleSubmit(
+  async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault()
+    if (savingRef.current) return
 
     const trimmedName = name.trim()
     const trimmedDescription = description.trim()
@@ -57,13 +61,17 @@ export function CreateDatasetDialog({
       return
     }
 
-    onCreate({
-      name: trimmedName,
-      description: trimmedDescription,
-    })
-
-    resetForm()
-    onClose()
+    savingRef.current = true
+    setSaving(true)
+    try {
+      await onCreate({ name: trimmedName, description: trimmedDescription })
+      setName("")
+      setDescription("")
+      setError("")
+      onClose()
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to create dataset.")
+    } finally { savingRef.current = false; setSaving(false) }
   }
 
   return (
@@ -90,7 +98,7 @@ export function CreateDatasetDialog({
 
           <button
             type="button"
-            onClick={handleClose}
+            disabled={saving} onClick={handleClose}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
             aria-label="Close"
           >
@@ -121,6 +129,7 @@ export function CreateDatasetDialog({
                 }
               }}
               placeholder="e.g. Customer Orders"
+              disabled={saving}
               autoFocus
             />
           </div>
@@ -139,6 +148,7 @@ export function CreateDatasetDialog({
               onChange={(event) =>
                 setDescription(event.target.value)
               }
+              disabled={saving}
               rows={4}
               placeholder="Describe what this dataset contains..."
               className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
@@ -155,12 +165,12 @@ export function CreateDatasetDialog({
             <Button
               type="button"
               variant="secondary"
-              onClick={handleClose}
+              disabled={saving} onClick={handleClose}
             >
               Cancel
             </Button>
 
-            <Button type="submit">
+            <Button type="submit" disabled={saving}>
               Create Dataset
             </Button>
           </div>

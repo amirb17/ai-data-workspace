@@ -15,7 +15,7 @@ export function IngestionBatchCard({ batch }: { batch: IngestionBatch }) {
     <article className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="break-all font-semibold text-slate-950">Batch {batch.sourceFileId}</h3>
+          <h3 className="break-all font-semibold text-slate-950">Batch {batch.uploadRequestId ?? batch.sourceFileId}</h3>
           <p className="mt-1 break-all text-sm text-slate-600">{batch.sourceFileName}</p>
           <p className="mt-1 break-all text-xs text-slate-500">Source file #{batch.sourceFileId} · {batch.id}</p>
         </div>

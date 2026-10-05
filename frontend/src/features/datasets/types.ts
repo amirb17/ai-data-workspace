@@ -1,4 +1,6 @@
   export type DatasetStatus =
+  | "ACTIVE"
+  | "ARCHIVED"
   | "EMPTY"
   | "READY"
   | "PROCESSING"
@@ -10,8 +12,8 @@ export type DatasetListItem = {
   name: string
   description: string
   status: DatasetStatus
-  latestVersion: number
-  rowCount: number
-  columnCount: number
+  latestVersion?: number
+  rowCount?: number
+  columnCount?: number
   updatedAt: string
 }
