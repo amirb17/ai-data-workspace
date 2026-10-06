@@ -38,7 +38,6 @@ from app.db.dataset_repository import (
     assign_physical_file_to_dataset_version,
     get_dataset_version_file_by_id,
     update_dataset_version_file_status,
-    get_dataset_version_rule_version,
 )
 
 from app.services.dataset_service import (
@@ -49,6 +48,10 @@ from app.processing.gold_planner import (
 )
 from app.storage.s3_service import parse_s3_uri
 from app.services.rule_reuse_service import initialize_dataset_version_file_rules
+from app.services.delivery_execution_service import guarded_delivery
+from app.db.processing_repository import get_approved_policy, get_gold_publication
+from app.db.dataset_repository import get_rule_approval_context
+from app.db.database import repository_transaction
 
 def start_processing(upload_id: int):
     upload_request = get_upload_request_by_id(upload_id)
@@ -246,6 +249,7 @@ def start_processing(upload_id: int):
         raise RuntimeError(
             f"Bronze processing failed: {exc}"
         )
+@guarded_delivery
 def run_silver_processing(
     dataset_version_file_id: int,
     bucket_name: str,
@@ -280,11 +284,11 @@ def run_silver_processing(
     # ---------------------------------------------------------
     # 3. Get rule version for THIS dataset version
     # ---------------------------------------------------------
-    current_rule_version = (
-        get_dataset_version_rule_version(
-            dataset_version_id
-        )
-    )
+    approval = get_rule_approval_context(dataset_version_file_id)
+    current_rule_version = approval[3] if approval else None
+    approved_rules = get_approved_policy(dataset_version_id, current_rule_version) if current_rule_version else []
+    if not approval or not approval[5] or not approved_rules:
+        raise ValueError(f"Approved pinned rules required; current status: {status}")
 
     # ---------------------------------------------------------
     # 4. SILVER IDEMPOTENCY CHECK
@@ -302,6 +306,8 @@ def run_silver_processing(
         silver_rule_version = latest_dq_run[3]
 
         if silver_rule_version == current_rule_version:
+            if status in ("READY_FOR_SILVER", "SILVER_FAILED", "SILVER_PROCESSING"):
+                update_dataset_version_file_status(dataset_version_file_id, "READY_FOR_GOLD")
             return {
                 "dataset_version_file_id":
                     dataset_version_file_id,
@@ -328,7 +334,7 @@ def run_silver_processing(
         "READY_FOR_SILVER",
         "SILVER_FAILED",
         "READY_FOR_GOLD",
-        "SUCCESS",
+        "GOLD_FAILED",
     ):
         raise ValueError(
             "Silver processing cannot start. "
@@ -350,24 +356,25 @@ def run_silver_processing(
     # ---------------------------------------------------------
     # 7. Create SILVER attempt with DVF lineage
     # ---------------------------------------------------------
-    attempt = create_processing_attempt(
-        file_id=file_id,
-        attempt_number=attempt_number,
-        stage="SILVER",
-        status="PROCESSING",
-        dataset_version_file_id=dataset_version_file_id,
-    )
+    with repository_transaction():
+        attempt = create_processing_attempt(
+            file_id=file_id,
+            attempt_number=attempt_number,
+            stage="SILVER",
+            status="PROCESSING",
+            dataset_version_file_id=dataset_version_file_id,
+        )
 
-    attempt_id = attempt[0]
+        attempt_id = attempt[0]
 
-    # ---------------------------------------------------------
-    # 8. Mark only THIS DVF as processing
-    # ---------------------------------------------------------
-    update_dataset_version_file_status(
-        dataset_version_file_id=
-            dataset_version_file_id,
-        status="SILVER_PROCESSING",
-    )
+        # ---------------------------------------------------------
+        # 8. Mark only THIS DVF as processing
+        # ---------------------------------------------------------
+        update_dataset_version_file_status(
+            dataset_version_file_id=
+                dataset_version_file_id,
+            status="SILVER_PROCESSING",
+        )
 
     try:
         # -----------------------------------------------------
@@ -378,54 +385,56 @@ def run_silver_processing(
             dataset_version_id=dataset_version_id,
             rule_version=current_rule_version,
             bucket_name=bucket_name,
+            approved_rules=approved_rules,
         )
 
         # -----------------------------------------------------
         # 10. Persist DQ run with DVF lineage
         # -----------------------------------------------------
-        dq_run = save_data_quality_run(
-            file_id=file_id,
-            attempt_id=attempt_id,
-            rule_version=current_rule_version,
-            total_rows=result["total_rows"],
-            valid_rows=result["valid_rows"],
-            rejected_rows=result["rejected_rows"],
-            silver_path=result["silver_key"],
-            quarantine_path=result["quarantine_key"],
-            dataset_version_file_id=
-                dataset_version_file_id,
-        )
-
-        dq_run_id = dq_run[0]
-
-        # -----------------------------------------------------
-        # 11. Persist DQ issues
-        # -----------------------------------------------------
-        for issue in result["dq_issues"]:
-            save_data_quality_issue(
-                dq_run_id=dq_run_id,
-                column_name=issue["column_name"],
-                rule_type=issue["rule_type"],
-                violation_count=
-                    issue["violation_count"],
+        with repository_transaction():
+            dq_run = save_data_quality_run(
+                file_id=file_id,
+                attempt_id=attempt_id,
+                rule_version=current_rule_version,
+                total_rows=result["total_rows"],
+                valid_rows=result["valid_rows"],
+                rejected_rows=result["rejected_rows"],
+                silver_path=result["silver_key"],
+                quarantine_path=result["quarantine_key"],
+                dataset_version_file_id=
+                    dataset_version_file_id,
             )
 
-        # -----------------------------------------------------
-        # 12. Complete attempt
-        # -----------------------------------------------------
-        complete_processing_attempt(
-            attempt_id=attempt_id,
-            status="SUCCESS",
-        )
+            dq_run_id = dq_run[0]
 
-        # -----------------------------------------------------
-        # 13. This DVF is now ready for Gold
-        # -----------------------------------------------------
-        update_dataset_version_file_status(
-            dataset_version_file_id=
-                dataset_version_file_id,
-            status="READY_FOR_GOLD",
-        )
+            # -----------------------------------------------------
+            # 11. Persist DQ issues
+            # -----------------------------------------------------
+            for issue in result["dq_issues"]:
+                save_data_quality_issue(
+                    dq_run_id=dq_run_id,
+                    column_name=issue["column_name"],
+                    rule_type=issue["rule_type"],
+                    violation_count=
+                        issue["violation_count"],
+                )
+
+            # -----------------------------------------------------
+            # 12. Complete attempt
+            # -----------------------------------------------------
+            complete_processing_attempt(
+                attempt_id=attempt_id,
+                status="SUCCESS",
+            )
+
+            # -----------------------------------------------------
+            # 13. This DVF is now ready for Gold
+            # -----------------------------------------------------
+            update_dataset_version_file_status(
+                dataset_version_file_id=
+                    dataset_version_file_id,
+                status="READY_FOR_GOLD",
+            )
 
         return {
             "dataset_version_file_id":
@@ -449,20 +458,10 @@ def run_silver_processing(
         }
 
     except Exception as exc:
-        complete_processing_attempt(
-            attempt_id=attempt_id,
-            status="FAILED",
-            error_message=str(exc),
-        )
-
-        # IMPORTANT:
-        # Do not mark physical_files FAILED.
-        # Other datasets/users may share that physical file.
-        update_dataset_version_file_status(
-            dataset_version_file_id=
-                dataset_version_file_id,
-            status="SILVER_FAILED",
-        )
+        with repository_transaction():
+            complete_processing_attempt(attempt_id, "FAILED", str(exc))
+            # Failure belongs to this delivery, never the shared physical file.
+            update_dataset_version_file_status(dataset_version_file_id, "SILVER_FAILED")
 
         raise RuntimeError(
             f"Silver processing failed: {exc}"
@@ -609,6 +608,7 @@ def _is_gold_publication_complete(
             return False
 
     return True
+@guarded_delivery
 def run_gold_processing(
     dataset_version_file_id: int,
     bucket_name: str,
@@ -648,7 +648,19 @@ def run_gold_processing(
 
     dq_run_id = dq_run[0]
     source_rule_version = dq_run[3]
+    approval = get_rule_approval_context(dataset_version_file_id)
+    if not approval or not approval[5] or approval[3] != source_rule_version:
+        raise ValueError("Silver must match the delivery's pinned policy")
+    if not get_approved_policy(dataset_version_id, source_rule_version):
+        raise ValueError("Approved policy snapshot is unavailable")
     silver_key = dq_run[7]
+
+    if dq_run[5] == 0:
+        from app.db.processing_repository import record_gold_skip, GOLD_SKIP_REASON
+        with repository_transaction():
+            record_gold_skip(dataset_version_file_id)
+        return {"already_processed": status == "SUCCESS_WITH_WARNINGS", "status": "SUCCESS_WITH_WARNINGS",
+                "gold_skipped": True, "reason": GOLD_SKIP_REASON, "source_dq_run_id": dq_run_id}
 
     if not silver_key:
         raise ValueError(
@@ -765,14 +777,13 @@ def run_gold_processing(
     else:
         # No previous Gold run exists.
         # This will be a normal new Gold publication.
-        recovery_gold_run = None
+        recovery_gold_run = get_gold_publication(dataset_version_file_id, dq_run_id)
     # ---------------------------------------------------------
     # 4. Validate DVF lifecycle
     # ---------------------------------------------------------
     if status not in (
         "READY_FOR_GOLD",
         "GOLD_FAILED",
-        "SUCCESS",
     ):
         raise ValueError(
             "Dataset-version-file is not ready for Gold "
@@ -803,22 +814,23 @@ def run_gold_processing(
     )
 )
 
-    attempt = create_processing_attempt(
-        file_id=file_id,
-        attempt_number=attempt_number,
-        stage="GOLD",
-        status="PROCESSING",
-        dataset_version_file_id=
-            dataset_version_file_id,
-    )
+    with repository_transaction():
+        attempt = create_processing_attempt(
+            file_id=file_id,
+            attempt_number=attempt_number,
+            stage="GOLD",
+            status="PROCESSING",
+            dataset_version_file_id=
+                dataset_version_file_id,
+        )
 
-    attempt_id = attempt[0]
+        attempt_id = attempt[0]
 
-    update_dataset_version_file_status(
-        dataset_version_file_id=
-            dataset_version_file_id,
-        status="GOLD_PROCESSING",
-    )
+        update_dataset_version_file_status(
+            dataset_version_file_id=
+                dataset_version_file_id,
+            status="GOLD_PROCESSING",
+        )
 
     try:
 
@@ -837,104 +849,109 @@ def run_gold_processing(
         # -----------------------------------------------------
         # 8. Persist Gold lineage
         # -----------------------------------------------------
-        if recovery_gold_run is not None:
-            gold_run = recovery_gold_run
-        else:
-            gold_run = save_gold_run(
-                file_id=file_id,
-                attempt_id=attempt_id,
-                source_dq_run_id=dq_run_id,
-                gold_type="BASE",
-                row_count=result["row_count"],
-                gold_path=result["gold_key"],
-                dataset_version_file_id=
-                    dataset_version_file_id,
-            )
-
-        gold_run_id = gold_run[0]
-
-        persisted_artifacts = []
-
-        for artifact in result["artifacts"]:
-            saved_artifact = save_gold_artifact(
-                gold_run_id=gold_run_id,
-                artifact_type=artifact["artifact_type"],
-                artifact_name=artifact["artifact_name"],
-                storage_path=artifact["storage_path"],
-                row_count=artifact["row_count"],
-            )
-
-            persisted_artifacts.append(
-                saved_artifact
-            )
-            # -----------------------------------------------------
-            # Persist semantic catalog for analytical MARTs
-            # -----------------------------------------------------
-            catalog = artifact.get("catalog")
-
-            if catalog is not None:
-                gold_artifact_id = saved_artifact[0]
-
-                save_gold_artifact_model(
-                    gold_artifact_id=gold_artifact_id,
-                    grain=catalog["grain"],
-                    time_grain=catalog.get("time_grain"),
+        with repository_transaction():
+            if recovery_gold_run is not None:
+                gold_run = recovery_gold_run
+                from app.db.database import get_connection
+                with get_connection() as conn:
+                    conn.execute("UPDATE gold_runs SET attempt_id=%s, row_count=%s WHERE gold_run_id=%s",
+                                 (attempt_id, result["row_count"], gold_run[0]))
+            else:
+                gold_run = save_gold_run(
+                    file_id=file_id,
+                    attempt_id=attempt_id,
+                    source_dq_run_id=dq_run_id,
+                    gold_type="BASE",
+                    row_count=result["row_count"],
+                    gold_path=result["gold_key"],
+                    dataset_version_file_id=
+                        dataset_version_file_id,
                 )
 
-                for column in catalog["columns"]:
-                    save_gold_artifact_column(
+            gold_run_id = gold_run[0]
+
+            persisted_artifacts = []
+
+            for artifact in result["artifacts"]:
+                saved_artifact = save_gold_artifact(
+                    gold_run_id=gold_run_id,
+                    artifact_type=artifact["artifact_type"],
+                    artifact_name=artifact["artifact_name"],
+                    storage_path=artifact["storage_path"],
+                    row_count=artifact["row_count"],
+                )
+
+                persisted_artifacts.append(
+                    saved_artifact
+                )
+                # -----------------------------------------------------
+                # Persist semantic catalog for analytical MARTs
+                # -----------------------------------------------------
+                catalog = artifact.get("catalog")
+
+                if catalog is not None:
+                    gold_artifact_id = saved_artifact[0]
+
+                    save_gold_artifact_model(
                         gold_artifact_id=gold_artifact_id,
-                        column_name=column["column_name"],
-                        column_role=column["column_role"],
-                        source_column=column["source_column"],
-                        aggregation_type=
-                            column["aggregation_type"],
-                        ordinal_position=
-                            column["ordinal_position"],
-                        data_type=column["data_type"],
+                        grain=catalog["grain"],
+                        time_grain=catalog.get("time_grain"),
                     )
-        stored_artifacts = (
-            get_gold_artifacts_for_run(
-                gold_run_id
-            )
-        )
 
-        expected_artifact_names = {
-            artifact["artifact_name"]
-            for artifact in result["artifacts"]
-        }
-
-        stored_artifact_names = {
-            artifact[3]
-            for artifact in stored_artifacts
-        }
-
-        if (
-            stored_artifact_names
-            != expected_artifact_names
-        ):
-            raise RuntimeError(
-                "Gold artifact persistence incomplete. "
-                f"Expected artifacts="
-                f"{sorted(expected_artifact_names)}, "
-                f"stored artifacts="
-                f"{sorted(stored_artifact_names)}, "
-                f"gold_run_id={gold_run_id}"
+                    for column in catalog["columns"]:
+                        save_gold_artifact_column(
+                            gold_artifact_id=gold_artifact_id,
+                            column_name=column["column_name"],
+                            column_role=column["column_role"],
+                            source_column=column["source_column"],
+                            aggregation_type=
+                                column["aggregation_type"],
+                            ordinal_position=
+                                column["ordinal_position"],
+                            data_type=column["data_type"],
+                        )
+            stored_artifacts = (
+                get_gold_artifacts_for_run(
+                    gold_run_id
+                )
             )
 
-        # -----------------------------------------------------
-        # 9. Complete processing attempt
-        # -----------------------------------------------------
-        complete_processing_attempt(
-            attempt_id=attempt_id,
-            status="SUCCESS",
-        )
+            expected_artifact_names = {
+                artifact["artifact_name"]
+                for artifact in result["artifacts"]
+            }
 
-        update_dataset_version_file_status(
-            dataset_version_file_id=
-                dataset_version_file_id,
-            status="SUCCESS",
-        )
+            stored_artifact_names = {
+                artifact[3]
+                for artifact in stored_artifacts
+            }
+
+            if (
+                stored_artifact_names
+                != expected_artifact_names
+            ):
+                raise RuntimeError(
+                    "Gold artifact persistence incomplete. "
+                    f"Expected artifacts="
+                    f"{sorted(expected_artifact_names)}, "
+                    f"stored artifacts="
+                    f"{sorted(stored_artifact_names)}, "
+                    f"gold_run_id={gold_run_id}"
+                )
+
+            # -----------------------------------------------------
+            # 9. Complete processing attempt
+            # -----------------------------------------------------
+            complete_processing_attempt(
+                attempt_id=attempt_id,
+                status="SUCCESS",
+            )
+
+            update_dataset_version_file_status(
+                dataset_version_file_id=
+                    dataset_version_file_id,
+                status="SUCCESS",
+            )
         recovered_existing_run = (
                     recovery_gold_run is not None
                 )
@@ -984,21 +1001,9 @@ def run_gold_processing(
         }
 
     except Exception as exc:
-
-        complete_processing_attempt(
-            attempt_id=attempt_id,
-            status="FAILED",
-            error_message=str(exc),
-        )
-
-        # IMPORTANT:
-        # Failure belongs to this logical DVF, not the
-        # shared physical file.
-        update_dataset_version_file_status(
-            dataset_version_file_id=
-                dataset_version_file_id,
-            status="GOLD_FAILED",
-        )
+        with repository_transaction():
+            complete_processing_attempt(attempt_id, "FAILED", str(exc))
+            update_dataset_version_file_status(dataset_version_file_id, "GOLD_FAILED")
 
         raise RuntimeError(
             f"Gold processing failed: {exc}"

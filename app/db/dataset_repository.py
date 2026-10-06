@@ -456,6 +456,17 @@ def approve_association_rules(association_id: int):
             """, (association_id,))
             version = cursor.fetchone()[0]
             cursor.execute("""
+                INSERT INTO approved_rule_policies(dataset_version_id, rule_version, rules)
+                SELECT dv.dataset_version_id, %s,
+                    jsonb_agg(jsonb_build_object('column_name',br.column_name,'rule_type',br.rule_type,
+                                                'rule_config',br.rule_config) ORDER BY br.rule_id)
+                FROM dataset_versions dv JOIN business_rules br ON br.dataset_version_id=dv.dataset_version_id
+                JOIN dataset_version_files f ON f.dataset_version_id=dv.dataset_version_id
+                WHERE f.dataset_version_file_id=%s AND br.is_active
+                GROUP BY dv.dataset_version_id
+                ON CONFLICT (dataset_version_id, rule_version) DO NOTHING
+            """, (version, association_id))
+            cursor.execute("""
                 UPDATE dataset_version_files SET status = 'READY_FOR_SILVER',
                     applied_rule_version = %s, rules_reused = FALSE
                 WHERE dataset_version_file_id = %s

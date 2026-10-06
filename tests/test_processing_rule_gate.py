@@ -4,6 +4,7 @@ These checks use the existing services with mocked persistence/storage; they do
 not execute uploads or processing against the application's database or S3.
 """
 import io
+from contextlib import nullcontext
 from types import SimpleNamespace
 
 import pandas as pd
@@ -11,6 +12,7 @@ import pytest
 
 from app.processing import silver_processor
 from app.services import business_rule_service, processing_service
+from app.services import delivery_execution_service
 
 
 @pytest.mark.parametrize("answer", [None, "NOT_SURE"])
@@ -42,12 +44,13 @@ def test_unapproved_rule_cannot_finalize_or_advance(monkeypatch, answer):
 
 
 def test_awaiting_rules_cannot_start_silver_attempt(monkeypatch):
+    monkeypatch.setattr(delivery_execution_service, "delivery_lock", lambda _: nullcontext())
+    monkeypatch.setattr(processing_service, "get_rule_approval_context", lambda _: (201,0,None,None,False,True))
     monkeypatch.setattr(
         processing_service, "get_dataset_version_file_by_id",
         lambda _: (101, 201, 301, "AWAITING_RULES"),
     )
     monkeypatch.setattr(processing_service, "get_physical_file_by_id", lambda _: (301,))
-    monkeypatch.setattr(processing_service, "get_dataset_version_rule_version", lambda _: 0)
     monkeypatch.setattr(
         processing_service, "get_latest_successful_dq_run_for_dataset_version_file",
         lambda _: None,

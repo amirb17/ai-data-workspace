@@ -5,8 +5,27 @@ export type ProcessingContext = {
   dataset_version_number: number | null; rule_version: number | null
   rule_state: "DRAFT" | "FINALIZED" | null; active_rule_count: number; silver_can_proceed: boolean
   rules_reused: boolean; current_rule_version: number | null
+  can_continue: boolean
+  stages: { bronze: string; rules: string; silver: string; gold: string }
+  latest_attempt: { id: number; stage: string; status: string; started_at: string | null; completed_at: string | null } | null
+  started_at: string | null; completed_at: string | null; error_summary: string | null
+  gold_skip_reason: string | null; column_count: number | null
+  input_rows: number | null; valid_rows: number | null; rejected_rows: number | null; output_rows: number | null
+  duplicate_rows: number | null; updated_rows: number | null; quarantine_available: boolean
+  issue_summary: { rule_type: string; violation_count: number }[]
 }
 export type RuleAnswer = { column_name: string; rule_type: string; answer: string }
+export type DatasetProcessing = {
+  workspace_id: number; dataset_id: number
+  deliveries: { source_file_name: string; created_at: string; context: ProcessingContext }[]
+  summary: { total: number; pending: number; processing: number; awaiting_rules: number; successful: number; failed: number; needs_attention: number }
+  operation?: { processed: number; successful: number; needs_attention: number }
+}
+export async function datasetProcessing(w: string, d: string, process = false, signal?: AbortSignal) {
+  const value = verifyScope(await ruleRequest<DatasetProcessing>(`/workspaces/${backendId(w)}/datasets/${backendId(d)}/processing${process ? "/pending" : ""}`, { method: process ? "POST" : "GET", signal }), w, d)
+  for (const delivery of value.deliveries) verifyScope(delivery.context, w, d)
+  return value
+}
 export type RuleQuestion = { column_name: string; suggested_rule_type: string; question: string; reason?: string; options: string[] }
 export type RuleReview = {
   workspace_id: number; dataset_id: number; dataset_version_file_id: number; dataset_version_id: number
@@ -42,6 +61,11 @@ export async function getProcessingContext(w: string, d: string, uploadId: numbe
 }
 export async function startBronze(w: string, d: string, uploadId: number) {
   const value = verifyScope(await ruleRequest<ProcessingContext>(`/files/uploads/${backendId(uploadId)}/process${scope(w, d)}`, { method: "POST" }), w, d)
+  if (value.upload_request_id !== uploadId) throw new ApiError("Upload response mismatch.")
+  return value
+}
+export async function continueProcessing(w: string, d: string, uploadId: number) {
+  const value = verifyScope(await ruleRequest<ProcessingContext>(`/files/uploads/${backendId(uploadId)}/continue${scope(w, d)}`, { method: "POST" }), w, d)
   if (value.upload_request_id !== uploadId) throw new ApiError("Upload response mismatch.")
   return value
 }

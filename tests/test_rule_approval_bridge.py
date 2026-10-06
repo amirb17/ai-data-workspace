@@ -24,6 +24,10 @@ def scope(monkeypatch):
     monkeypatch.setattr(context, "get_upload_processing_association", lambda *args: (60, 50, 30, "AWAITING_RULES", 1, 0, None, False, None))
     monkeypatch.setattr(context, "get_active_processing_attempt", lambda _: None)
     monkeypatch.setattr(context, "get_active_business_rules_for_dataset_version", lambda _: [])
+    monkeypatch.setattr(context, "get_approved_policy", lambda *args: [])
+    monkeypatch.setattr(context, "get_delivery_attempts", lambda *args: [])
+    monkeypatch.setattr(context, "get_latest_successful_dq_run_for_dataset_version_file", lambda _: None)
+    monkeypatch.setattr(context, "get_dataset_profile_summary", lambda _: None)
     yield TestClient(app)
     app.dependency_overrides.pop(get_current_user, None)
 
@@ -156,9 +160,10 @@ def test_repeated_bronze_uses_non_regressing_initializer(monkeypatch, status):
 def test_public_state_reports_real_silver_prerequisites(scope, monkeypatch):
     monkeypatch.setattr(context, "get_upload_processing_association", lambda *args: (60, 50, 30, "READY_FOR_SILVER", 1, 3, 3, False, 3))
     monkeypatch.setattr(context, "get_active_business_rules_for_dataset_version", lambda _: [(1,)])
+    monkeypatch.setattr(context, "get_approved_policy", lambda *args: [(1,)])
     result = scope.get("/files/uploads/40/processing-context").json()
     assert result["rule_version"] == 3 and result["silver_can_proceed"] is True
-    assert "valid_rows" not in result
+    assert result["valid_rows"] is None
 
 
 def test_rule_mutation_rejects_stale_version(scope, monkeypatch):

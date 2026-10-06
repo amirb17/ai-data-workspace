@@ -4,8 +4,20 @@ from app.api.identity import get_current_user
 from app.db.workspace_repository import create_workspace, get_workspace_by_id, list_workspaces_by_owner
 from app.db.dataset_repository import get_datasets_by_workspace, get_dataset_by_workspace
 from app.services.dataset_service import get_or_create_dataset
+from app.services.dataset_processing_service import read_dataset_processing, process_pending
+from app.api.processing_errors import public_call
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
+
+
+@router.get("/{workspace_id}/datasets/{dataset_id}/processing")
+def dataset_processing_endpoint(workspace_id: int, dataset_id: int, user: dict = Depends(get_current_user)):
+    return public_call(lambda: read_dataset_processing(workspace_id, dataset_id, user))
+
+
+@router.post("/{workspace_id}/datasets/{dataset_id}/processing/pending")
+def process_pending_endpoint(workspace_id: int, dataset_id: int, user: dict = Depends(get_current_user)):
+    return public_call(lambda: process_pending(workspace_id, dataset_id, user))
 
 
 class WorkspaceCreateRequest(BaseModel):

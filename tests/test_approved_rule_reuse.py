@@ -110,7 +110,7 @@ def test_nonapproved_or_stale_rules_not_reused(deliveries, failure):
     if failure == "stale":
         historical = context.read_processing_context(first_upload, pg[1], pg[2], pg[3])
         assert historical["rule_version"] == 1 and historical["current_rule_version"] == 2
-        assert historical["silver_can_proceed"] is False
+        assert historical["silver_can_proceed"] is True  # immutable approved pin survives a newer draft
 
 
 def test_new_profile_question_requires_explicit_review(deliveries):

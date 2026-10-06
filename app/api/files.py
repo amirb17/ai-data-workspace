@@ -8,8 +8,6 @@ from app.services.upload_session_service import initiate_upload_session, complet
 
 from app.services.processing_service import (
     start_processing,
-    run_silver_processing,
-    run_gold_processing,
 )
 from app.services.file_service import (
     register_file,
@@ -18,36 +16,22 @@ from app.services.business_rule_service import (
     get_business_rule_questions,
     submit_business_rule_answers,
     finalize_business_rules,
-    update_business_rule_answer,
 )
 from app.utils.hashing import calculate_file_hash
 from app.schemas.business_rules import (
     BusinessRuleSubmission,
     BusinessRuleUpdate,
 )
-from app.config import S3_BUCKET_NAME
 from app.services.processing_context_service import (
     owned_upload, public_rules, read_processing_context,
-    rule_mutation, StaleRuleVersion,
+    rule_mutation, StaleRuleVersion, owned_rule_context,
 )
+from app.services.delivery_execution_service import continue_processing
+from app.db.database import get_connection
+from app.db.dataset_repository import get_upload_processing_association
 
 
-def _public_call(operation):
-    try:
-        return operation()
-    except PermissionError as exc:
-        raise HTTPException(403, "Processing context access denied") from exc
-    except LookupError as exc:
-        raise HTTPException(404, "Processing context not found") from exc
-    except StaleRuleVersion as exc:
-        raise HTTPException(409, "Rule context changed; reload before continuing") from exc
-    except ValueError as exc:
-        raise HTTPException(400, "Invalid processing context or rule answer") from exc
-    except RuntimeError as exc:
-        raise HTTPException(409, "Processing is unavailable or already active; reload and retry") from exc
-    except Exception as exc:
-        raise HTTPException(503, "Processing service unavailable; reload and retry") from exc
-
+from app.api.processing_errors import public_call as _public_call
 
 class RuleFinalizeRequest(BaseModel):
     expected_rule_version: int | None = Field(default=None, ge=0)
@@ -194,6 +178,25 @@ def process_file(upload_id: int, user: dict = Depends(get_current_user), workspa
 def processing_context(upload_id: int, user: dict = Depends(get_current_user), workspace_id: int | None = None, dataset_id: int | None = None):
     return _public_call(lambda: read_processing_context(upload_id, user, workspace_id, dataset_id))
 
+
+@router.post("/uploads/{upload_id}/continue")
+def continue_file(upload_id: int, user: dict = Depends(get_current_user), workspace_id: int | None = None, dataset_id: int | None = None):
+    return _public_call(lambda: continue_processing(upload_id, user, workspace_id, dataset_id))
+
+
+def _continue_owned_association(association_id, user, workspace_id, dataset_id, stage):
+    context = owned_rule_context(association_id, user, workspace_id, dataset_id)
+    with get_connection() as conn:
+        upload = conn.execute("""SELECT upload_id FROM upload_requests WHERE user_id=%s AND workspace_id=%s
+            AND dataset_id=%s AND file_id=%s AND status='UPLOADED' ORDER BY upload_id DESC LIMIT 1""",
+            (user["user_id"], context[6], context[5], context[2])).fetchone()
+    if not upload:
+        raise PermissionError("Completed owned delivery required")
+    resolved = get_upload_processing_association(context[5], context[2])
+    if resolved is None or resolved[0] != association_id:
+        raise ValueError("Association does not match the authoritative upload context")
+    return continue_processing(upload[0], user, context[6], context[5], stage)
+
 @router.get(
     "/dataset-version-files/{dataset_version_file_id}/business-rules/suggestions"
 )
@@ -237,36 +240,10 @@ def finalize_rules(
 )
 def process_file_silver(
     dataset_version_file_id: int,
+    user: dict = Depends(get_current_user),
+    workspace_id: int | None = None, dataset_id: int | None = None,
 ):
-    try:
-        result = run_silver_processing(
-            dataset_version_file_id=dataset_version_file_id,
-            bucket_name=S3_BUCKET_NAME,
-        )
-
-        return {
-            "message": (
-                "Silver processing completed successfully."
-                if not result["already_processed"]
-                else (
-                    "Silver already processed for the current "
-                    "dataset rule version."
-                )
-            ),
-            **result,
-        }
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        )
-
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail=str(exc),
-        )
+    return _public_call(lambda: _continue_owned_association(dataset_version_file_id, user, workspace_id, dataset_id, "SILVER"))
 @router.patch(
     "/dataset-version-files/"
     "{dataset_version_file_id}/business-rules"
@@ -278,45 +255,16 @@ def update_business_rule(
     workspace_id: int | None = None, dataset_id: int | None = None,
 ):
     def operation():
-        with rule_mutation(dataset_version_file_id, user, request.expected_rule_version, workspace_id, dataset_id):
-            questions = get_business_rule_questions(dataset_version_file_id)["questions"]
-            if not any(q["column_name"] == request.column_name and q["suggested_rule_type"] == request.rule_type
-                       and request.answer in q["options"] for q in questions):
-                raise ValueError("Invalid rule answer")
-            return update_business_rule_answer(dataset_version_file_id, request)
+        # Historical replay and versioned rule editing require a separate explicit flow.
+        owned_rule_context(dataset_version_file_id, user, workspace_id, dataset_id)
+        raise StaleRuleVersion("Historical rule editing is unavailable")
     return _public_call(operation)
 @router.post(
     "/dataset-version-files/{dataset_version_file_id}/gold/process"
 )
 def process_file_gold(
     dataset_version_file_id: int,
+    user: dict = Depends(get_current_user),
+    workspace_id: int | None = None, dataset_id: int | None = None,
 ):
-    try:
-        result = run_gold_processing(
-            dataset_version_file_id=dataset_version_file_id,
-            bucket_name=S3_BUCKET_NAME,
-        )
-
-        return {
-            "message": (
-                "Gold processing completed successfully."
-                if not result["already_processed"]
-                else (
-                    "Gold already processed for this "
-                    "dataset-version-file and Silver/DQ run."
-                )
-            ),
-            **result,
-        }
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        )
-
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail=str(exc),
-        )
+    return _public_call(lambda: _continue_owned_association(dataset_version_file_id, user, workspace_id, dataset_id, "GOLD"))

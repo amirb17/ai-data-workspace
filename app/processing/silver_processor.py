@@ -60,6 +60,7 @@ def process_silver(
     dataset_version_id: int,
     rule_version: int,
     bucket_name: str,
+    approved_rules: list | None = None,
 ):
     # Locate Bronze dataset
 
@@ -87,9 +88,7 @@ def process_silver(
 
     # Load active business rules
 
-    rules = get_active_business_rules_for_dataset_version(
-        dataset_version_id
-    )
+    rules = approved_rules if approved_rules is not None else get_active_business_rules_for_dataset_version(dataset_version_id)
     if not rules:
         raise ValueError(
             f"No active business rules found "

@@ -64,7 +64,7 @@ async function main() {
   const html = renderToStaticMarkup(React.createElement(IngestionBatchCard, { batch, processingStatus: 'AWAITING_RULES' }))
   assert.ok(html.includes('AWAITING RULES'))
   assert.ok(!html.includes('Processing has not started'))
-  assert.equal((html.match(/Unavailable/g) || []).length, 4)
+  assert.equal((html.match(/—/g) || []).length, 6)
   console.log('Explicit answers, approval gating, version guards, scoped APIs, refresh reads, safe errors and truthful batch state passed.')
 }
 main().catch((error) => { console.error(error); process.exitCode = 1 })
