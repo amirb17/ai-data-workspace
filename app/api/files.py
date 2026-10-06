@@ -38,6 +38,10 @@ class RuleFinalizeRequest(BaseModel):
 class FileCompleteRequest(BaseModel):
     upload_request_id: int = Field(gt=0)
 
+class DeliveryArchiveRequest(BaseModel):
+    workspace_id: int = Field(gt=0)
+    dataset_id: int = Field(gt=0)
+
 class FileInitiateRequest(BaseModel):
     user_id: int | None = Field(default=None, gt=0)
     workspace_id: int = Field(gt=0)
@@ -174,6 +178,23 @@ def process_file(upload_id: int, user: dict = Depends(get_current_user), workspa
     return _public_call(operation)
 
 
+@router.post("/uploads/{upload_id}/archive")
+def archive_file_delivery(upload_id: int, request: DeliveryArchiveRequest, user: dict = Depends(get_current_user)):
+    from app.services.delivery_lifecycle_service import archive_delivery, DeliveryArchiveConflict
+    try:
+        return archive_delivery(upload_id, user, request.workspace_id, request.dataset_id)
+    except DeliveryArchiveConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(403, "Delivery access denied") from exc
+    except LookupError as exc:
+        raise HTTPException(404, "Delivery not found") from exc
+    except ValueError as exc:
+        raise HTTPException(400, "Only completed uploads can be removed") from exc
+    except Exception as exc:
+        raise HTTPException(503, "Delivery archive unavailable; retry") from exc
+
+
 @router.get("/uploads/{upload_id}/processing-context")
 def processing_context(upload_id: int, user: dict = Depends(get_current_user), workspace_id: int | None = None, dataset_id: int | None = None):
     return _public_call(lambda: read_processing_context(upload_id, user, workspace_id, dataset_id))
@@ -188,7 +209,7 @@ def _continue_owned_association(association_id, user, workspace_id, dataset_id, 
     context = owned_rule_context(association_id, user, workspace_id, dataset_id)
     with get_connection() as conn:
         upload = conn.execute("""SELECT upload_id FROM upload_requests WHERE user_id=%s AND workspace_id=%s
-            AND dataset_id=%s AND file_id=%s AND status='UPLOADED' ORDER BY upload_id DESC LIMIT 1""",
+            AND dataset_id=%s AND file_id=%s AND status='UPLOADED' AND archived_at IS NULL ORDER BY upload_id DESC LIMIT 1""",
             (user["user_id"], context[6], context[5], context[2])).fetchone()
     if not upload:
         raise PermissionError("Completed owned delivery required")

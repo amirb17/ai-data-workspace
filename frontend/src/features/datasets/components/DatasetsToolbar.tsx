@@ -35,6 +35,7 @@ export function DatasetsToolbar({
         />
 
         <Input
+          aria-label="Search datasets"
           value={search}
           onChange={(event) =>
             onSearchChange(
@@ -47,6 +48,7 @@ export function DatasetsToolbar({
       </div>
 
       <select
+        aria-label="Dataset status filter"
         value={status}
         onChange={(event) =>
           onStatusChange(
@@ -62,21 +64,6 @@ export function DatasetsToolbar({
 
         <option value="ACTIVE">Active</option>
         <option value="ARCHIVED">Archived</option>
-        <option value="READY">
-          Ready
-        </option>
-
-        <option value="PROCESSING">
-          Processing
-        </option>
-
-        <option value="NEEDS_ATTENTION">
-          Needs attention
-        </option>
-
-        <option value="FAILED">
-          Failed
-        </option>
       </select>
     </div>
   )

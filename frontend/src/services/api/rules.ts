@@ -1,6 +1,7 @@
 import { ApiError, backendId, request } from "./client"
 export type ProcessingContext = {
   upload_request_id: number; workspace_id: number; dataset_id: number; file_id: number
+  archived_at?: string | null; archived_by?: number | null
   status: string; dataset_version_file_id: number | null; dataset_version_id: number | null
   dataset_version_number: number | null; rule_version: number | null
   rule_state: "DRAFT" | "FINALIZED" | null; active_rule_count: number; silver_can_proceed: boolean
@@ -17,7 +18,7 @@ export type ProcessingContext = {
 export type RuleAnswer = { column_name: string; rule_type: string; answer: string }
 export type DatasetProcessing = {
   workspace_id: number; dataset_id: number
-  deliveries: { source_file_name: string; created_at: string; context: ProcessingContext }[]
+  deliveries: { source_file_name: string; created_at: string; size_bytes?: number | null; context: ProcessingContext }[]
   summary: { total: number; pending: number; processing: number; awaiting_rules: number; successful: number; failed: number; needs_attention: number }
   operation?: { processed: number; successful: number; needs_attention: number }
 }

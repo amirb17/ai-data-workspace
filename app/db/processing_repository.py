@@ -19,9 +19,9 @@ def get_gold_skip(association_id):
 
 def list_dataset_deliveries(user_id, workspace_id, dataset_id):
     with get_connection() as conn:
-        return conn.execute("""SELECT u.upload_id, COALESCE(u.source_file_name, f.file_name), u.created_at
+        return conn.execute("""SELECT u.upload_id, COALESCE(u.source_file_name, f.file_name), u.created_at, f.file_size
             FROM upload_requests u JOIN physical_files f ON f.file_id=u.file_id
-            WHERE u.user_id=%s AND u.workspace_id=%s AND u.dataset_id=%s AND u.status='UPLOADED'
+            WHERE u.user_id=%s AND u.workspace_id=%s AND u.dataset_id=%s AND u.status='UPLOADED' AND u.archived_at IS NULL
             ORDER BY u.upload_id""", (user_id, workspace_id, dataset_id)).fetchall()
 
 

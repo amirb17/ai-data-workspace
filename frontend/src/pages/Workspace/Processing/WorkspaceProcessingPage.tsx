@@ -1,3 +1,1 @@
-export function WorkspaceProcessingPage() {
-  return <div>Workspace processing</div>
-}
+export function WorkspaceProcessingPage() { return <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5"><h2 className="text-xl font-semibold">Workspace Processing</h2><p className="text-slate-600">Processing runs within each dataset. Open a dataset’s Processing tab to work on pending deliveries. Workspace orchestration is not available yet.</p></section> }

@@ -1,3 +1,1 @@
-export function WorkspaceDataQualityPage() {
-  return <div>Workspace data quality</div>
-}
+export function WorkspaceDataQualityPage() { return <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5"><h2 className="text-xl font-semibold">Workspace Data Quality</h2><p className="text-slate-600">Open a dataset to view its authoritative quality summary. Workspace-wide quality review is coming in a later stage.</p></section> }

@@ -14,7 +14,7 @@ export function DatasetContractColumnRow({ column, isKey, onChange, onKeyChange 
         <span className="sr-only">Data type for {column.name}</span>
         <select className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-2" value={column.dataType}
           onChange={(event) => onChange({ ...column, dataType: event.target.value as DatasetColumnContract["dataType"] })}>
-          {columnDataTypes.map((type) => <option key={type}>{type}</option>)}
+          {columnDataTypes.map((type) => <option key={type} value={type}>{{ STRING: "Text", INTEGER: "Whole number", DECIMAL: "Decimal number", BOOLEAN: "True / false", DATE: "Date", DATETIME: "Date and time" }[type]}</option>)}
         </select>
       </label>
       <label className="flex items-center gap-2 text-sm text-slate-600">

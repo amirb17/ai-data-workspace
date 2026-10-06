@@ -53,6 +53,9 @@ from app.db.processing_repository import get_approved_policy, get_gold_publicati
 from app.db.dataset_repository import get_rule_approval_context
 from app.db.database import repository_transaction
 
+from app.services.delivery_lifecycle_service import active_delivery
+
+@active_delivery
 def start_processing(upload_id: int):
     upload_request = get_upload_request_by_id(upload_id)
 

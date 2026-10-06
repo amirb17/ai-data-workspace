@@ -26,7 +26,7 @@ export function Button({
   return (
     <button
       className={[
-        "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition",
+        "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition",
         "focus:outline-none focus:ring-2 focus:ring-offset-2",
         "disabled:cursor-not-allowed disabled:opacity-50",
         variants[variant],

@@ -3,6 +3,7 @@ import { useRef, useState } from "react"
 
 import { Button } from "../../../components/ui/Button"
 import { Input } from "../../../components/ui/Input"
+import { useDialogFocus } from "../../../components/ui/useDialogFocus"
 
 type CreateWorkspaceDialogProps = {
   open: boolean
@@ -23,6 +24,7 @@ export function CreateWorkspaceDialog({
   const savingRef = useRef(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const dialogRef = useDialogFocus(open, handleClose, saving)
 
   if (!open) {
     return null
@@ -73,7 +75,8 @@ export function CreateWorkspaceDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
       <div
-        className="w-full max-w-lg rounded-2xl bg-white shadow-xl"
+        ref={dialogRef}
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-workspace-title"
@@ -96,7 +99,7 @@ export function CreateWorkspaceDialog({
           <button
             type="button"
             disabled={saving} onClick={handleClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
             aria-label="Close"
           >
             <X size={18} />
@@ -117,6 +120,8 @@ export function CreateWorkspaceDialog({
 
             <Input
               id="workspace-name"
+              aria-invalid={!!error}
+              aria-describedby={error ? "workspace-create-error" : undefined}
               value={name}
               onChange={(event) => {
                 setName(event.target.value)
@@ -127,7 +132,6 @@ export function CreateWorkspaceDialog({
               }}
               placeholder="e.g. Sales Analytics"
               disabled={saving}
-              autoFocus
             />
 
             <p className="mt-2 text-xs text-slate-500">
@@ -141,7 +145,7 @@ export function CreateWorkspaceDialog({
               htmlFor="workspace-description"
               className="mb-2 block text-sm font-medium text-slate-700"
             >
-              Description
+              Description (optional)
             </label>
 
             <textarea
@@ -158,7 +162,7 @@ export function CreateWorkspaceDialog({
           </div>
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p id="workspace-create-error" role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
             </p>
           )}
@@ -173,7 +177,7 @@ export function CreateWorkspaceDialog({
             </Button>
 
             <Button type="submit" disabled={saving}>
-              Create Workspace
+              {saving ? "Creating…" : "Create Workspace"}
             </Button>
           </div>
         </form>

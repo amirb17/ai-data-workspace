@@ -73,6 +73,7 @@ def test_two_pending_reuse_separate_identities_skip_success_and_repeat(pipeline)
     db = pipeline[0]
     initial = datasets.read_dataset_processing(db[2], db[3], db[1])
     assert initial["summary"]["pending"] == 2
+    assert all(d["size_bytes"] > 0 for d in initial["deliveries"])
     result = pending(pipeline)
     assert result["operation"] == {"processed": 2, "successful": 2, "needs_attention": 0,
         "outcomes": [{"upload_request_id": pipeline[2], "status": "SUCCESS", "needs_attention": False},

@@ -1,6 +1,6 @@
 import { useCallback } from "react"
 import { NavLink, Outlet, useLocation, useOutletContext, useParams } from "react-router-dom"
-import { Badge } from "../../components/ui/Badge"
+import { StatusBadge } from "../../components/ui/StatusBadge"
 import { getDataset } from "../../services/api/datasets"
 import { useApiResource } from "../../services/api/useApiResource"
 import { ApiFeedback } from "../../components/ui/ApiFeedback"
@@ -20,14 +20,14 @@ export function DatasetDetailPage() {
   const { pathname } = useLocation()
   const load = useCallback((signal: AbortSignal) => getDataset(workspaceId, datasetId, signal), [workspaceId, datasetId])
   const resource = useApiResource(`dataset:${workspaceId}:${datasetId}`, load)
-  if (!resource.data) return <ApiFeedback error={resource.error} retry={resource.retry} />
+  if (!resource.data) return <ApiFeedback error={resource.error ? "Dataset not found or unavailable. It may not belong to this workspace." : undefined} retry={resource.retry} loading="Loading dataset…" backTo={`/app/workspaces/${workspaceId}`} backLabel="Back to Workspace" />
   const dataset = resource.data
   const current = pathname.slice(`/app/workspaces/${workspaceId}/datasets/${datasetId}`.length).split("/").filter(Boolean)[0] ?? ""
   const section = tabs.find(tab => tab.to === current)?.label ?? "Overview"
   return <div className="min-w-0 space-y-5">
     <DatasetBreadcrumbs workspaceId={workspaceId} datasetId={datasetId} workspaceName={workspace.name} datasetName={dataset.name} section={section} />
     <header className="space-y-2">
-      <div className="flex flex-wrap items-center gap-3"><h1 className="break-words text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl [overflow-wrap:anywhere]">{dataset.name}</h1><Badge variant="neutral">{dataset.status.toLowerCase().replaceAll("_", " ")}</Badge></div>
+      <div className="flex flex-wrap items-center gap-3"><h1 className="break-words text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl [overflow-wrap:anywhere]">{dataset.name}</h1><StatusBadge status={dataset.status} /></div>
       {dataset.description && <p className="max-w-3xl break-words text-sm leading-6 text-slate-600">{dataset.description}</p>}
     </header>
     <nav aria-label="Dataset sections" className="flex flex-wrap gap-x-4 gap-y-1 border-b border-slate-200">

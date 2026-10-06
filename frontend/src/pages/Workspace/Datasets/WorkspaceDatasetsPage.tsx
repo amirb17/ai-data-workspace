@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from "react"
-import { useOutletContext, useParams } from "react-router-dom"
+import { useOutletContext, useParams, useSearchParams } from "react-router-dom"
 
 import { CreateDatasetDialog } from "../../../features/datasets/components/CreateDatasetDialog"
 import { listDatasets, createDataset } from "../../../services/api/datasets"
@@ -27,6 +27,7 @@ export function WorkspaceDatasetsPage() {
 }
 
 function WorkspaceDatasetsContent() {
+  const [params, setParams] = useSearchParams()
   const { onDatasetsChanged } = useOutletContext<{ onDatasetsChanged: () => void }>()
   const { workspaceId } =
     useParams()
@@ -43,7 +44,7 @@ function WorkspaceDatasetsContent() {
 
 
 const [createOpen, setCreateOpen] =
-  useState(false)
+  useState(params.get("create") === "1")
 
 
   const filteredDatasets =
@@ -102,7 +103,7 @@ const [createOpen, setCreateOpen] =
         onClick={() => setCreateOpen(true)}
         >
         <Plus size={17} />
-        New Dataset
+        Add Dataset
         </Button>
       </section>
 
@@ -114,12 +115,13 @@ const [createOpen, setCreateOpen] =
       />
 
       <DatasetList
+        filtered={!!search.trim() || status !== "ALL"}
         datasets={filteredDatasets}
         workspaceId={workspaceId ?? ""}
       />
       <CreateDatasetDialog
         open={createOpen}
-        onClose={() => setCreateOpen(false)}
+        onClose={() => { setCreateOpen(false); setParams({}) }}
         onCreate={handleCreateDataset}
         />
     </div>

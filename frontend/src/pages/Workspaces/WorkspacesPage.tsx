@@ -47,7 +47,7 @@ export function WorkspacesPage() {
     await createWorkspace(input)
     resource.retry()
   }
-  if (!resource.data) return <ApiFeedback error={resource.error} retry={resource.retry} />
+  if (!resource.data) return <ApiFeedback error={resource.error} retry={resource.retry} loading="Loading workspaces…" />
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">
@@ -60,7 +60,7 @@ export function WorkspacesPage() {
             onClick={() => setCreateOpen(true)}
             >
             <Plus size={17} />
-            New Workspace
+            Create Workspace
         </Button>
         }
       />
@@ -73,6 +73,7 @@ export function WorkspacesPage() {
           />
 
           <Input
+            aria-label="Search workspaces"
             value={search}
             onChange={(event) =>
               setSearch(
@@ -99,11 +100,11 @@ export function WorkspacesPage() {
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
           <h2 className="text-base font-semibold text-slate-900">
-            No workspaces found
+            {workspaces.length ? "No workspaces match your search" : "No workspaces yet"}
           </h2>
 
           <p className="mt-2 text-sm text-slate-500">
-            Try a different search.
+            {workspaces.length ? "Try a different search." : "Create a workspace to organize related datasets and analytics. Use Create Workspace above to begin."}
           </p>
         </div>
       )}

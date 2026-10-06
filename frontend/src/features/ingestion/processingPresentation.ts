@@ -15,7 +15,8 @@ export function deliveryStatus(c: ProcessingContext) {
   if (c.status === "AWAITING_RULES") return { label: "Rules need your review", variant: "warning" as const }
   if (c.status.endsWith("_FAILED")) return { label: c.status === "GOLD_FAILED" ? "Gold publication failed" : "Processing needs attention", variant: "error" as const }
   if (c.status.endsWith("_PROCESSING")) return { label: "Processing", variant: "processing" as const }
-  if (["READY_TO_PROCESS", "READY_FOR_SILVER", "READY_FOR_GOLD"].includes(c.status)) return { label: "Ready to process", variant: "neutral" as const }
+  if (c.status === "READY_TO_PROCESS") return { label: "Ready to process", variant: "neutral" as const }
+  if (["READY_FOR_SILVER", "READY_FOR_GOLD"].includes(c.status)) return { label: "Ready to continue", variant: "neutral" as const }
   return { label: "State unavailable", variant: "neutral" as const }
 }
 export function overviewWarnings(data: DatasetProcessing) {

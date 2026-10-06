@@ -2,6 +2,14 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
+from contextlib import nullcontext
+from app.services import delivery_lifecycle_service as lifecycle
+
+@pytest.fixture(autouse=True)
+def lifecycle_stubs(monkeypatch):
+    # This suite isolates the API bridge; real lifecycle locks are exercised in PG tests.
+    monkeypatch.setattr(lifecycle, "lifecycle_lock", lambda _: nullcontext())
+    monkeypatch.setattr(lifecycle, "archive_state", lambda _: (None, None))
 from fastapi.testclient import TestClient
 
 from app.main import app

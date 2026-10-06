@@ -267,7 +267,7 @@ export function AppShell({
               </p>
 
               <p className="text-xs text-slate-500">
-                Development user #{user.userId}
+                Development session
               </p>
             </div>
 

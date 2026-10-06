@@ -21,7 +21,7 @@ export function DatasetContractForm({ initialContract, onSave, onCancel }: Props
       if (validationError) return
       try { onSave(contract) } catch (error) { setSaveError(error instanceof Error ? error.message : "Unable to save contract.") }
     }}>
-      <p className="text-sm text-slate-600">Configure {contract.datasetName}. Column names and order are preserved. Key columns are always required.</p>
+      <p className="text-sm text-slate-600">Configure {contract.datasetName}. The business key uniquely identifies a record. Key columns are always required.</p>
       <div className="space-y-2">
         {contract.columns.map((column, index) => <DatasetContractColumnRow key={column.name} column={column}
           isKey={contract.primaryKey.includes(column.name)}
@@ -41,11 +41,11 @@ export function DatasetContractForm({ initialContract, onSave, onCancel }: Props
         <label className="space-y-2 text-sm font-medium text-slate-700">Schema evolution policy
           <select className="block min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3" value={contract.schemaEvolutionPolicy}
             onChange={(event) => setContract({ ...contract, schemaEvolutionPolicy: event.target.value as DatasetContract["schemaEvolutionPolicy"] })}>
-            {schemaEvolutionPolicies.map((policy) => <option key={policy}>{policy}</option>)}
+            {schemaEvolutionPolicies.map((policy) => <option key={policy} value={policy}>{policy === "STRICT" ? "Exact structure required" : "Allow additional columns with warnings"}</option>)}
           </select>
         </label>
       </div>
-      <p className="text-sm text-slate-500">UPSERT requires a business key. STRICT blocks extra columns; ALLOW_ADDITIVE warns without changing the contract. Saving does not start processing.</p>
+      <p className="text-sm text-slate-500">UPSERT requires a business key. Exact structure blocks extra columns; allowing additional columns produces warnings without changing the contract. Saving does not start processing.</p>
       {(validationError || saveError) && <p role="alert" className="text-sm text-red-700">{validationError || saveError}</p>}
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>

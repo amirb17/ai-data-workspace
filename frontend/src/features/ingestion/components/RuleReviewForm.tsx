@@ -45,7 +45,7 @@ export function RuleReviewForm({ workspaceId, datasetId, associationId, onChange
       {!review.rules_reused && <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submit(false) }}>
         {review.questions.map((q, index) => <div key={questionKey(q)} className="space-y-2 border-b border-slate-100 pb-4">
           <label htmlFor={`rule-answer-${associationId}-${index}`} className="block break-words font-medium text-slate-900">{q.question}</label>
-          <p className="break-words text-xs text-slate-500">Column: {q.column_name} · {q.suggested_rule_type}</p>
+          <p className="break-words text-xs text-slate-500">Column: {q.column_name}</p>
           {q.reason && <p id={`rule-help-${associationId}-${index}`} className="break-words text-sm text-slate-600">{q.reason}</p>}
           <select id={`rule-answer-${associationId}-${index}`} aria-describedby={q.reason ? `rule-help-${associationId}-${index}` : undefined} className="min-h-11 w-full rounded-lg border border-slate-300 bg-white p-2 sm:max-w-sm" required disabled={busy || review.rule_state === "FINALIZED"} value={answers[questionKey(q)] ?? ""} onChange={(event) => { setAnswers({ ...answers, [questionKey(q)]: event.target.value }); setDirty(true); setMessage("") }}>
             <option value="">Choose an answer</option>
@@ -57,7 +57,7 @@ export function RuleReviewForm({ workspaceId, datasetId, associationId, onChange
           <button type="button" className="min-h-11 rounded-lg border border-indigo-300 px-4 text-indigo-700 disabled:opacity-50" disabled={!canFinalize(review, answers, dirty, busy)} onClick={() => void submit(true)}>Finalize / Approve Rules</button>
         </div>}
       </form>}
-      {requiresRuleApproval(review) && <p className="text-sm text-slate-600">Save all answers before approval. At least one answer must activate a rule required by Silver; no choices are made automatically.</p>}
+      {requiresRuleApproval(review) && <p className="text-sm text-slate-600">These decisions affect future compatible deliveries. Save all answers before approval. At least one answer must activate a validation rule; no choices are made automatically.</p>}
     </>}
     <button className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm" disabled={busy} onClick={reload}>Reload Rules</button>
   </section>

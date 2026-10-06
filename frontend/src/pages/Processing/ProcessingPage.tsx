@@ -1,9 +1,2 @@
-export function ProcessingPage() {
-  return (
-    <div>
-      <h1 className="text-3xl font-semibold text-slate-950">
-        Processing
-      </h1>
-    </div>
-  )
-}
+import { Link } from "react-router-dom"
+export function ProcessingPage() { return <section className="space-y-4"><h1 className="text-3xl font-semibold">Processing</h1><p className="max-w-2xl text-slate-600">Processing runs within each dataset. Choose a workspace, open a dataset, then process pending deliveries.</p><Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-white" to="/app/workspaces">View Workspaces</Link></section> }

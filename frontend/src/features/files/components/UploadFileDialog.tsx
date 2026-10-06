@@ -10,6 +10,9 @@ import {
 } from "react"
 
 import { Button } from "../../../components/ui/Button"
+import { Link } from "react-router-dom"
+import { useDialogFocus } from "../../../components/ui/useDialogFocus"
+import { DeliverySteps } from "./DeliverySteps"
 import type { CsvInspectionResult, DatasetFile } from "../types"
 import { createUploadWorkflow, type UploadFeedback } from "../uploadWorkflow"
 import { useCurrentUser } from "../../../services/identityContext"
@@ -105,6 +108,7 @@ export function UploadFileDialog({
 
   const [inspecting, setInspecting] =
     useState(false)
+  const dialogRef = useDialogFocus(open, handleClose, busy)
 
   useEffect(() => {
     if (!inspection) return
@@ -291,6 +295,7 @@ export function UploadFileDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="upload-file-title"
@@ -302,18 +307,18 @@ export function UploadFileDialog({
               id="upload-file-title"
               className="text-lg font-semibold text-slate-950"
             >
-              Upload File
+              Add Delivery
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Inspect the file before adding it to this dataset.
+              Inspect a CSV before adding a delivery to {datasetName}.
             </p>
           </div>
 
           <button
             type="button"
             disabled={busy} onClick={handleClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
             aria-label="Close"
           >
             <X size={18} />
@@ -321,6 +326,7 @@ export function UploadFileDialog({
         </div>
 
         <div className="space-y-5 p-5">
+          <DeliverySteps state={uploadFeedback.state} configuring={configuring} inspected={!!inspection} inspecting={inspecting} />
           {configuring && inspection && (
             <section aria-labelledby="contract-setup-title" className="space-y-4">
               <h3 id="contract-setup-title" tabIndex={-1} ref={(element) => element?.focus()} className="text-lg font-semibold text-slate-950">Configure Dataset Contract</h3>
@@ -382,11 +388,11 @@ export function UploadFileDialog({
             {uploadFeedback.state === "INITIATING" && "Preparing upload…"}
             {uploadFeedback.state === "UPLOADING" && "Uploading to secure storage…"}
             {uploadFeedback.state === "COMPLETING" && "Finalizing upload…"}
-            {uploadFeedback.state === "SUCCESS" && (uploadFeedback.isDuplicate ? "Upload complete. Existing physical file reused. Processing has not started." : "Upload complete. Processing has not started.")}
+            {uploadFeedback.state === "SUCCESS" && "Delivery added. Ready to process. Processing has not started."}
           </div>
           {uploadFeedback.error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{uploadFeedback.error}</p>}
           {error && (
-            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           )}
@@ -533,11 +539,11 @@ export function UploadFileDialog({
 
               <section className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
                 <p className="text-sm font-semibold text-indigo-900">
-                  Inspection complete
+                  {uploadFeedback.state === "SUCCESS" ? "Delivery ready" : "Inspection complete"}
                 </p>
 
                 <p className="mt-1 text-sm leading-6 text-indigo-700">
-                  Schema comparison is complete. Accepting uploads this CSV to secure storage. After backend confirmation, one ingestion batch is ready for future processing.
+                  {uploadFeedback.state === "SUCCESS" ? "Your delivery is available in Files. Continue to Processing when you are ready." : "Review compatibility, then upload this CSV. Your delivery will be ready to process after upload confirmation."}
                 </p>
               </section>
             </div>
@@ -545,6 +551,7 @@ export function UploadFileDialog({
         </div>
 
         {!configuring && <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-end">
+          {uploadFeedback.state === "SUCCESS" && <Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-white" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/processing`} onClick={handleClose}>Go to Processing</Link>}
           <Button
             type="button"
             variant="secondary"
@@ -569,7 +576,7 @@ export function UploadFileDialog({
       {uploadFeedback.state === "FAILED" ? "Retry Upload" : busy ? "Uploading…" : schemaMatch.status ===
         "NO_CONTRACT"
         ? "Configure Dataset Contract"
-        : "Accept File"}
+        : "Upload Delivery"}
     </Button>
   )}
         </div>}

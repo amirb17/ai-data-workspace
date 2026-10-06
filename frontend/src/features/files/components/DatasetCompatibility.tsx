@@ -30,7 +30,7 @@ export function DatasetCompatibility({ schemaMatch }: { schemaMatch: SchemaMatch
         "NO_CONTRACT" && (
         <div className="rounded-lg bg-blue-50 p-4">
           <p className="text-sm font-semibold text-blue-900">
-            No dataset contract yet
+            No contract configured
           </p>
 
           <p className="mt-1 text-sm leading-6 text-blue-700">
@@ -43,7 +43,7 @@ export function DatasetCompatibility({ schemaMatch }: { schemaMatch: SchemaMatch
         "MATCH" && (
         <div className="rounded-lg bg-green-50 p-4">
           <p className="text-sm font-semibold text-green-800">
-            Schema matches
+            Compatible
           </p>
 
           <p className="mt-1 text-sm text-green-700">
@@ -69,11 +69,11 @@ export function DatasetCompatibility({ schemaMatch }: { schemaMatch: SchemaMatch
         "BREAKING" && (
         <div className="rounded-lg bg-red-50 p-4">
           <p className="text-sm font-semibold text-red-800">
-            Breaking schema change
+            Contract mismatch
           </p>
 
           <p className="mt-1 text-sm text-red-700">
-            Required or key columns are missing, or additional columns violate the STRICT policy. This file cannot be accepted.
+            Required or key columns are missing, or the contract does not allow additional columns. This delivery cannot be added.
           </p>
         </div>
       )}
@@ -82,7 +82,7 @@ export function DatasetCompatibility({ schemaMatch }: { schemaMatch: SchemaMatch
         "WRONG_DATASET_LIKELY" && (
         <div className="rounded-lg bg-red-50 p-4">
           <p className="text-sm font-semibold text-red-800">
-            This may be the wrong dataset
+            This file may belong to another dataset
           </p>
 
           <p className="mt-1 text-sm leading-6 text-red-700">

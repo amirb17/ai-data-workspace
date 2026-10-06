@@ -1,106 +1,24 @@
-import {
-  Database,
-  FileCheck2,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react"
-
+import { Link, useParams } from "react-router-dom"
+import { useDatasetSummary } from "../../../features/datasets/useDatasetSummary"
+import { datasetGuidance } from "../../../features/datasets/datasetGuidance"
+import { getDatasetContract } from "../../../features/datasets/contracts/storage"
+import { ApiFeedback } from "../../../components/ui/ApiFeedback"
+import { StatusBadge } from "../../../components/ui/StatusBadge"
+import { deliveryStatus, overviewAttention, terminalDelivery, countLabel } from "../../../features/ingestion/processingPresentation"
 export function DatasetOverviewPage() {
-  return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.7fr)]">
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-            <Database size={19} />
-          </div>
-
-          <div>
-            <h2 className="text-lg font-semibold text-slate-950">
-              Dataset Overview
-            </h2>
-
-            <p className="text-sm text-slate-500">
-              Summary of the current dataset state.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-            <FileCheck2
-              size={18}
-              className="text-green-600"
-            />
-
-            <p className="mt-3 text-sm font-medium text-slate-900">
-              Latest File
-            </p>
-
-            <p className="mt-1 text-xs text-slate-500">
-              File information will appear here.
-            </p>
-          </div>
-
-          <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-            <ShieldCheck
-              size={18}
-              className="text-indigo-600"
-            />
-
-            <p className="mt-3 text-sm font-medium text-slate-900">
-              Data Quality
-            </p>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Validation summary will appear here.
-            </p>
-          </div>
-
-          <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-            <Sparkles
-              size={18}
-              className="text-amber-500"
-            />
-
-            <p className="mt-3 text-sm font-medium text-slate-900">
-              Analytics
-            </p>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Analytics readiness will appear here.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-slate-950">
-          Workflow
-        </h2>
-
-        <div className="mt-5 space-y-4 text-sm">
-          {[
-            "Upload",
-            "Validate",
-            "Process",
-            "Review Quality",
-            "Explore Analytics",
-          ].map((step, index) => (
-            <div
-              key={step}
-              className="flex items-center gap-3"
-            >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
-                {index + 1}
-              </div>
-
-              <span className="text-slate-700">
-                {step}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  )
+  const { workspaceId = "", datasetId = "" } = useParams()
+  const resource = useDatasetSummary()
+  let configured = false, contractError = ""
+  try { configured = !!getDatasetContract(workspaceId, datasetId) } catch { contractError = "Contract settings could not be read in this browser." }
+  if (!resource.data) return <ApiFeedback error={resource.error} retry={resource.retry} loading="Loading dataset overview…" />
+  const data = resource.data, latest = data.deliveries.at(-1), next = datasetGuidance(data, configured)
+  const lastProcessed = data.deliveries.slice().reverse().find(d => terminalDelivery(d.context))
+  const base = `/app/workspaces/${workspaceId}/datasets/${datasetId}`
+  return <section className="space-y-5"><h2 className="text-xl font-semibold">Dataset Overview</h2>
+    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-5"><p className="text-slate-600">{contractError || next.message}</p><Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-white" to={base + "/" + (contractError ? "contract" : next.section)}>{contractError ? "Review Contract" : next.label}</Link></div>
+    <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["Deliveries",data.summary.total],["Pending",data.summary.pending],["Rules need review",data.summary.awaiting_rules],["Needs attention",overviewAttention(data)]].map(([label,value]) => <div className="rounded-xl border border-slate-200 bg-white p-4" key={label}><dt className="text-sm text-slate-500">{label}</dt><dd className="mt-2 text-xl font-semibold">{value}</dd></div>)}</dl>
+    <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5"><h3 className="font-semibold">Dataset Contract</h3><StatusBadge status={contractError ? "UNAVAILABLE" : configured ? "CONFIGURED" : "NO_CONTRACT"} /><p className="text-sm text-slate-600">Contract settings are saved in this browser during the current prototype.</p></section>
+    <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5"><h3 className="font-semibold">Latest delivery</h3>{latest ? <><p className="break-words font-medium">{latest.source_file_name}</p><p>{deliveryStatus(latest.context).label}</p><p className="text-sm text-slate-600">{latest.context.rule_state === "FINALIZED" ? `Approved Rule Version ${latest.context.rule_version}${latest.context.rules_reused ? " reused" : ""}` : latest.context.status === "AWAITING_RULES" ? "Rules need review" : "Rules not yet approved"}</p></> : <p className="text-sm text-slate-600">No deliveries yet. Add a CSV to begin.</p>}</section>
+    <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5"><h3 className="font-semibold">Last completed processing</h3>{lastProcessed ? <><p className="break-words font-medium">{lastProcessed.source_file_name}</p><p>{deliveryStatus(lastProcessed.context).label}</p><p className="text-sm text-slate-600">{countLabel(lastProcessed.context.valid_rows)} valid · {countLabel(lastProcessed.context.rejected_rows)} quarantined · {countLabel(lastProcessed.context.output_rows)} published</p></> : <p className="text-sm text-slate-600">No completed processing yet. Follow your deliveries in Processing.</p>}</section>
+  </section>
 }

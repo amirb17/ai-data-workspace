@@ -1,3 +1,1 @@
-export function WorkspaceAnalyticsPage() {
-  return <div>Workspace analytics</div>
-}
+export function WorkspaceAnalyticsPage() { return <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5"><h2 className="text-xl font-semibold">Workspace Analytics</h2><p className="text-slate-600">Open a dataset to check its processing output and analytics readiness. Cross-dataset analytics will be available in a later stage.</p></section> }

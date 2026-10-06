@@ -76,6 +76,8 @@ def public_rules(association_id, user, workspace_id=None, dataset_id=None):
 
 def read_processing_context(upload_id, user, workspace_id=None, dataset_id=None):
     upload = owned_upload(upload_id, user, workspace_id, dataset_id)
+    from app.services.delivery_lifecycle_service import archive_state
+    archived_at, archived_by = archive_state(upload_id)
     association = get_upload_processing_association(upload[4], upload[2])
     active = get_active_processing_attempt(upload[2])
     status = association[3] if association else "READY_TO_PROCESS"
@@ -107,6 +109,7 @@ def read_processing_context(upload_id, user, workspace_id=None, dataset_id=None)
     return {
         "upload_request_id": upload[0], "workspace_id": upload[3], "dataset_id": upload[4],
         "file_id": upload[2], "status": status,
+        "archived_at": archived_at, "archived_by": archived_by,
         "dataset_version_file_id": association[0] if association else None,
         "dataset_version_id": association[1] if association else None,
         "dataset_version_number": association[4] if association else None,
@@ -115,8 +118,8 @@ def read_processing_context(upload_id, user, workspace_id=None, dataset_id=None)
         "rules_reused": association[7] if association else False,
         "rule_state": rule_state(association[3]) if association else None,
         "active_rule_count": active_count,
-        "silver_can_proceed": status in ("READY_FOR_SILVER", "SILVER_FAILED") and bool(policy),
-        "can_continue": status in ("READY_FOR_SILVER", "SILVER_FAILED", "READY_FOR_GOLD", "GOLD_FAILED")
+        "silver_can_proceed": archived_at is None and status in ("READY_FOR_SILVER", "SILVER_FAILED") and bool(policy),
+        "can_continue": archived_at is None and status in ("READY_FOR_SILVER", "SILVER_FAILED", "READY_FOR_GOLD", "GOLD_FAILED")
                         and bool(policy),
         "stages": {"bronze": "SUCCESS" if association else stages.get("BRONZE", "PENDING"),
                    "rules": rule_state(status) if association else "PENDING",

@@ -1,9 +1,2 @@
-export function DataQualityPage() {
-  return (
-    <div>
-      <h1 className="text-3xl font-semibold text-slate-950">
-        Data Quality
-      </h1>
-    </div>
-  )
-}
+import { Link } from "react-router-dom"
+export function DataQualityPage() { return <section className="space-y-4"><h1 className="text-3xl font-semibold">Data Quality</h1><p className="max-w-2xl text-slate-600">Choose a workspace and dataset to review the current processing quality summary. Detailed correction and replay are coming later.</p><Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-white" to="/app/workspaces">View Workspaces</Link></section> }

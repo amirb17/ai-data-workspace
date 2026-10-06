@@ -11,6 +11,8 @@ TERMINAL = {"SUCCESS", "SUCCESS_WITH_WARNINGS"}
 
 
 def eligible(context):
+    if context.get("archived_at"):
+        return False
     return context["status"] == "READY_TO_PROCESS" or (
         context["status"] in ELIGIBLE and context["can_continue"])
 
@@ -31,7 +33,7 @@ def dataset_lock(workspace_id, dataset_id):
 
 def read_dataset_processing(workspace_id, dataset_id, user):
     validate_scope(user, workspace_id, dataset_id)
-    deliveries = [{"source_file_name": row[1], "created_at": row[2],
+    deliveries = [{"source_file_name": row[1], "created_at": row[2], "size_bytes": row[3],
                    "context": read_processing_context(row[0], user, workspace_id, dataset_id)}
                   for row in list_dataset_deliveries(user["user_id"], workspace_id, dataset_id)]
     states = [d["context"] for d in deliveries]

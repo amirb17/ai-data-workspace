@@ -30,6 +30,7 @@ import { DatasetAnalyticsPage } from "./pages/Dataset/Analytics/DatasetAnalytics
 import { DatasetHistoryPage } from "./pages/Dataset/History/DatasetHistoryPage"
 
 import { IdentityBootstrap } from "./components/layout/IdentityBootstrap"
+import { NotFoundPage } from "./components/ui/NotFoundPage"
 
 function AppLayout() {
   return (
@@ -135,6 +136,7 @@ function AppLayout() {
           element={<WorkspaceAnalyticsPage />}
         />
       </Route>
+        <Route path="*" element={<NotFoundPage />} />
             </Routes>
     </AppShell></IdentityBootstrap>
   )

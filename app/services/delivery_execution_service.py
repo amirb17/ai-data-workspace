@@ -46,6 +46,9 @@ def guarded_delivery(operation):
     return guarded
 
 
+from app.services.delivery_lifecycle_service import active_delivery
+
+@active_delivery
 def continue_processing(upload_id, user, workspace_id=None, dataset_id=None, stage=None):
     from app.config import S3_BUCKET_NAME
     from app.services.processing_context_service import owned_upload, owned_rule_context, read_processing_context

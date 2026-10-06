@@ -3,6 +3,7 @@ import { useRef, useState } from "react"
 
 import { Button } from "../../../components/ui/Button"
 import { Input } from "../../../components/ui/Input"
+import { useDialogFocus } from "../../../components/ui/useDialogFocus"
 
 type CreateDatasetDialogProps = {
   open: boolean
@@ -23,6 +24,7 @@ export function CreateDatasetDialog({
   const savingRef = useRef(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const dialogRef = useDialogFocus(open, handleClose, saving)
 
   if (!open) {
     return null
@@ -77,10 +79,11 @@ export function CreateDatasetDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-dataset-title"
-        className="w-full max-w-lg rounded-2xl bg-white shadow-xl"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl"
       >
         <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
           <div>
@@ -92,14 +95,14 @@ export function CreateDatasetDialog({
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Add a dataset to this workspace.
+              Create one dataset for one logical type of data, such as Customers or Orders. Monthly files for the same entity belong in the same dataset.
             </p>
           </div>
 
           <button
             type="button"
             disabled={saving} onClick={handleClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
             aria-label="Close"
           >
             <X size={18} />
@@ -120,6 +123,8 @@ export function CreateDatasetDialog({
 
             <Input
               id="dataset-name"
+              aria-invalid={!!error}
+              aria-describedby={error ? "dataset-create-error" : undefined}
               value={name}
               onChange={(event) => {
                 setName(event.target.value)
@@ -130,7 +135,6 @@ export function CreateDatasetDialog({
               }}
               placeholder="e.g. Customer Orders"
               disabled={saving}
-              autoFocus
             />
           </div>
 
@@ -139,7 +143,7 @@ export function CreateDatasetDialog({
               htmlFor="dataset-description"
               className="mb-2 block text-sm font-medium text-slate-700"
             >
-              Description
+              Description (optional)
             </label>
 
             <textarea
@@ -156,7 +160,7 @@ export function CreateDatasetDialog({
           </div>
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p id="dataset-create-error" role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
             </p>
           )}
@@ -171,7 +175,7 @@ export function CreateDatasetDialog({
             </Button>
 
             <Button type="submit" disabled={saving}>
-              Create Dataset
+              {saving ? "Creating…" : "Create Dataset"}
             </Button>
           </div>
         </form>
