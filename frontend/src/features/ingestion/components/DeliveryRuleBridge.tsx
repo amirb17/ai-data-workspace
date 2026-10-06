@@ -32,6 +32,7 @@ export function DeliveryRuleBridge({ batch, workspaceId, datasetId, context, rel
       {context.status === "AWAITING_RULES" && context.dataset_version_file_id && <Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 font-medium text-white" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/rules?upload=${context.upload_request_id}`}>Review Rules</Link>}
       {context.status === "BRONZE_FAILED" && <button className="min-h-11 rounded-lg bg-indigo-600 px-4 font-medium text-white disabled:opacity-50" disabled={busy || datasetBusy} onClick={() => void retry(true)}>{busy ? "Retrying…" : "Retry Bronze"}</button>}
       {action && <button className="min-h-11 rounded-lg bg-indigo-600 px-4 font-medium text-white disabled:opacity-50" disabled={busy || datasetBusy} onClick={() => void retry()}>{busy ? "Processing request active…" : action}</button>}
+      {context.status === "DATASET_UPDATE_BLOCKED" && <Link className="inline-flex min-h-11 items-center rounded-lg border px-4" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/contract`}>Review Contract</Link>}
       {(context.rejected_rows ?? 0) > 0 && <Link className="inline-flex min-h-11 items-center rounded-lg border border-amber-200 px-4 font-medium text-amber-900" to={qualityHref}>View Data Quality</Link>}
     </div>
   </IngestionBatchCard>

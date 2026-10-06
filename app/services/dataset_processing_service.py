@@ -1,12 +1,14 @@
 """Dataset-scoped coordination; deliveries commit independently using existing stages."""
 from contextlib import contextmanager
+from contextvars import ContextVar
 
 from app.db.database import get_connection
 from app.db.processing_repository import list_dataset_deliveries
 from app.services.processing_context_service import validate_scope, read_processing_context
 from app.services.delivery_execution_service import continue_processing, delivery_lock
 
-ELIGIBLE = {"READY_TO_PROCESS", "READY_FOR_SILVER", "READY_FOR_GOLD"}
+ELIGIBLE = {"READY_TO_PROCESS", "READY_FOR_SILVER", "READY_FOR_GOLD", "READY_TO_APPLY"}
+_held_dataset = ContextVar('held_dataset',default=None)
 TERMINAL = {"SUCCESS", "SUCCESS_WITH_WARNINGS"}
 
 
@@ -19,15 +21,20 @@ def eligible(context):
 
 @contextmanager
 def dataset_lock(workspace_id, dataset_id):
+    if _held_dataset.get()==(workspace_id,dataset_id):
+        yield
+        return
     with get_connection() as conn:
         conn.autocommit = True
         namespace = conn.execute("SELECT current_schema()").fetchone()[0]
         key = f"{namespace}:datarise:dataset:{workspace_id}:{dataset_id}"
         if not conn.execute("SELECT pg_try_advisory_lock(hashtextextended(%s, 0))", (key,)).fetchone()[0]:
             raise RuntimeError("Dataset processing is already active")
+        token=_held_dataset.set((workspace_id,dataset_id))
         try:
             yield
         finally:
+            _held_dataset.reset(token)
             conn.execute("SELECT pg_advisory_unlock(hashtextextended(%s, 0))", (key,))
 
 
@@ -43,7 +50,7 @@ def read_dataset_processing(workspace_id, dataset_id, user):
                "successful": sum(c["status"] in TERMINAL for c in states),
                "failed": sum(c["status"].endswith("_FAILED") for c in states),
                "needs_attention": sum(c["status"].endswith("_FAILED") or c["status"] in
-                                      ("AWAITING_RULES", "SUCCESS_WITH_WARNINGS") for c in states)}
+                                      ("AWAITING_RULES", "SUCCESS_WITH_WARNINGS", "DATASET_UPDATE_BLOCKED") for c in states)}
     return {"workspace_id": workspace_id, "dataset_id": dataset_id, "deliveries": deliveries, "summary": summary}
 
 

@@ -34,7 +34,19 @@ const success = {...context,status:'SUCCESS',can_continue:false,valid_rows:3,rej
 const mixed = {...success,valid_rows:2,rejected_rows:1,output_rows:2,quarantine_available:true,issue_summary:[{rule_type:'NOT_NULL',violation_count:1}]}
 const rejected = {...mixed,status:'SUCCESS_WITH_WARNINGS',valid_rows:0,rejected_rows:3,output_rows:0,
   gold_skip_reason:'No valid rows were available for Gold publication.',stages:{...mixed.stages,gold:'SKIPPED'}}
+const append={...success,load_strategy:'APPEND',inserted_rows:2,duplicate_rows:1,incremental_rejected_rows:0,current_state_rows:150,updated_rows:null,stages:{...success.stages,dataset_update:'SUCCESS'}}
+const appendHtml=render(ProcessingResult,{context:append})
+assert.ok(appendHtml.includes('Inserted') && appendHtml.includes('Current Dataset') && appendHtml.includes('150'))
+assert.ok(appendHtml.includes('Updated rows</dt><dd class="mt-1 font-semibold text-slate-950">—'))
+assert.ok(render(ProcessingStages,{context:append}).includes('Dataset Update'))
+const appendCard=render(IngestionBatchCard,{batch,context:{...append,inserted_rows:0,incremental_rejected_rows:2}})
+assert.ok(appendCard.includes('Incremental conflicts') && appendCard.includes('Inserted') && !appendCard.includes('>Published<'))
+const updateFailure={...append,status:'DATASET_UPDATE_FAILED',can_continue:true,error_summary:'Dataset update could not be published. Your validated delivery is safe; the previous trusted dataset version is still active.',stages:{...append.stages,dataset_update:'FAILED'}}
+assert.equal(state.executionAction(updateFailure),'Retry Dataset Update')
+assert.ok(render(ProcessingStages,{context:{...append,status:'DATASET_UPDATE_PROCESSING',stages:{...append.stages,dataset_update:'PROCESSING'}}}).includes('Processing'))
+assert.equal(state.isRunning('DATASET_UPDATE_PROCESSING'),true)
 const bridge = c => render(DeliveryRuleBridge,{batch,context:c,workspaceId:'10',datasetId:'20',reload:()=>{},datasetBusy:false})
+assert.ok(bridge(updateFailure).includes('previous trusted dataset version is still active') && bridge(updateFailure).includes('Retry Dataset Update'))
 async function main() {
   assert.equal(state.executionAction(context),null)
   assert.equal(state.executionAction(success),null)

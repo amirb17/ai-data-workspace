@@ -7,6 +7,7 @@ from app.api.files import router as files_router
 from app.api.analytics import router as analytics_router
 
 from app.api.workspaces import router as workspaces_router
+from app.api.incremental import router as incremental_router
 app = FastAPI(
     title="AI Data Workspace",
     version="0.1.0"
@@ -21,6 +22,7 @@ def development_me(user: dict = Depends(get_current_user)):
 
 app.include_router(files_router)
 app.include_router(workspaces_router)
+app.include_router(incremental_router)
 app.include_router(analytics_router)
 
 @app.get("/health")

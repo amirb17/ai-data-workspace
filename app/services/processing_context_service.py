@@ -106,7 +106,7 @@ def read_processing_context(upload_id, user, workspace_id=None, dataset_id=None)
     if latest and latest[2] in ("FAILED", "CRASHED") and not skip:
         safe_error = {"BRONZE": "Bronze inspection failed.", "SILVER": "Silver validation failed.",
                       "GOLD": "Gold publication failed."}.get(latest[1], "Processing could not be completed.")
-    return {
+    result = {
         "upload_request_id": upload[0], "workspace_id": upload[3], "dataset_id": upload[4],
         "file_id": upload[2], "status": status,
         "archived_at": archived_at, "archived_by": archived_by,
@@ -140,6 +140,8 @@ def read_processing_context(upload_id, user, workspace_id=None, dataset_id=None)
         "issue_summary": [{"rule_type": r[0] if r[0] in ("NOT_NULL", "DATA_TYPE", "ALLOW_NEGATIVE", "UNIQUE", "DUPLICATE", "INVALID_NUMERIC", "INVALID_DATETIME") else "VALIDATION",
                            "violation_count": r[1]} for r in get_delivery_issues(dq[0])] if dq else [],
     }
+    from app.db.incremental_repository import application_context
+    return application_context(result)
 
 
 @contextmanager

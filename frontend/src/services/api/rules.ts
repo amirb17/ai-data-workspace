@@ -1,4 +1,5 @@
 import { ApiError, backendId, request } from "./client"
+import type { DeliveryApplication } from "./incremental"
 export type ProcessingContext = {
   upload_request_id: number; workspace_id: number; dataset_id: number; file_id: number
   archived_at?: string | null; archived_by?: number | null
@@ -7,7 +8,9 @@ export type ProcessingContext = {
   rule_state: "DRAFT" | "FINALIZED" | null; active_rule_count: number; silver_can_proceed: boolean
   rules_reused: boolean; current_rule_version: number | null
   can_continue: boolean
-  stages: { bronze: string; rules: string; silver: string; gold: string }
+  load_strategy?: string; application?: DeliveryApplication | null
+  inserted_rows?: number | null; incremental_rejected_rows?: number | null; current_state_rows?: number | null
+  stages: { bronze: string; rules: string; silver: string; gold: string; dataset_update?: string }
   latest_attempt: { id: number; stage: string; status: string; started_at: string | null; completed_at: string | null } | null
   started_at: string | null; completed_at: string | null; error_summary: string | null
   gold_skip_reason: string | null; column_count: number | null

@@ -1,0 +1,24 @@
+{
+  "workspace_id": 11,
+  "unkeyed_dataset": 14,
+  "keyed_dataset": 15,
+  "delivery_1": 46,
+  "delivery_2": 47,
+  "unkeyed_result": {
+    "first_inserted": 100,
+    "second_inserted": 50,
+    "current_rows": 150,
+    "retry_same_application": true
+  },
+  "keyed_1": 48,
+  "keyed_2": 49,
+  "keyed_conflict": 50,
+  "keyed_result": {
+    "first_rows": 3,
+    "second_inserted": 2,
+    "second_duplicates": 1,
+    "current_rows": 5,
+    "conflicts_rejected": 2,
+    "retry_same_application": true
+  }
+}

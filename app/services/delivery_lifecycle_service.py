@@ -1,6 +1,7 @@
 """Logical delivery archive; never deletes source bytes or execution history."""
 from contextlib import contextmanager
 from functools import wraps
+from contextvars import ContextVar
 
 from app.db.database import get_connection
 
@@ -8,9 +9,14 @@ from app.db.database import get_connection
 class DeliveryArchiveConflict(RuntimeError):
     pass
 
+_held_upload=ContextVar('held_upload',default=None)
+
 
 @contextmanager
 def lifecycle_lock(upload_id):
+    if _held_upload.get()==upload_id:
+        yield
+        return
     # Shared by archive, Bronze and continuation, including pre-association gaps.
     with get_connection() as conn:
         conn.autocommit = True
@@ -18,9 +24,11 @@ def lifecycle_lock(upload_id):
         key = f"{namespace}:datarise:upload-lifecycle:{upload_id}"
         if not conn.execute("SELECT pg_try_advisory_lock(hashtextextended(%s, 0))", (key,)).fetchone()[0]:
             raise DeliveryArchiveConflict("Delivery processing is already active. This delivery cannot be archived yet.")
+        token=_held_upload.set(upload_id)
         try:
             yield
         finally:
+            _held_upload.reset(token)
             conn.execute("SELECT pg_advisory_unlock(hashtextextended(%s, 0))", (key,))
 
 

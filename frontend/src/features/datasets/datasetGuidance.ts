@@ -1,7 +1,8 @@
 import type { DatasetProcessing } from "../../services/api/rules"
 export function datasetGuidance(data: DatasetProcessing, contractConfigured: boolean) {
   if (!data.deliveries.length) return { label: "Add Delivery", section: "files", message: "Add your first CSV delivery to define the expected structure." }
-  if (!contractConfigured) return { label: "Configure Contract", section: "contract", message: "Configure the expected structure for future deliveries." }
+  if (data.deliveries.some(d => d.context.status === "DATASET_UPDATE_BLOCKED")) return { label: "Review Contract", section: "contract", message: "Dataset update requires a compatible APPEND policy. Review the configured schema and strategy." }
+  if (!contractConfigured && !data.deliveries.some(d => d.context.load_strategy)) return { label: "Configure Contract", section: "contract", message: "Configure the expected structure for future deliveries." }
   const awaiting = data.deliveries.find(d => d.context.status === "AWAITING_RULES")
   if (awaiting) return { label: "Review Rules", section: `rules?upload=${awaiting.context.upload_request_id}`, message: "Processing is waiting for your validation decisions." }
   if (data.summary.pending || data.summary.processing || data.summary.failed) return { label: "Go to Processing", section: "processing", message: data.summary.failed ? "Review the delivery that needs attention before retrying." : "Follow pending deliveries through processing." }

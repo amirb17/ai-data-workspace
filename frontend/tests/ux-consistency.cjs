@@ -7,7 +7,7 @@ const { MemoryRouter, Routes, Route, Outlet } = require('react-router-dom')
 for (const extension of ['.ts','.tsx']) require.extensions[extension] = (module, filename) => module._compile(ts.transpileModule(fs.readFileSync(filename,'utf8').replaceAll('import.meta.env','({ VITE_API_BASE_URL:"http://localhost:8000" })'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText,filename)
 const resource = require('../src/services/api/useApiResource.ts')
 let result = {}
-resource.useApiResource = () => ({ ...result,retry:()=>{},loading:!result.data })
+resource.useApiResource = (key) => key.startsWith('incremental:') ? {data:{policies:[],applications:[],schema_versions:[],current_state:null},retry:()=>{},loading:false} : ({ ...result,retry:()=>{},loading:!result.data })
 const storage = new Map()
 global.localStorage = {getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)}
 global.window = {dispatchEvent:()=>{}}
@@ -99,7 +99,7 @@ result={data:done}
 const completedFiles=render(DatasetFilesPage)
 assert.ok(completedFiles.includes('Completed') && completedFiles.includes('>Archive Delivery<') && completedFiles.includes('historical lineage'))
 assert.ok(render(DatasetDataQualityPage).includes('No data-quality issues detected'))
-assert.ok(render(DatasetAnalyticsPage).includes('Trusted processing output is available'))
+assert.ok(render(DatasetAnalyticsPage).includes('Delivery processing output is available'))
 const rejected={...success,status:'SUCCESS_WITH_WARNINGS',valid_rows:0,rejected_rows:2,output_rows:0,stages:{...success.stages,gold:'SKIPPED'}}
 result={data:{...done,deliveries:[{...delivery,context:rejected}]}}
 assert.ok(render(DatasetDataQualityPage).includes('2 quarantined rows') && render(DatasetDataQualityPage).includes('coming in the next stage'))
