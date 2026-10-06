@@ -6,5 +6,6 @@ const labels: [keyof Metrics, string][] = [
 ]
 /** Application metrics only; do not substitute per-file Gold rows for dataset state. */
 export function ApplicationMetrics({ metrics }: { metrics: Metrics }) {
-  return <dl className="grid gap-3 text-sm sm:grid-cols-3">{labels.map(([field,label]) => <div key={field}><dt className="text-slate-500">{label}</dt><dd>{metrics[field]?.toLocaleString() ?? "—"}</dd></div>)}</dl>
+  const fields = [...labels, ...(metrics.conflict_rows != null ? [["conflict_rows","Conflicts"] as [keyof Metrics,string]] : []), ...(metrics.stale_rows != null ? [["stale_rows","Older updates ignored"] as [keyof Metrics,string]] : [])]
+  return <dl className="grid gap-3 text-sm sm:grid-cols-3">{fields.map(([field,label]) => <div key={field}><dt className="text-slate-500">{label}</dt><dd>{metrics[field]?.toLocaleString() ?? "—"}</dd></div>)}</dl>
 }

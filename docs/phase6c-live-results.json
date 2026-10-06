@@ -1,0 +1,30 @@
+{
+  "workspace_id": 12,
+  "customers_dataset": 16,
+  "event_dataset": 17,
+  "customers_1": 51,
+  "customers_2": 52,
+  "customers_conflict": 53,
+  "customers_result": {
+    "first_inserted": 3,
+    "second_inserted": 1,
+    "second_updated": 1,
+    "second_unchanged": 1,
+    "current_rows": 4,
+    "conflicts": 2,
+    "retry_same_application": true
+  },
+  "event_1": 54,
+  "event_late": 55,
+  "event_newer": 56,
+  "event_result": {
+    "older_updates_ignored": 1,
+    "newer_updated": 1,
+    "current_rows": 1
+  },
+  "artifact_verification": {
+    "historical_states_verified": 6,
+    "original_and_update_lineage_verified": true,
+    "stale_record_preserved": true
+  }
+}

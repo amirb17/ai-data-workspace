@@ -2,7 +2,7 @@
 from psycopg.types.json import Jsonb
 import logging
 from app.db.database import repository_transaction
-from app.db.incremental_repository import schema_for_version, policies, foundation
+from app.db.incremental_repository import schema_for_version, policies, foundation,event_columns
 from app.services.processing_context_service import validate_scope
 from app.services.dataset_processing_service import dataset_lock
 
@@ -15,7 +15,7 @@ def read_foundation(workspace_id,dataset_id,user):
     validate_scope(user,workspace_id,dataset_id)
     with repository_transaction() as conn:
         conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
-        return {'workspace_id':workspace_id, 'dataset_id':dataset_id, 'execution_available':True, 'executable_modes':['APPEND'], **foundation(dataset_id)}
+        return {'workspace_id':workspace_id, 'dataset_id':dataset_id, 'execution_available':True, 'executable_modes':['APPEND','UPSERT'], **foundation(dataset_id)}
 
 
 def save_policy(workspace_id,dataset_id,user,request):
@@ -25,7 +25,7 @@ def save_policy(workspace_id,dataset_id,user,request):
         names = {c['name']:c['data_type'] for c in columns}
         if any(key not in names for key in request.business_keys):
             raise ValueError('Business keys must exist in this profiled schema')
-        if request.event_time_column is not None and names.get(request.event_time_column) not in ('DATE','DATETIME'):
+        if request.event_time_column is not None and request.event_time_column not in event_columns(request.dataset_version_id,columns):
             raise ValueError('Event time requires a compatible date/time column')
         current = policies(dataset_id)
         latest = current[-1] if current else None

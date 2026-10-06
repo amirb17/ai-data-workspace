@@ -5,10 +5,11 @@ import { ApiFeedback } from "../../../../components/ui/ApiFeedback"
 import { Button } from "../../../../components/ui/Button"
 import type { DatasetContract } from "../types"
 import { ApplicationMetrics } from "../../../ingestion/components/ApplicationMetrics"
+import { businessKeyError } from "../policyValidation"
 
 const loadDescriptions: Record<LoadStrategy, string> = {
   APPEND: "Adds new records to the trusted dataset without modifying existing records.",
-  UPSERT: "Insert new records and update matching records using a business key.",
+  UPSERT: "New records are inserted. Existing records with the same key are updated when their values change.",
   SNAPSHOT: "Each delivery represents the complete current source state.",
 }
 export function IncrementalPolicy({ workspaceId, datasetId, browserContract, summaryOnly = false }: {
@@ -18,7 +19,7 @@ export function IncrementalPolicy({ workspaceId, datasetId, browserContract, sum
   const resource = useApiResource(`incremental:${workspaceId}:${datasetId}`, load)
   return <section className="min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
     <h3 className="font-semibold">Incremental dataset policy</h3>
-    <p className="text-sm text-slate-600">These settings are saved on the backend. APPEND updates the trusted dataset after Silver validation. UPSERT and SNAPSHOT execution are not available yet; Gold remains delivery-level output.</p>
+    <p className="text-sm text-slate-600">These settings are saved on the backend. APPEND updates the trusted dataset after Silver validation; UPSERT can insert and update records. SNAPSHOT execution is not available yet. Gold remains delivery-level output.</p>
     {resource.data ? <PolicyContent key={`${workspaceId}:${datasetId}:${resource.data.policies.at(-1)?.policy_id ?? 0}`} data={resource.data} workspaceId={workspaceId} datasetId={datasetId} browserContract={browserContract} summaryOnly={summaryOnly} refresh={resource.retry} />
       : <ApiFeedback loading="Loading incremental settings…" error={resource.error} retry={resource.retry} />}
   </section>
@@ -26,7 +27,7 @@ export function IncrementalPolicy({ workspaceId, datasetId, browserContract, sum
 function PolicyContent({ data, workspaceId, datasetId, browserContract, summaryOnly, refresh }: {
   data: IncrementalFoundation; workspaceId: string; datasetId: string; browserContract?: DatasetContract; summaryOnly: boolean; refresh: () => void
 }) {
-  const latest = data.policies.at(-1)
+  const latest = data.policies.find(p => p.policy_id === data.current_state?.policy_id) ?? data.policies.at(-1)
   const [editing, setEditing] = useState(false), [saving, setSaving] = useState(false)
   const [version, setVersion] = useState(latest ? String(latest.dataset_version_id) : "")
   const [strategy, setStrategy] = useState<LoadStrategy | "">(latest?.load_strategy ?? "")
@@ -35,11 +36,12 @@ function PolicyContent({ data, workspaceId, datasetId, browserContract, summaryO
   const [eventTime, setEventTime] = useState(latest?.event_time_column ?? "")
   const [confirmed, setConfirmed] = useState(false), [error, setError] = useState("")
   const schema = data.schema_versions.find(v => String(v.dataset_version_id) === version)
-  const lastApplied = data.applications.slice().reverse().find(a => a.status === "SUCCESS")
+  const keyError = businessKeyError(strategy,keys,schema?.columns.map(c => c.name) ?? [])
+  const lastApplied = data.applications.find(a => data.current_state != null && a.status === "SUCCESS" && a.result_state_id === data.current_state.state_id) ?? data.applications.slice().reverse().find(a => a.status === "SUCCESS")
   const pending = data.applications.filter(a => !a.archived_at && a.status === "PREPARED").length
   async function save(event: React.FormEvent) {
     event.preventDefault()
-    if (!strategy || !evolution || !schema || !confirmed || saving) return
+    if (!strategy || !evolution || !schema || !confirmed || saving || keyError) return
     setSaving(true); setError("")
     try {
       await saveLoadPolicy(workspaceId, datasetId, { dataset_version_id: schema.dataset_version_id, expected_policy_version: latest?.policy_version ?? 0,
@@ -57,12 +59,14 @@ function PolicyContent({ data, workspaceId, datasetId, browserContract, summaryO
       <div><dt className="text-slate-500">Current trusted records</dt><dd>{data.current_state?.row_count.toLocaleString() ?? "—"}</dd></div>
       <div><dt className="text-slate-500">Latest applied delivery</dt><dd>{lastApplied ? `Delivery ${lastApplied.upload_request_id}` : "—"}</dd></div>
       <div><dt className="text-slate-500">Prepared applications</dt><dd>{pending}</dd></div>
-      <div><dt className="text-slate-500">Last incremental change</dt><dd>{lastApplied ? `${lastApplied.inserted_rows ?? "—"} inserted · ${lastApplied.updated_rows ?? "—"} updated` : "—"}</dd></div>
+      <div><dt className="text-slate-500">Last incremental change</dt><dd>{lastApplied ? `${lastApplied.inserted_rows ?? "—"} inserted · ${lastApplied.updated_rows ?? "—"} updated · ${lastApplied.unchanged_rows ?? "—"} unchanged` : "—"}</dd></div>
+      {latest?.load_strategy === "UPSERT" && <div><dt className="text-slate-500">Change ordering</dt><dd>{latest.event_time_column || "Delivery order"}</dd></div>}
     </dl>
     {latest && <p className="text-sm text-slate-600">{loadDescriptions[latest.load_strategy]}</p>}
     {latest?.load_strategy === "APPEND" && <p className="text-sm text-slate-600">{latest.business_keys.length ? "Event / record key: " + latest.business_keys.join(" + ") + ". Used to identify records that have already been received." : "DataRise will prevent the same delivery from being applied twice, but cannot identify the same business record across different deliveries without a key."}</p>}
+    {latest?.load_strategy === "UPSERT" && <><p className="text-sm text-slate-600">These columns identify one logical record in this dataset: {latest.business_keys.join(" + ")}.</p><p className="text-sm text-slate-600">{latest.event_time_column ? "DataRise uses this timestamp to prevent older updates from overwriting newer records. Older late-arriving records will not overwrite newer data." : "Updates are applied in delivery order because no change-ordering column is configured. Latest applied delivery wins for current-state UPSERT."}</p></>}
     {lastApplied && <p className="break-words text-sm">Latest applied delivery: {lastApplied.source_file_name ?? `Delivery ${lastApplied.upload_request_id}`} · Added {lastApplied.inserted_rows ?? "—"} · Duplicates ignored {lastApplied.duplicate_rows ?? "—"} · Quarantined {lastApplied.rejected_rows ?? "—"} · Incremental conflicts {lastApplied.incremental_rejected_rows ?? "—"}</p>}
-    {data.current_state && <p className="text-sm text-amber-900">Trusted dataset state is published. Dataset-state analytics await a rebuild; existing Gold results describe individual deliveries.</p>}
+    {data.current_state?.state_analytics_status === "STALE" && <p className="text-sm text-amber-900">Analytics refresh required. Trusted dataset state is published. Dataset-state analytics await a rebuild; existing Gold results describe individual deliveries.</p>}
     {data.applications.at(-1) && <div className="space-y-2 border-t border-slate-200 pt-3"><h4 className="text-sm font-medium">Latest application · {data.applications.at(-1)!.status}</h4><ApplicationMetrics metrics={data.applications.at(-1)!} /></div>}
     {!summaryOnly && !editing && <Button variant="secondary" disabled={!!data.current_state} onClick={() => setEditing(true)}>{latest ? "Review policy change" : "Configure backend policy"}</Button>}
     {!summaryOnly && data.current_state && <p className="text-sm text-slate-600">Changing a policy after state publication requires an explicit migration. That flow is not available yet.</p>}
@@ -73,13 +77,16 @@ function PolicyContent({ data, workspaceId, datasetId, browserContract, summaryO
       <label className="block space-y-1 text-sm"><span>Load strategy</span><select required disabled={saving} className={field} value={strategy} onChange={e => { setStrategy(e.target.value as LoadStrategy); setConfirmed(false) }}><option value="">Choose a strategy</option>{Object.keys(loadDescriptions).map(mode => <option key={mode}>{mode}</option>)}</select></label>
       {strategy && <p className="text-sm text-slate-600">{loadDescriptions[strategy]}{strategy === "SNAPSHOT" && " Future missing records will be marked inactive rather than deleted."}</p>}
       <label className="block space-y-1 text-sm"><span>Business key columns (ordered, comma-separated)</span><input className={field} disabled={saving} required={strategy === "UPSERT" || strategy === "SNAPSHOT"} value={keys} onChange={e => { setKeys(e.target.value); setConfirmed(false) }} /></label>
+      <p className="text-sm text-slate-600">These columns identify one logical record in this dataset. For example: customer_id, or order_id + line_number (enter composite keys separated by commas).</p>
+      {keyError && <p role="alert" className="text-sm text-amber-900">{keyError}</p>}
       {schema && <p className="break-words text-sm text-slate-600">Available columns: {schema.columns.map(c => c.name).join(", ")}</p>}
       <label className="block space-y-1 text-sm"><span>Schema changes</span><select required disabled={saving} className={field} value={evolution} onChange={e => { setEvolution(e.target.value as "STRICT" | "ALLOW_ADDITIVE"); setConfirmed(false) }}><option value="">Choose a policy</option><option value="STRICT">Exact structure required</option><option value="ALLOW_ADDITIVE">Allow extra columns during inspection</option></select></label>
       <p className="text-sm text-slate-600">A different schema still requires an explicit state migration before incremental application.</p>
-      <label className="block space-y-1 text-sm"><span>Event time column (optional)</span><select disabled={saving} className={field} value={eventTime} onChange={e => { setEventTime(e.target.value); setConfirmed(false) }}><option value="">Not configured</option>{schema?.columns.filter(c => ["DATE","DATETIME"].includes(c.data_type)).map(c => <option key={c.name}>{c.name}</option>)}</select></label>
+      <label className="block space-y-1 text-sm"><span>Change ordering column (optional)</span><select disabled={saving} className={field} value={eventTime} onChange={e => { setEventTime(e.target.value); setConfirmed(false) }}><option value="">Not configured</option>{(schema?.event_time_columns ?? schema?.columns.filter(c => ["DATE","DATETIME"].includes(c.data_type)).map(c => c.name) ?? []).map(name => <option key={name}>{name}</option>)}</select></label>
+      {strategy === "UPSERT" && <p className="text-sm text-slate-600">{eventTime ? "Older updates will not overwrite newer records. Timestamp values must include an explicit timezone; DataRise will not guess one." : "Updates are applied in delivery order because no change-ordering column is configured."}</p>}
       <label className="flex min-h-11 items-start gap-2 text-sm"><input type="checkbox" disabled={saving} required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-1" /><span>I confirm these explicit settings{latest ? " for a new prospective policy version. Historical applications keep their original policy" : " for this dataset"}.</span></label>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      <div className="flex flex-wrap gap-2"><Button type="submit" disabled={saving || !confirmed || !schema || !strategy || !evolution}>{saving ? "Saving…" : "Save backend policy"}</Button><Button variant="secondary" type="button" disabled={saving} onClick={() => setEditing(false)}>Cancel</Button><Button variant="ghost" type="button" disabled={saving} onClick={refresh}>Refresh settings</Button></div>
+      <div className="flex flex-wrap gap-2"><Button type="submit" disabled={saving || !confirmed || !schema || !strategy || !evolution || !!keyError}>{saving ? "Saving…" : "Save backend policy"}</Button><Button variant="secondary" type="button" disabled={saving} onClick={() => setEditing(false)}>Cancel</Button><Button variant="ghost" type="button" disabled={saving} onClick={refresh}>Refresh settings</Button></div>
     </form>}
   </>
 }

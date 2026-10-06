@@ -5,8 +5,11 @@ import type { ProcessingContext } from "../../../services/api/rules"
 export function ProcessingDetails({ context, createdAt, qualityHref }: { context: ProcessingContext; createdAt?: string; qualityHref?: string }) {
   const metadata = [["Delivery ID / upload request", context.upload_request_id], ["Source file reference", context.file_id],
     ["Processing context reference", context.dataset_version_file_id], ["Dataset version", context.dataset_version_number == null ? null : `v${context.dataset_version_number}`],
-    ["Applied rule version", context.rule_version], ["Latest attempt reference", context.latest_attempt?.id]]
-  const dates = [["Uploaded", createdAt], ["Processing started", context.started_at], ["Processing completed", context.completed_at]]
+    ["Applied rule version", context.rule_version], ["Latest attempt reference", context.latest_attempt?.id],
+    ...(context.load_policy ? [["Policy version",context.load_policy.policy_version],["Business key",context.load_policy.business_keys.join(" + ")],["Change ordering",context.load_policy.event_time_column]] : []),
+    ...(context.state_lineage ? [["Source state version",context.state_lineage.source_state_version],["Result state version",context.state_lineage.result_state_version]] : [])]
+  const dates = [["Uploaded", createdAt], ["Processing started", context.started_at], ["Processing completed", context.completed_at],
+    ...(context.application ? [["Dataset update started",context.application.started_at],["Dataset update completed",context.application.completed_at]] : [])]
   return <div className="space-y-6 border-t border-slate-200 pt-4 text-sm">
     <ProcessingStages context={context} />
     <ProcessingResult context={context} qualityHref={qualityHref} />

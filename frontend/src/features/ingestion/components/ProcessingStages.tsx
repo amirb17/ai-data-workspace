@@ -1,7 +1,7 @@
 import { CheckCircle2, Circle, LoaderCircle, AlertTriangle, XCircle, MinusCircle } from "lucide-react"
 import type { ProcessingContext } from "../../../services/api/rules"
 
-const descriptions = { bronze: "Reading and profiling data", rules: "Your approved validation decisions", silver: "Validating and cleaning rows", dataset_update: "Adding accepted records to the trusted dataset", gold: "Preparing delivery analytics output" }
+const descriptions = { bronze: "Reading and profiling data", rules: "Your approved validation decisions", silver: "Validating and cleaning rows", dataset_update: "Applying accepted records to the trusted dataset", gold: "Preparing delivery analytics output" }
 function stageView(stage: keyof typeof descriptions, c: ProcessingContext) {
   const state = c.stages[stage]
   if (state === "BLOCKED") return { label: "Review Contract", Icon: AlertTriangle, color: "text-amber-800" }

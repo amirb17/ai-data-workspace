@@ -10,6 +10,9 @@ export type ProcessingContext = {
   can_continue: boolean
   load_strategy?: string; application?: DeliveryApplication | null
   inserted_rows?: number | null; incremental_rejected_rows?: number | null; current_state_rows?: number | null
+  unchanged_rows?: number | null; conflict_rows?: number | null; stale_rows?: number | null
+  load_policy?: { policy_id: number; policy_version: number; business_keys: string[]; event_time_column: string | null }
+  state_lineage?: { source_state_version: number | null; result_state_version: number } | null
   stages: { bronze: string; rules: string; silver: string; gold: string; dataset_update?: string }
   latest_attempt: { id: number; stage: string; status: string; started_at: string | null; completed_at: string | null } | null
   started_at: string | null; completed_at: string | null; error_summary: string | null

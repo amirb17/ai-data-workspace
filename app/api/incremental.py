@@ -3,7 +3,7 @@ from app.api.identity import get_current_user
 from app.schemas.incremental import LoadPolicyRequest, PrepareApplicationRequest
 from app.services.incremental_policy_service import read_foundation, save_policy
 from app.services.incremental_application_service import prepare_application
-from app.services.append_application_service import apply_append
+from app.services.append_application_service import apply_incremental
 
 router = APIRouter(prefix='/workspaces/{workspace_id}/datasets/{dataset_id}/incremental',tags=['Incremental foundation'])
 
@@ -40,4 +40,4 @@ def prepare(workspace_id:int,dataset_id:int,request:PrepareApplicationRequest,us
 
 @router.post('/deliveries/{upload_id}/apply')
 def apply_delivery(workspace_id:int,dataset_id:int,upload_id:int,user:dict=Depends(get_current_user)):
-    return public_call(lambda:apply_append(workspace_id,dataset_id,user,upload_id))
+    return public_call(lambda:apply_incremental(workspace_id,dataset_id,user,upload_id))

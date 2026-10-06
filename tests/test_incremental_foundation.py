@@ -119,7 +119,7 @@ def test_ownership_and_api_no_private_paths(pipeline):
         client=TestClient(app); base=f'/workspaces/{db[2]}/datasets/{db[3]}/incremental'
         response=client.get(base)
         assert response.status_code==200 and response.json()['execution_available'] is True
-        assert response.json()['executable_modes']==['APPEND']
+        assert response.json()['executable_modes']==['APPEND','UPSERT']
         assert response.json()['current_state'] is None
         assert not any(secret in response.text for secret in ['manifest_key','silver_path','s3://'])
         assert client.post(base+'/applications/prepare',json={'upload_request_id':pipeline[2],'policy_id':p['policy_id']}).json()['application_id']==first['application_id']

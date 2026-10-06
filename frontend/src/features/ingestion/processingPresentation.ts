@@ -1,7 +1,7 @@
 import type { DatasetProcessing, ProcessingContext } from "../../services/api/rules"
 
 export const terminalDelivery = (c: ProcessingContext) => ["SUCCESS", "SUCCESS_WITH_WARNINGS"].includes(c.status)
-export const warningDelivery = (c: ProcessingContext) => c.status === "SUCCESS_WITH_WARNINGS" || (c.status === "SUCCESS" && ((c.rejected_rows ?? 0) > 0 || (c.incremental_rejected_rows ?? 0) > 0))
+export const warningDelivery = (c: ProcessingContext) => c.status === "SUCCESS_WITH_WARNINGS" || (c.status === "SUCCESS" && ((c.rejected_rows ?? 0) > 0 || (c.incremental_rejected_rows ?? 0) > 0 || (c.stale_rows ?? 0) > 0))
 export const countLabel = (value: number | null | undefined) => value != null && Number.isFinite(value) && value >= 0 ? value.toLocaleString() : "—"
 const issueLabels: Record<string, string> = { NOT_NULL: "Missing required values", DATA_TYPE: "Invalid data types", UNIQUE: "Duplicate keys" }
 export const issueLabel = (type: string) => issueLabels[type] ?? type.replaceAll("_", " ").toLowerCase()

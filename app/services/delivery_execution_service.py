@@ -51,7 +51,7 @@ def continue_processing(upload_id, user, workspace_id=None, dataset_id=None, sta
     from app.services.processing_context_service import owned_upload, owned_rule_context, read_processing_context
     from app.db.dataset_repository import get_upload_processing_association
     from app.services.processing_service import run_silver_processing, run_gold_processing
-    from app.services.append_application_service import selected_policy,apply_append
+    from app.services.append_application_service import selected_policy,apply_incremental
     from app.services.dataset_processing_service import dataset_lock
     from app.services.delivery_lifecycle_service import lifecycle_lock,require_active
     from contextlib import nullcontext
@@ -69,7 +69,7 @@ def continue_processing(upload_id, user, workspace_id=None, dataset_id=None, sta
         if stage != "GOLD":
             run_silver_processing(association[0], S3_BUCKET_NAME)
         if load_policy:
-            apply_append(upload[3],upload[4],user,upload_id)
+            apply_incremental(upload[3],upload[4],user,upload_id)
         if stage != "SILVER":
             run_gold_processing(association[0], S3_BUCKET_NAME)
     return read_processing_context(upload_id, user, workspace_id, dataset_id)

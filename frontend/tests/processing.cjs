@@ -41,6 +41,11 @@ assert.ok(appendHtml.includes('Updated rows</dt><dd class="mt-1 font-semibold te
 assert.ok(render(ProcessingStages,{context:append}).includes('Dataset Update'))
 const appendCard=render(IngestionBatchCard,{batch,context:{...append,inserted_rows:0,incremental_rejected_rows:2}})
 assert.ok(appendCard.includes('Incremental conflicts') && appendCard.includes('Inserted') && !appendCard.includes('>Published<'))
+const upsert={...append,load_strategy:'UPSERT',updated_rows:1,unchanged_rows:1,conflict_rows:2,stale_rows:3,
+  load_policy:{policy_version:2,business_keys:['customer_id','line'],event_time_column:'updated_at'},state_lineage:{source_state_version:1,result_state_version:2}}
+const upsertHtml=render(ProcessingDetails,{context:upsert})
+for(const text of ['UPSERT by customer_id + line','Unchanged','Conflicts','Older updates ignored','Source state version','Result state version','Policy version','updated_at','older updates were ignored']) assert.ok(upsertHtml.includes(text))
+assert.equal(presentation.warningDelivery({...upsert,status:'SUCCESS',incremental_rejected_rows:0,rejected_rows:0}),true)
 const updateFailure={...append,status:'DATASET_UPDATE_FAILED',can_continue:true,error_summary:'Dataset update could not be published. Your validated delivery is safe; the previous trusted dataset version is still active.',stages:{...append.stages,dataset_update:'FAILED'}}
 assert.equal(state.executionAction(updateFailure),'Retry Dataset Update')
 assert.ok(render(ProcessingStages,{context:{...append,status:'DATASET_UPDATE_PROCESSING',stages:{...append.stages,dataset_update:'PROCESSING'}}}).includes('Processing'))

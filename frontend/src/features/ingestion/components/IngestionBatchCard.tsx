@@ -9,7 +9,9 @@ import { ProcessingDetails } from "./ProcessingDetails"
 export type BatchPresentation = Omit<IngestionBatch, "rowCount" | "columnCount"> & { rowCount: number | null; columnCount: number | null }
 export function IngestionBatchCard({ batch, context, children, qualityHref }: { batch: BatchPresentation; context?: ProcessingContext; children?: ReactNode; qualityHref?: string }) {
   const status = context ? deliveryStatus(context) : { label: "Ready to process", variant: "neutral" as const }
-  const metrics = context?.load_strategy === "APPEND"
+  const metrics = context?.load_strategy === "UPSERT"
+    ? [["Inserted",context.inserted_rows],["Updated",context.updated_rows],["Unchanged",context.unchanged_rows],["Duplicates",context.duplicate_rows],["Conflicts",context.conflict_rows],["Older updates ignored",context.stale_rows]] as const
+    : context?.load_strategy === "APPEND"
     ? [["Input",context.input_rows],["Inserted",context.inserted_rows],["Duplicates",context.duplicate_rows],["Incremental conflicts",context.incremental_rejected_rows]] as const
     : [["Input", context?.input_rows], ["Valid", context?.valid_rows], ["Quarantined", context?.rejected_rows], ["Published", context?.output_rows]] as const
   return <article className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5" aria-label={`Delivery ${batch.sourceFileName}`}>

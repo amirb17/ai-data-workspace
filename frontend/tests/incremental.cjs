@@ -17,10 +17,20 @@ assert.ok(!html.includes('APPEND · Policy')) // Browser defaults never authorit
 assert.ok(html.includes('APPEND updates the trusted dataset') && html.includes('Current trusted records'))
 data={...foundation,policies:[{policy_id:1,dataset_id:20,dataset_version_id:7,policy_version:1,load_strategy:'UPSERT',business_keys:['order_id','line'],schema_evolution_policy:'STRICT'}]}
 html=render({})
-assert.ok(html.includes('UPSERT · Policy 1') && html.includes('order_id + line') && html.includes('update matching records'))
-data={...data,current_state:{state_id:5,row_count:123,published_at:'2026-10-06'}}
+assert.ok(html.includes('UPSERT · Policy 1') && html.includes('order_id + line') && html.includes('updated when their values change'))
+assert.ok(html.includes('Latest applied delivery wins') && html.includes('These columns identify one logical record'))
+data={...data,policies:[{...data.policies[0],event_time_column:'updated_at'}]}
+html=render({})
+assert.ok(html.includes('Change ordering') && html.includes('updated_at') && html.includes('Older late-arriving records will not overwrite newer data'))
+const {businessKeyError}=require('../src/features/datasets/contracts/policyValidation.ts')
+assert.ok(businessKeyError('UPSERT','',['id']))
+assert.ok(businessKeyError('UPSERT','missing',['id']))
+assert.ok(businessKeyError('UPSERT','id,id',['id']))
+assert.equal(businessKeyError('UPSERT','id, line',['id','line']),'')
+data={...data,current_state:{state_id:5,row_count:123,published_at:'2026-10-06',state_analytics_status:'STALE'}}
 html=render({})
 assert.ok(html.includes('123') && html.includes('requires an explicit migration') && html.includes('disabled=""'))
+assert.ok(html.includes('Analytics refresh required'))
 assert.ok(!render({summaryOnly:true}).includes('Review policy change'))
 data={...foundation,policies:[{policy_id:1,dataset_id:20,dataset_version_id:7,policy_version:1,load_strategy:'APPEND',business_keys:[],schema_evolution_policy:'STRICT'}],current_state:{state_id:5,row_count:150,published_at:'2026-10-06'},applications:[{application_id:2,upload_request_id:99,status:'SUCCESS',source_file_name:'delivery_2.csv',inserted_rows:50,duplicate_rows:0,rejected_rows:0,incremental_rejected_rows:0}]}
 html=render({summaryOnly:true})
@@ -29,6 +39,11 @@ assert.ok(html.includes('without a key') && html.includes('cannot identify the s
 data={...data,policies:[{...data.policies[0],business_keys:['id']}]}
 html=render({})
 assert.ok(html.includes('Event / record key: id') && html.includes('already been received'))
+data={...data,policies:[data.policies[0],{...data.policies[0],policy_id:2,policy_version:2,load_strategy:'UPSERT'}],
+  current_state:{...data.current_state,policy_id:1},applications:[{...data.applications[0],result_state_id:5,source_file_name:'actual-head.csv'},
+  {...data.applications[0],application_id:3,result_state_id:4,source_file_name:'older-publication.csv'}]}
+html=render({summaryOnly:true})
+assert.ok(html.includes('APPEND · Policy 1') && html.includes('Latest applied delivery: actual-head.csv'))
 const metrics={input_rows:3,valid_rows:2,rejected_rows:1,inserted_rows:null,updated_rows:null,unchanged_rows:null,duplicate_rows:null,deactivated_rows:null,current_state_rows:null}
 const metricHtml=renderToStaticMarkup(React.createElement(ApplicationMetrics,{metrics}))
 assert.equal((metricHtml.match(/<dd>—<\/dd>/g)||[]).length,6)
