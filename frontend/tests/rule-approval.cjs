@@ -61,10 +61,11 @@ async function main() {
   global.fetch = async () => new Response(JSON.stringify({ detail: 'private internal path' }), { status: 409 })
   await assert.rejects(api.finalizeRuleAnswers('10', '20', saved), (e) => e instanceof ApiError && /Reload/.test(e.message) && !e.message.includes('private'))
   const batch = { id: 'upload-40', uploadRequestId: 40, sourceFileId: 30, sourceFileName: 'a.csv', status: 'READY_TO_PROCESS', rowCount: 1, columnCount: 1, createdAt: '2026-10-05T00:00:00Z', validRows: null, rejectedRows: null, duplicateRows: null, updatedRows: null }
-  const html = renderToStaticMarkup(React.createElement(IngestionBatchCard, { batch, processingStatus: 'AWAITING_RULES' }))
-  assert.ok(html.includes('AWAITING RULES'))
+  const html = renderToStaticMarkup(React.createElement(IngestionBatchCard, { batch, context: { ...context, status:'AWAITING_RULES', rule_state:'DRAFT', rule_version:0, stages:{bronze:'SUCCESS',rules:'DRAFT',silver:'PENDING',gold:'PENDING'},issue_summary:[] } }))
+  assert.ok(html.includes('Rules need your review'))
   assert.ok(!html.includes('Processing has not started'))
-  assert.equal((html.match(/—/g) || []).length, 6)
+  assert.ok(html.includes('orders.csv') === false && html.includes('a.csv</h3>'))
+  assert.ok(!html.includes('Batch 40'))
   console.log('Explicit answers, approval gating, version guards, scoped APIs, refresh reads, safe errors and truthful batch state passed.')
 }
 main().catch((error) => { console.error(error); process.exitCode = 1 })

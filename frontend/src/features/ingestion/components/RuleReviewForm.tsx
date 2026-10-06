@@ -38,7 +38,7 @@ export function RuleReviewForm({ workspaceId, datasetId, associationId, onChange
     {error && <p role="alert" className="break-words text-sm text-red-700">{error}</p>}
     {message && <p role="status" className="text-sm text-indigo-700">{message}</p>}
     {!review ? <p role="status" className="text-sm text-slate-600">{error ? "Rule questions could not be loaded." : "Loading backend questions…"}</p> : <>
-      <p className="text-sm text-slate-600">Dataset version #{review.dataset_version_id} · Rule version {review.applied_rule_version ?? review.rule_version} · {review.rule_state} · {review.active_rule_count} active rules</p>
+      <p className="text-sm text-slate-600">{review.rule_state === "FINALIZED" ? "Approved" : "Draft"} Rule Version {review.applied_rule_version ?? review.rule_version} · {review.active_rule_count} active rules</p>
       {review.rules_reused && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">Approved rules already available. Rule version {review.applied_rule_version} applied to this delivery; no further approval is required.</p>}
       {review.rule_state === "FINALIZED" && !review.rules_reused && <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">Rules already finalized. Saved answers below are read-only.</p>}
       {!review.rules_reused && !review.questions.length && <p className="text-sm text-slate-600">No pending rule questions were generated for this source. Silver still requires at least one active backend rule.</p>}

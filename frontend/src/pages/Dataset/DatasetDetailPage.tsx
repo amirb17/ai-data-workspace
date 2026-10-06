@@ -1,203 +1,38 @@
-import {
-  // BarChart3,
-  Database,
-  FileText,
-  History,
-  // ListChecks,
-  // ShieldCheck,
-  Workflow,
-} from "lucide-react"
-import {
-  Link,
-  NavLink,
-  Outlet,
-  useParams,
-} from "react-router-dom"
-
-import { Badge } from "../../components/ui/Badge"
-import { StatCard } from "../../components/ui/StatCard"
 import { useCallback } from "react"
+import { NavLink, Outlet, useLocation, useOutletContext, useParams } from "react-router-dom"
+import { Badge } from "../../components/ui/Badge"
 import { getDataset } from "../../services/api/datasets"
 import { useApiResource } from "../../services/api/useApiResource"
 import { ApiFeedback } from "../../components/ui/ApiFeedback"
-import type { DatasetListItem } from "../../features/datasets/types"
+import { DatasetBreadcrumbs } from "../../features/datasets/components/DatasetBreadcrumbs"
+import type { WorkspaceListItem } from "../../features/workspaces/types"
 
 const tabs = [
-  {
-    label: "Overview",
-    to: "",
-    end: true,
-  },
-  {
-    label: "Files",
-    to: "files",
-  },
-  {
-    label: "Contract",
-    to: "contract",
-  },
-  {
-    label: "Rules",
-    to: "rules",
-  },
-  {
-    label: "Processing",
-    to: "processing",
-  },
-  {
-    label: "Data Quality",
-    to: "data-quality",
-  },
-  {
-    label: "Analytics",
-    to: "analytics",
-  },
-  {
-    label: "History",
-    to: "history",
-  },
+  { label: "Overview", to: "", end: true }, { label: "Files", to: "files" },
+  { label: "Contract", to: "contract" }, { label: "Rules", to: "rules" },
+  { label: "Processing", to: "processing" }, { label: "Data Quality", to: "data-quality" },
+  { label: "Analytics", to: "analytics" }, { label: "History", to: "history" },
 ]
 
-function getStatusVariant(
-  status: DatasetListItem["status"],
-) {
-  switch (status) {
-    case "READY":
-      return "success"
-
-    case "PROCESSING":
-      return "processing"
-
-    case "FAILED":
-      return "error"
-
-    case "NEEDS_ATTENTION":
-      return "warning"
-
-    case "EMPTY":
-    default:
-      return "neutral"
-  }
-}
-
-function formatStatus(
-  status: DatasetListItem["status"],
-) {
-  return status
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (value) =>
-      value.toUpperCase(),
-    )
-}
-
 export function DatasetDetailPage() {
-  const {
-    workspaceId,
-    datasetId,
-  } = useParams()
-
-  const load = useCallback((signal: AbortSignal) => getDataset(workspaceId ?? "", datasetId ?? "", signal), [workspaceId, datasetId])
+  const { workspaceId = "", datasetId = "" } = useParams()
+  const { workspace } = useOutletContext<{ workspace: WorkspaceListItem }>()
+  const { pathname } = useLocation()
+  const load = useCallback((signal: AbortSignal) => getDataset(workspaceId, datasetId, signal), [workspaceId, datasetId])
   const resource = useApiResource(`dataset:${workspaceId}:${datasetId}`, load)
   if (!resource.data) return <ApiFeedback error={resource.error} retry={resource.retry} />
   const dataset = resource.data
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <Link
-          to={`/app/workspaces/${workspaceId}/datasets`}
-          className="text-sm font-medium text-slate-500 transition hover:text-slate-900"
-        >
-          ← Back to datasets
-        </Link>
-      </div>
-
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-sm font-medium text-indigo-600">
-            Dataset
-          </p>
-
-          <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
-              {dataset.name}
-            </h1>
-
-            <Badge
-              variant={getStatusVariant(
-                dataset.status,
-              )}
-            >
-              {formatStatus(
-                dataset.status,
-              )}
-            </Badge>
-          </div>
-
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            {dataset.description}
-          </p>
-        </div>
-      </section>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Latest Version"
-          value={dataset.latestVersion === undefined ? "—" : `v${dataset.latestVersion}`}
-          helper="Current dataset version"
-          icon={<History size={20} />}
-        />
-
-        <StatCard
-          label="Rows"
-          value={dataset.rowCount?.toLocaleString() ?? "—"}
-          helper="Latest processed version"
-          icon={<Database size={20} />}
-        />
-
-        <StatCard
-          label="Columns"
-          value={dataset.columnCount ?? "—"}
-          helper="Detected schema fields"
-          icon={<FileText size={20} />}
-        />
-
-        <StatCard
-          label="Status"
-          value={formatStatus(
-            dataset.status,
-          )}
-          helper={`Updated ${dataset.updatedAt}`}
-          icon={<Workflow size={20} />}
-        />
-      </section>
-
-      <div className="overflow-x-auto border-b border-slate-200">
-        <nav className="flex min-w-max gap-6">
-          {tabs.map((tab) => (
-            <NavLink
-              key={tab.label}
-              to={tab.to}
-              end={tab.end}
-              className={({
-                isActive,
-              }) =>
-                [
-                  "border-b-2 px-1 pb-3 text-sm font-medium transition",
-                  isActive
-                    ? "border-indigo-600 text-indigo-600"
-                    : "border-transparent text-slate-500 hover:text-slate-900",
-                ].join(" ")
-              }
-            >
-              {tab.label}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
-
-      <Outlet key={`${workspaceId}:${datasetId}`} context={dataset} />
-    </div>
-  )
+  const current = pathname.slice(`/app/workspaces/${workspaceId}/datasets/${datasetId}`.length).split("/").filter(Boolean)[0] ?? ""
+  const section = tabs.find(tab => tab.to === current)?.label ?? "Overview"
+  return <div className="min-w-0 space-y-5">
+    <DatasetBreadcrumbs workspaceId={workspaceId} datasetId={datasetId} workspaceName={workspace.name} datasetName={dataset.name} section={section} />
+    <header className="space-y-2">
+      <div className="flex flex-wrap items-center gap-3"><h1 className="break-words text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl [overflow-wrap:anywhere]">{dataset.name}</h1><Badge variant="neutral">{dataset.status.toLowerCase().replaceAll("_", " ")}</Badge></div>
+      {dataset.description && <p className="max-w-3xl break-words text-sm leading-6 text-slate-600">{dataset.description}</p>}
+    </header>
+    <nav aria-label="Dataset sections" className="flex flex-wrap gap-x-4 gap-y-1 border-b border-slate-200">
+      {tabs.map(tab => <NavLink key={tab.label} to={tab.to} end={tab.end} className={({ isActive }) => `inline-flex min-h-11 items-center border-b-2 px-1 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 ${isActive ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-900"}`}>{tab.label}</NavLink>)}
+    </nav>
+    <Outlet key={`${workspaceId}:${datasetId}`} context={dataset} />
+  </div>
 }

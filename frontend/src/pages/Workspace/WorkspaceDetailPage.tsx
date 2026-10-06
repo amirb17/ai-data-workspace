@@ -10,6 +10,7 @@ import {
   NavLink,
   Outlet,
   useParams,
+  useMatch,
 } from "react-router-dom"
 
 import { Button } from "../../components/ui/Button"
@@ -48,6 +49,7 @@ const tabs = [
 
 export function WorkspaceDetailPage() {
   const { workspaceId } = useParams()
+  const datasetRoute = useMatch("/app/workspaces/:workspaceId/datasets/:datasetId/*")
 
   const load = useCallback(async (signal: AbortSignal) => {
     const [workspace, datasets] = await Promise.all([getWorkspace(workspaceId ?? "", signal), listDatasets(workspaceId ?? "", signal)])
@@ -56,6 +58,8 @@ export function WorkspaceDetailPage() {
   const resource = useApiResource(`workspace:${workspaceId}`, load)
   if (!resource.data) return <ApiFeedback error={resource.error} retry={resource.retry} />
   const { workspace, datasets } = resource.data
+  // Dataset pages use their own compact header and the real workspace breadcrumb.
+  if (datasetRoute) return <Outlet key={workspaceId} context={{ workspace, onDatasetsChanged: resource.retry }} />
   const workspaceStats = { datasets: datasets.length, analyticsReady: "—", processing: "—", qualityIssues: "—" }
 
   return (
@@ -151,7 +155,7 @@ export function WorkspaceDetailPage() {
         </nav>
       </div>
 
-      <Outlet key={workspaceId} context={{ onDatasetsChanged: resource.retry }} />
+      <Outlet key={workspaceId} context={{ workspace, onDatasetsChanged: resource.retry }} />
     </div>
   )
 }

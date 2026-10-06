@@ -1,18 +1,23 @@
+import { ProcessingStages } from "./ProcessingStages"
+import { ProcessingResult } from "./ProcessingResult"
 import type { ProcessingContext } from "../../../services/api/rules"
 
-export function ProcessingDetails({ context }: { context: ProcessingContext }) {
-  const format = (value: string) => value === "SKIPPED" ? "Skipped" : value === "PROCESSING" ? "Running" : value === "SUCCESS" ? "Complete" : value.replaceAll("_", " ")
-  return <div className="space-y-3 rounded-lg bg-slate-50 p-3 text-sm">
-    <dl aria-label="Processing stages" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {Object.entries(context.stages).map(([stage, state]) => <div key={stage}><dt className="capitalize text-slate-500">{stage}</dt><dd className="break-words font-medium">{format(state)}</dd></div>)}
-    </dl>
-    {context.rule_version != null && context.rule_version > 0 && context.rule_state === "FINALIZED" && <p>Applied rule version {context.rule_version}{context.rules_reused ? " · Approved rules reused" : ""}</p>}
-    {context.error_summary && <p role="alert" className="text-red-700">{context.error_summary}</p>}
-    {context.status === "SUCCESS_WITH_WARNINGS" && <p role="status" className="text-amber-800">Completed with warnings. {context.gold_skip_reason}</p>}
-    {context.quarantine_available && <p className="text-amber-800">Quarantine available · {context.rejected_rows ?? "—"} rejected rows. {context.issue_summary.map((issue) => `${issue.rule_type}: ${issue.violation_count}`).join(" · ")}</p>}
-    {context.status === "SUCCESS" && <p role="status" className="text-emerald-700">Processing complete.{(context.rejected_rows ?? 0) > 0 ? " Completed with rejected rows; review the quarantine summary." : ""}</p>}
-    {context.latest_attempt && <p className="break-words text-xs text-slate-500">Latest attempt #{context.latest_attempt.id} · {context.latest_attempt.stage} · {format(context.latest_attempt.status)}</p>}
-    {context.started_at && <p className="text-xs text-slate-500">Started <time dateTime={context.started_at}>{new Date(context.started_at).toLocaleString()}</time></p>}
-    {context.completed_at && <p className="text-xs text-slate-500">Completed <time dateTime={context.completed_at}>{new Date(context.completed_at).toLocaleString()}</time></p>}
+export function ProcessingDetails({ context, createdAt, qualityHref }: { context: ProcessingContext; createdAt?: string; qualityHref?: string }) {
+  const metadata = [["Delivery ID / upload request", context.upload_request_id], ["Source file reference", context.file_id],
+    ["Processing context reference", context.dataset_version_file_id], ["Dataset version", context.dataset_version_number == null ? null : `v${context.dataset_version_number}`],
+    ["Applied rule version", context.rule_version], ["Latest attempt reference", context.latest_attempt?.id]]
+  const dates = [["Uploaded", createdAt], ["Processing started", context.started_at], ["Processing completed", context.completed_at]]
+  return <div className="space-y-6 border-t border-slate-200 pt-4 text-sm">
+    <ProcessingStages context={context} />
+    <ProcessingResult context={context} qualityHref={qualityHref} />
+    {context.error_summary && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{context.error_summary}</p>}
+    <section aria-label="Delivery metadata" className="space-y-3">
+      <h4 className="font-semibold text-slate-950">Delivery metadata</h4>
+      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {metadata.map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 break-words">{value ?? "—"}</dd></div>)}
+        {dates.map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1">{value ? <time dateTime={value}>{new Date(value).toLocaleString()}</time> : "—"}</dd></div>)}
+      </dl>
+      {context.rule_state === "FINALIZED" && context.rule_version != null && <p className="text-slate-600">Approved Rule Version {context.rule_version}{context.rules_reused ? " reused" : " applied"}.</p>}
+    </section>
   </div>
 }
