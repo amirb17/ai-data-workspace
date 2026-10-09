@@ -13,11 +13,15 @@ class IncrementalArtifacts:
     def __init__(self,client=None):
         self.client=client or get_boto3_session().client('s3')
 
-    def read(self,key):
+    def read(self,key,max_bytes=None):
         if not key or '..' in key or '\\' in key or key.startswith('/'):
             raise ValueError('Invalid internal artifact key')
         body=self.client.get_object(Bucket=S3_BUCKET_NAME,Key=key)['Body']
-        try: return body.read()
+        try:
+            result=body.read() if max_bytes is None else body.read(max_bytes+1)
+            if max_bytes is not None and len(result)>max_bytes:
+                raise ValueError('Artifact byte limit exceeded')
+            return result
         finally: body.close()
 
     def put(self,key,body):
