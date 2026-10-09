@@ -1,0 +1,78 @@
+{
+  "workspace_id": 15,
+  "orders": 23,
+  "healthcare": 24,
+  "orders_first": 75,
+  "orders_initial": {
+    "profile_id": 1,
+    "profile_version": 1,
+    "state_version": 1,
+    "rows": 3,
+    "columns": 5,
+    "identifier_candidates": [
+      "order_id"
+    ],
+    "datetime_candidates": [
+      "order_date"
+    ],
+    "potential_sensitive_fields": [],
+    "idempotency": true
+  },
+  "healthcare_first": 76,
+  "healthcare_ready": {
+    "profile_id": 2,
+    "profile_version": 1,
+    "state_version": 1,
+    "rows": 3,
+    "columns": 5,
+    "identifier_candidates": [
+      "patient_id"
+    ],
+    "datetime_candidates": [
+      "admission_date"
+    ],
+    "potential_sensitive_fields": [
+      "contact_email"
+    ],
+    "idempotency": true
+  },
+  "sensitive_redaction_verified": true,
+  "orders_second": 77,
+  "stale_evidence_withheld": true,
+  "orders_rebuilt": {
+    "profile_id": 3,
+    "profile_version": 2,
+    "state_version": 2,
+    "rows": 4,
+    "columns": 5,
+    "identifier_candidates": [
+      "order_id"
+    ],
+    "datetime_candidates": [
+      "order_date"
+    ],
+    "potential_sensitive_fields": [],
+    "idempotency": true
+  },
+  "workspace_isolation_verified": true,
+  "orders_browser": 78,
+  "browser_stale_verified": true,
+  "orders_current": {
+    "profile_id": 4,
+    "profile_version": 3,
+    "state_version": 3,
+    "rows": 5,
+    "ready": true
+  },
+  "healthcare_current": {
+    "profile_id": 2,
+    "profile_version": 1,
+    "state_version": 1,
+    "rows": 3,
+    "ready": true
+  },
+  "browser_refresh_verified": true,
+  "browser_reload_verified": true,
+  "mobile_no_overflow": true,
+  "tablet_no_overflow": true
+}
