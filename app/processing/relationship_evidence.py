@@ -7,7 +7,7 @@ from app.processing.row_identity import normalize_value
 from app.processing.semantic_evidence import name_features
 from app.schemas.relationships import RelationshipEvidence
 
-ALGORITHM_VERSION = 1
+ALGORITHM_VERSION = 2
 LIMITS = {'datasets': 20, 'columns': 400, 'pairs': 200, 'rows_per_dataset': 100000,
           'total_rows': 500000, 'artifact_bytes': 64000000, 'total_artifact_bytes': 128000000,
           'value_characters': 1024, 'total_value_bytes': 32000000}
@@ -19,7 +19,9 @@ def structure(parent, child, pc, cc):
     return digest([parent['pin']['dataset_version_id'], child['pin']['dataset_version_id'],
                    parent['policy']['business_keys'], child['policy']['business_keys'],
                    parent['policy']['normalization_version'], child['policy']['normalization_version'],
-                   pc, cc, parent['policy']['schema_columns'], child['policy']['schema_columns']])
+                   pc, cc, parent['policy']['schema_columns'], child['policy']['schema_columns'],
+                   next((x['canonical_type'] for x in parent['profile']['columns'] if x['original_name']==pc),None),
+                   next((x['canonical_type'] for x in child['profile']['columns'] if x['original_name']==cc),None)])
 
 def name_match(parent, pc, cc):
     a, at = name_features(pc['original_name']); b, bt = name_features(cc['original_name'])
@@ -68,7 +70,18 @@ def propose(items):
                 key = digest([parent['pin']['dataset_id'],[pc['original_name']],child['pin']['dataset_id'],[cc['original_name']]])
                 pairs[key] = (parent, child, pc, cc, features)
                 if len(pairs) > LIMITS['pairs']: raise ValueError('Candidate pair limit exceeded')
-    return pairs, suppressed
+    # Two directions of the same physical pair are one tentative relationship, not two approvals.
+    selected = {}
+    def priority(pair):
+        parent,_,col,_,_ = pair
+        return (bool(col['distinct_ratio']==1 and col['null_ratio']==0),
+                parent['policy']['business_keys']==[col['original_name']],-parent['pin']['dataset_id'])
+    for key,pair in sorted(pairs.items()):
+        p,c,pc,cc,_ = pair
+        unordered = tuple(sorted([(p['pin']['dataset_id'],pc['original_name']),(c['pin']['dataset_id'],cc['original_name'])]))
+        old = selected.get(unordered)
+        if not old or priority(pair)>priority(old[1]): selected[unordered] = (key,pair)
+    return dict(selected.values()), suppressed
 
 def values(frame, column, budget):
     encoded = []; nulls = 0
@@ -101,6 +114,7 @@ def verify(workspace, pairs, frames):
         child_unique = bool(cv) and cs['duplicate_rows']==0
         cardinality = ('ONE_TO_ONE' if child_unique else 'ONE_TO_MANY') if parent_unique else (
             'MANY_TO_MANY_CANDIDATE' if pv and cv and ps['duplicate_rows'] and cs['duplicate_rows'] else 'UNKNOWN')
+        if matched==0: cardinality='UNKNOWN'
         configured = p['policy']['business_keys'] == [pc['original_name']]
         components = [
             {'name':'name','points':20 if 'NORMALIZED_NAME_EQUAL' in features else 15,'explanation':', '.join(features)},

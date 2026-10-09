@@ -1,0 +1,1022 @@
+{
+  "migration": {
+    "database": "ai_data_workspace",
+    "migration": "0021",
+    "already_present": false,
+    "tables": [
+      "relationship_discovery_runs",
+      "relationship_candidates",
+      "relationship_reviews"
+    ],
+    "protection_triggers": 3,
+    "constraints": 53,
+    "existing_counts_unchanged": [
+      26,
+      41,
+      12,
+      10,
+      4
+    ]
+  },
+  "discovery": {
+    "workspace_id": 16,
+    "run_id": 2,
+    "run_version": 2,
+    "coverage": {
+      "datasets_total": 6,
+      "datasets_analyzed": 6,
+      "datasets_excluded": 0,
+      "partial": false,
+      "excluded": []
+    },
+    "semantic_context": {
+      "workspace_semantics": "READY",
+      "workspace_suggestion_id": 4,
+      "workspace_semantic_source_pins": [
+        {
+          "dataset_id": 25,
+          "dataset_name": "Customers",
+          "profile_id": 6,
+          "profile_version": 1,
+          "state_id": 35,
+          "state_version": 1,
+          "dataset_version_id": 27,
+          "schema_version": 1,
+          "suggestion_id": 5,
+          "suggestion_version": 1
+        },
+        {
+          "dataset_id": 26,
+          "dataset_name": "Products",
+          "profile_id": 7,
+          "profile_version": 1,
+          "state_id": 36,
+          "state_version": 1,
+          "dataset_version_id": 28,
+          "schema_version": 1,
+          "suggestion_id": 6,
+          "suggestion_version": 1
+        },
+        {
+          "dataset_id": 27,
+          "dataset_name": "Orders",
+          "profile_id": 11,
+          "profile_version": 2,
+          "state_id": 40,
+          "state_version": 2,
+          "dataset_version_id": 29,
+          "schema_version": 1,
+          "suggestion_id": 9,
+          "suggestion_version": 2
+        },
+        {
+          "dataset_id": 28,
+          "dataset_name": "Payments",
+          "profile_id": 9,
+          "profile_version": 1,
+          "state_id": 38,
+          "state_version": 1,
+          "dataset_version_id": 30,
+          "schema_version": 1,
+          "suggestion_id": 8,
+          "suggestion_version": 1
+        },
+        {
+          "dataset_id": 30,
+          "dataset_name": "Patient Admissions",
+          "profile_id": 12,
+          "profile_version": 1,
+          "state_id": 41,
+          "state_version": 1,
+          "dataset_version_id": 32,
+          "schema_version": 1,
+          "suggestion_id": 10,
+          "suggestion_version": 1
+        }
+      ],
+      "workspace_domain": null,
+      "workspace_entities": [
+        "Customer",
+        "Product",
+        "Order",
+        "Payment",
+        "Patient Admission"
+      ],
+      "dataset_semantics_available": 5,
+      "ai_ranking": "NOT_USED"
+    },
+    "candidates": [
+      {
+        "candidate_id": 6,
+        "run_id": 2,
+        "candidate_status": "CANDIDATE",
+        "evidence": {
+          "workspace_id": 16,
+          "candidate_key": "2bb89cb557c323463943d31735cc63e081d4ee62fc50ad60090740c90f46a565",
+          "parent": {
+            "dataset_id": 25,
+            "dataset_name": "Customers",
+            "columns": [
+              "customer_id"
+            ],
+            "normalized_columns": [
+              "customer_id"
+            ]
+          },
+          "child": {
+            "dataset_id": 27,
+            "dataset_name": "Orders",
+            "columns": [
+              "customer_id"
+            ],
+            "normalized_columns": [
+              "customer_id"
+            ]
+          },
+          "candidate_direction": "PARENT_TO_CHILD",
+          "candidate_cardinality": "ONE_TO_MANY",
+          "signals": {
+            "name_features": [
+              "NORMALIZED_NAME_EQUAL"
+            ],
+            "datatype_compatible": true,
+            "parent_type": "TEXT",
+            "child_type": "TEXT",
+            "configured_parent_key": true,
+            "parent": {
+              "rows": 3,
+              "non_null_rows": 3,
+              "distinct_keys": 3,
+              "duplicate_rows": 0,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 1.0
+            },
+            "child": {
+              "rows": 4,
+              "non_null_rows": 4,
+              "distinct_keys": 3,
+              "duplicate_rows": 1,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 0.75
+            },
+            "overlap": {
+              "method": "EXACT_BOUNDED",
+              "child_non_null_distinct_keys": 3,
+              "matched_distinct_keys": 3,
+              "missing_distinct_keys": 0,
+              "child_to_parent_coverage": 1.0,
+              "parent_referenced_ratio": 1.0
+            },
+            "parent_semantic_role": "IDENTIFIER",
+            "child_semantic_role": "ENTITY_REFERENCE"
+          },
+          "deterministic_score": 100,
+          "score_components": [
+            {
+              "name": "name",
+              "points": 20,
+              "explanation": "NORMALIZED_NAME_EQUAL"
+            },
+            {
+              "name": "type",
+              "points": 15,
+              "explanation": "Exact canonical type; no coercion"
+            },
+            {
+              "name": "parent_uniqueness",
+              "points": 20,
+              "explanation": "Exact unique non-null parent values required"
+            },
+            {
+              "name": "coverage",
+              "points": 30,
+              "explanation": "Distinct non-null child coverage"
+            },
+            {
+              "name": "configured_key",
+              "points": 15,
+              "explanation": "Whole configured single-column business key"
+            }
+          ],
+          "warnings": [],
+          "can_confirm": true,
+          "structural_signature": "a56e2bc07cc49587d643f2dfe2cee6b4df371a34e1b8b1e0f53fb48568b9e5ba",
+          "source_pins": [
+            {
+              "dataset_id": 25,
+              "state_id": 35,
+              "state_version": 1,
+              "dataset_version_id": 27,
+              "policy_id": 12,
+              "profile_id": 6,
+              "profile_version": 1,
+              "schema_version": 1,
+              "dataset_suggestion_id": 5
+            },
+            {
+              "dataset_id": 27,
+              "state_id": 40,
+              "state_version": 2,
+              "dataset_version_id": 29,
+              "policy_id": 14,
+              "profile_id": 11,
+              "profile_version": 2,
+              "schema_version": 1,
+              "dataset_suggestion_id": 9
+            }
+          ]
+        },
+        "review_status": "REVIEW_REQUIRED",
+        "review_version": 0
+      },
+      {
+        "candidate_id": 7,
+        "run_id": 2,
+        "candidate_status": "REVIEW_REQUIRED",
+        "evidence": {
+          "workspace_id": 16,
+          "candidate_key": "52839ef8c73b9a6f72b0773d26ef038c2031d64074ab2e8443ae16917f1af314",
+          "parent": {
+            "dataset_id": 25,
+            "dataset_name": "Customers",
+            "columns": [
+              "customer_id"
+            ],
+            "normalized_columns": [
+              "customer_id"
+            ]
+          },
+          "child": {
+            "dataset_id": 29,
+            "dataset_name": "Missing AI understanding",
+            "columns": [
+              "customer_id"
+            ],
+            "normalized_columns": [
+              "customer_id"
+            ]
+          },
+          "candidate_direction": "PARENT_TO_CHILD",
+          "candidate_cardinality": "UNKNOWN",
+          "signals": {
+            "name_features": [
+              "NORMALIZED_NAME_EQUAL"
+            ],
+            "datatype_compatible": true,
+            "parent_type": "TEXT",
+            "child_type": "TEXT",
+            "configured_parent_key": true,
+            "parent": {
+              "rows": 3,
+              "non_null_rows": 3,
+              "distinct_keys": 3,
+              "duplicate_rows": 0,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 1.0
+            },
+            "child": {
+              "rows": 2,
+              "non_null_rows": 2,
+              "distinct_keys": 2,
+              "duplicate_rows": 0,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 1.0
+            },
+            "overlap": {
+              "method": "EXACT_BOUNDED",
+              "child_non_null_distinct_keys": 2,
+              "matched_distinct_keys": 0,
+              "missing_distinct_keys": 2,
+              "child_to_parent_coverage": 0.0,
+              "parent_referenced_ratio": 0.0
+            },
+            "parent_semantic_role": "IDENTIFIER",
+            "child_semantic_role": null
+          },
+          "deterministic_score": 70,
+          "score_components": [
+            {
+              "name": "name",
+              "points": 20,
+              "explanation": "NORMALIZED_NAME_EQUAL"
+            },
+            {
+              "name": "type",
+              "points": 15,
+              "explanation": "Exact canonical type; no coercion"
+            },
+            {
+              "name": "parent_uniqueness",
+              "points": 20,
+              "explanation": "Exact unique non-null parent values required"
+            },
+            {
+              "name": "coverage",
+              "points": 0,
+              "explanation": "Distinct non-null child coverage"
+            },
+            {
+              "name": "configured_key",
+              "points": 15,
+              "explanation": "Whole configured single-column business key"
+            }
+          ],
+          "warnings": [
+            "Some distinct non-null child references are absent from the parent.",
+            "Current dataset AI context is unavailable; structural evidence remains deterministic."
+          ],
+          "can_confirm": false,
+          "structural_signature": "55d7e76078649ce391096ac98172ba1f554b3e34ecd7bede8f8387478dedadb8",
+          "source_pins": [
+            {
+              "dataset_id": 25,
+              "state_id": 35,
+              "state_version": 1,
+              "dataset_version_id": 27,
+              "policy_id": 12,
+              "profile_id": 6,
+              "profile_version": 1,
+              "schema_version": 1,
+              "dataset_suggestion_id": 5
+            },
+            {
+              "dataset_id": 29,
+              "state_id": 39,
+              "state_version": 1,
+              "dataset_version_id": 31,
+              "policy_id": 16,
+              "profile_id": 10,
+              "profile_version": 1,
+              "schema_version": 1,
+              "dataset_suggestion_id": null
+            }
+          ]
+        },
+        "review_status": "REVIEW_REQUIRED",
+        "review_version": 0
+      },
+      {
+        "candidate_id": 8,
+        "run_id": 2,
+        "candidate_status": "CANDIDATE",
+        "evidence": {
+          "workspace_id": 16,
+          "candidate_key": "9fd39fd2d0543264c19e1969344d9ce062e7340c02294335be77c05ee6fb620b",
+          "parent": {
+            "dataset_id": 26,
+            "dataset_name": "Products",
+            "columns": [
+              "product_id"
+            ],
+            "normalized_columns": [
+              "product_id"
+            ]
+          },
+          "child": {
+            "dataset_id": 27,
+            "dataset_name": "Orders",
+            "columns": [
+              "product_id"
+            ],
+            "normalized_columns": [
+              "product_id"
+            ]
+          },
+          "candidate_direction": "PARENT_TO_CHILD",
+          "candidate_cardinality": "ONE_TO_MANY",
+          "signals": {
+            "name_features": [
+              "NORMALIZED_NAME_EQUAL"
+            ],
+            "datatype_compatible": true,
+            "parent_type": "TEXT",
+            "child_type": "TEXT",
+            "configured_parent_key": true,
+            "parent": {
+              "rows": 3,
+              "non_null_rows": 3,
+              "distinct_keys": 3,
+              "duplicate_rows": 0,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 1.0
+            },
+            "child": {
+              "rows": 4,
+              "non_null_rows": 4,
+              "distinct_keys": 3,
+              "duplicate_rows": 1,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 0.75
+            },
+            "overlap": {
+              "method": "EXACT_BOUNDED",
+              "child_non_null_distinct_keys": 3,
+              "matched_distinct_keys": 3,
+              "missing_distinct_keys": 0,
+              "child_to_parent_coverage": 1.0,
+              "parent_referenced_ratio": 1.0
+            },
+            "parent_semantic_role": "IDENTIFIER",
+            "child_semantic_role": "ENTITY_REFERENCE"
+          },
+          "deterministic_score": 100,
+          "score_components": [
+            {
+              "name": "name",
+              "points": 20,
+              "explanation": "NORMALIZED_NAME_EQUAL"
+            },
+            {
+              "name": "type",
+              "points": 15,
+              "explanation": "Exact canonical type; no coercion"
+            },
+            {
+              "name": "parent_uniqueness",
+              "points": 20,
+              "explanation": "Exact unique non-null parent values required"
+            },
+            {
+              "name": "coverage",
+              "points": 30,
+              "explanation": "Distinct non-null child coverage"
+            },
+            {
+              "name": "configured_key",
+              "points": 15,
+              "explanation": "Whole configured single-column business key"
+            }
+          ],
+          "warnings": [],
+          "can_confirm": true,
+          "structural_signature": "e51625b6aaa55ca1185177f708947cba32befb648668424525ce2403353c9baa",
+          "source_pins": [
+            {
+              "dataset_id": 26,
+              "state_id": 36,
+              "state_version": 1,
+              "dataset_version_id": 28,
+              "policy_id": 13,
+              "profile_id": 7,
+              "profile_version": 1,
+              "schema_version": 1,
+              "dataset_suggestion_id": 6
+            },
+            {
+              "dataset_id": 27,
+              "state_id": 40,
+              "state_version": 2,
+              "dataset_version_id": 29,
+              "policy_id": 14,
+              "profile_id": 11,
+              "profile_version": 2,
+              "schema_version": 1,
+              "dataset_suggestion_id": 9
+            }
+          ]
+        },
+        "review_status": "REVIEW_REQUIRED",
+        "review_version": 0
+      },
+      {
+        "candidate_id": 9,
+        "run_id": 2,
+        "candidate_status": "CANDIDATE",
+        "evidence": {
+          "workspace_id": 16,
+          "candidate_key": "a38e210bd5f3b933df437e42010b054e22efe2c59359271df6a6225bfee412bd",
+          "parent": {
+            "dataset_id": 27,
+            "dataset_name": "Orders",
+            "columns": [
+              "order_id"
+            ],
+            "normalized_columns": [
+              "order_id"
+            ]
+          },
+          "child": {
+            "dataset_id": 28,
+            "dataset_name": "Payments",
+            "columns": [
+              "order_id"
+            ],
+            "normalized_columns": [
+              "order_id"
+            ]
+          },
+          "candidate_direction": "PARENT_TO_CHILD",
+          "candidate_cardinality": "ONE_TO_ONE",
+          "signals": {
+            "name_features": [
+              "NORMALIZED_NAME_EQUAL"
+            ],
+            "datatype_compatible": true,
+            "parent_type": "TEXT",
+            "child_type": "TEXT",
+            "configured_parent_key": true,
+            "parent": {
+              "rows": 4,
+              "non_null_rows": 4,
+              "distinct_keys": 4,
+              "duplicate_rows": 0,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 1.0
+            },
+            "child": {
+              "rows": 3,
+              "non_null_rows": 3,
+              "distinct_keys": 3,
+              "duplicate_rows": 0,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 1.0
+            },
+            "overlap": {
+              "method": "EXACT_BOUNDED",
+              "child_non_null_distinct_keys": 3,
+              "matched_distinct_keys": 3,
+              "missing_distinct_keys": 0,
+              "child_to_parent_coverage": 1.0,
+              "parent_referenced_ratio": 0.75
+            },
+            "parent_semantic_role": "IDENTIFIER",
+            "child_semantic_role": "ENTITY_REFERENCE"
+          },
+          "deterministic_score": 100,
+          "score_components": [
+            {
+              "name": "name",
+              "points": 20,
+              "explanation": "NORMALIZED_NAME_EQUAL"
+            },
+            {
+              "name": "type",
+              "points": 15,
+              "explanation": "Exact canonical type; no coercion"
+            },
+            {
+              "name": "parent_uniqueness",
+              "points": 20,
+              "explanation": "Exact unique non-null parent values required"
+            },
+            {
+              "name": "coverage",
+              "points": 30,
+              "explanation": "Distinct non-null child coverage"
+            },
+            {
+              "name": "configured_key",
+              "points": 15,
+              "explanation": "Whole configured single-column business key"
+            }
+          ],
+          "warnings": [],
+          "can_confirm": true,
+          "structural_signature": "ae2a52e58ec301cc04976ea6a39fe79f782dbb40d5779d7cb422646d02e59840",
+          "source_pins": [
+            {
+              "dataset_id": 27,
+              "state_id": 40,
+              "state_version": 2,
+              "dataset_version_id": 29,
+              "policy_id": 14,
+              "profile_id": 11,
+              "profile_version": 2,
+              "schema_version": 1,
+              "dataset_suggestion_id": 9
+            },
+            {
+              "dataset_id": 28,
+              "state_id": 38,
+              "state_version": 1,
+              "dataset_version_id": 30,
+              "policy_id": 15,
+              "profile_id": 9,
+              "profile_version": 1,
+              "schema_version": 1,
+              "dataset_suggestion_id": 8
+            }
+          ]
+        },
+        "review_status": "REVIEW_REQUIRED",
+        "review_version": 0
+      },
+      {
+        "candidate_id": 10,
+        "run_id": 2,
+        "candidate_status": "REVIEW_REQUIRED",
+        "evidence": {
+          "workspace_id": 16,
+          "candidate_key": "faf3df8b3b38fb1a80be978bb3eb84f8ac210c2b0b72011ece32a69df0747b5f",
+          "parent": {
+            "dataset_id": 29,
+            "dataset_name": "Missing AI understanding",
+            "columns": [
+              "customer_id"
+            ],
+            "normalized_columns": [
+              "customer_id"
+            ]
+          },
+          "child": {
+            "dataset_id": 27,
+            "dataset_name": "Orders",
+            "columns": [
+              "customer_id"
+            ],
+            "normalized_columns": [
+              "customer_id"
+            ]
+          },
+          "candidate_direction": "PARENT_TO_CHILD",
+          "candidate_cardinality": "UNKNOWN",
+          "signals": {
+            "name_features": [
+              "NORMALIZED_NAME_EQUAL"
+            ],
+            "datatype_compatible": true,
+            "parent_type": "TEXT",
+            "child_type": "TEXT",
+            "configured_parent_key": true,
+            "parent": {
+              "rows": 2,
+              "non_null_rows": 2,
+              "distinct_keys": 2,
+              "duplicate_rows": 0,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 1.0
+            },
+            "child": {
+              "rows": 4,
+              "non_null_rows": 4,
+              "distinct_keys": 3,
+              "duplicate_rows": 1,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 0.75
+            },
+            "overlap": {
+              "method": "EXACT_BOUNDED",
+              "child_non_null_distinct_keys": 3,
+              "matched_distinct_keys": 0,
+              "missing_distinct_keys": 3,
+              "child_to_parent_coverage": 0.0,
+              "parent_referenced_ratio": 0.0
+            },
+            "parent_semantic_role": null,
+            "child_semantic_role": "ENTITY_REFERENCE"
+          },
+          "deterministic_score": 70,
+          "score_components": [
+            {
+              "name": "name",
+              "points": 20,
+              "explanation": "NORMALIZED_NAME_EQUAL"
+            },
+            {
+              "name": "type",
+              "points": 15,
+              "explanation": "Exact canonical type; no coercion"
+            },
+            {
+              "name": "parent_uniqueness",
+              "points": 20,
+              "explanation": "Exact unique non-null parent values required"
+            },
+            {
+              "name": "coverage",
+              "points": 0,
+              "explanation": "Distinct non-null child coverage"
+            },
+            {
+              "name": "configured_key",
+              "points": 15,
+              "explanation": "Whole configured single-column business key"
+            }
+          ],
+          "warnings": [
+            "Some distinct non-null child references are absent from the parent.",
+            "Current dataset AI context is unavailable; structural evidence remains deterministic."
+          ],
+          "can_confirm": false,
+          "structural_signature": "d94dc8aa4dc624d6fd84da44b497b520bbdc3ba148c79ece98fb5485b7dda0b2",
+          "source_pins": [
+            {
+              "dataset_id": 29,
+              "state_id": 39,
+              "state_version": 1,
+              "dataset_version_id": 31,
+              "policy_id": 16,
+              "profile_id": 10,
+              "profile_version": 1,
+              "schema_version": 1,
+              "dataset_suggestion_id": null
+            },
+            {
+              "dataset_id": 27,
+              "state_id": 40,
+              "state_version": 2,
+              "dataset_version_id": 29,
+              "policy_id": 14,
+              "profile_id": 11,
+              "profile_version": 2,
+              "schema_version": 1,
+              "dataset_suggestion_id": 9
+            }
+          ]
+        },
+        "review_status": "REVIEW_REQUIRED",
+        "review_version": 0
+      }
+    ],
+    "idempotency": true,
+    "raw_key_privacy": true,
+    "other_workspace_isolation": true
+  },
+  "reviews": {
+    "workspace_id": 16,
+    "decisions": [
+      {
+        "candidate_id": 6,
+        "relationship_version": 1,
+        "status": "CONFIRMED",
+        "reviewed_by": 1,
+        "reviewed_at": "2026-10-09T22:29:57.418403+05:30",
+        "evidence": {
+          "workspace_id": 16,
+          "candidate_key": "2bb89cb557c323463943d31735cc63e081d4ee62fc50ad60090740c90f46a565",
+          "parent": {
+            "dataset_id": 25,
+            "dataset_name": "Customers",
+            "columns": [
+              "customer_id"
+            ],
+            "normalized_columns": [
+              "customer_id"
+            ]
+          },
+          "child": {
+            "dataset_id": 27,
+            "dataset_name": "Orders",
+            "columns": [
+              "customer_id"
+            ],
+            "normalized_columns": [
+              "customer_id"
+            ]
+          },
+          "candidate_direction": "PARENT_TO_CHILD",
+          "candidate_cardinality": "ONE_TO_MANY",
+          "signals": {
+            "name_features": [
+              "NORMALIZED_NAME_EQUAL"
+            ],
+            "datatype_compatible": true,
+            "parent_type": "TEXT",
+            "child_type": "TEXT",
+            "configured_parent_key": true,
+            "parent": {
+              "rows": 3,
+              "non_null_rows": 3,
+              "distinct_keys": 3,
+              "duplicate_rows": 0,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 1.0
+            },
+            "child": {
+              "rows": 4,
+              "non_null_rows": 4,
+              "distinct_keys": 3,
+              "duplicate_rows": 1,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 0.75
+            },
+            "overlap": {
+              "method": "EXACT_BOUNDED",
+              "child_non_null_distinct_keys": 3,
+              "matched_distinct_keys": 3,
+              "missing_distinct_keys": 0,
+              "child_to_parent_coverage": 1.0,
+              "parent_referenced_ratio": 1.0
+            },
+            "parent_semantic_role": "IDENTIFIER",
+            "child_semantic_role": "ENTITY_REFERENCE"
+          },
+          "deterministic_score": 100,
+          "score_components": [
+            {
+              "name": "name",
+              "points": 20,
+              "explanation": "NORMALIZED_NAME_EQUAL"
+            },
+            {
+              "name": "type",
+              "points": 15,
+              "explanation": "Exact canonical type; no coercion"
+            },
+            {
+              "name": "parent_uniqueness",
+              "points": 20,
+              "explanation": "Exact unique non-null parent values required"
+            },
+            {
+              "name": "coverage",
+              "points": 30,
+              "explanation": "Distinct non-null child coverage"
+            },
+            {
+              "name": "configured_key",
+              "points": 15,
+              "explanation": "Whole configured single-column business key"
+            }
+          ],
+          "warnings": [],
+          "can_confirm": true,
+          "structural_signature": "a56e2bc07cc49587d643f2dfe2cee6b4df371a34e1b8b1e0f53fb48568b9e5ba",
+          "source_pins": [
+            {
+              "dataset_id": 25,
+              "state_id": 35,
+              "state_version": 1,
+              "dataset_version_id": 27,
+              "policy_id": 12,
+              "profile_id": 6,
+              "profile_version": 1,
+              "schema_version": 1,
+              "dataset_suggestion_id": 5
+            },
+            {
+              "dataset_id": 27,
+              "state_id": 40,
+              "state_version": 2,
+              "dataset_version_id": 29,
+              "policy_id": 14,
+              "profile_id": 11,
+              "profile_version": 2,
+              "schema_version": 1,
+              "dataset_suggestion_id": 9
+            }
+          ]
+        },
+        "structural_status": "CURRENT",
+        "verification_status": "CURRENT"
+      },
+      {
+        "candidate_id": 7,
+        "relationship_version": 1,
+        "status": "REJECTED",
+        "reviewed_by": 1,
+        "reviewed_at": "2026-10-09T22:32:21.040069+05:30",
+        "evidence": {
+          "workspace_id": 16,
+          "candidate_key": "52839ef8c73b9a6f72b0773d26ef038c2031d64074ab2e8443ae16917f1af314",
+          "parent": {
+            "dataset_id": 25,
+            "dataset_name": "Customers",
+            "columns": [
+              "customer_id"
+            ],
+            "normalized_columns": [
+              "customer_id"
+            ]
+          },
+          "child": {
+            "dataset_id": 29,
+            "dataset_name": "Missing AI understanding",
+            "columns": [
+              "customer_id"
+            ],
+            "normalized_columns": [
+              "customer_id"
+            ]
+          },
+          "candidate_direction": "PARENT_TO_CHILD",
+          "candidate_cardinality": "UNKNOWN",
+          "signals": {
+            "name_features": [
+              "NORMALIZED_NAME_EQUAL"
+            ],
+            "datatype_compatible": true,
+            "parent_type": "TEXT",
+            "child_type": "TEXT",
+            "configured_parent_key": true,
+            "parent": {
+              "rows": 3,
+              "non_null_rows": 3,
+              "distinct_keys": 3,
+              "duplicate_rows": 0,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 1.0
+            },
+            "child": {
+              "rows": 2,
+              "non_null_rows": 2,
+              "distinct_keys": 2,
+              "duplicate_rows": 0,
+              "null_ratio": 0.0,
+              "uniqueness_ratio": 1.0
+            },
+            "overlap": {
+              "method": "EXACT_BOUNDED",
+              "child_non_null_distinct_keys": 2,
+              "matched_distinct_keys": 0,
+              "missing_distinct_keys": 2,
+              "child_to_parent_coverage": 0.0,
+              "parent_referenced_ratio": 0.0
+            },
+            "parent_semantic_role": "IDENTIFIER",
+            "child_semantic_role": null
+          },
+          "deterministic_score": 70,
+          "score_components": [
+            {
+              "name": "name",
+              "points": 20,
+              "explanation": "NORMALIZED_NAME_EQUAL"
+            },
+            {
+              "name": "type",
+              "points": 15,
+              "explanation": "Exact canonical type; no coercion"
+            },
+            {
+              "name": "parent_uniqueness",
+              "points": 20,
+              "explanation": "Exact unique non-null parent values required"
+            },
+            {
+              "name": "coverage",
+              "points": 0,
+              "explanation": "Distinct non-null child coverage"
+            },
+            {
+              "name": "configured_key",
+              "points": 15,
+              "explanation": "Whole configured single-column business key"
+            }
+          ],
+          "warnings": [
+            "Some distinct non-null child references are absent from the parent.",
+            "Current dataset AI context is unavailable; structural evidence remains deterministic."
+          ],
+          "can_confirm": false,
+          "structural_signature": "55d7e76078649ce391096ac98172ba1f554b3e34ecd7bede8f8387478dedadb8",
+          "source_pins": [
+            {
+              "dataset_id": 25,
+              "state_id": 35,
+              "state_version": 1,
+              "dataset_version_id": 27,
+              "policy_id": 12,
+              "profile_id": 6,
+              "profile_version": 1,
+              "schema_version": 1,
+              "dataset_suggestion_id": 5
+            },
+            {
+              "dataset_id": 29,
+              "state_id": 39,
+              "state_version": 1,
+              "dataset_version_id": 31,
+              "policy_id": 16,
+              "profile_id": 10,
+              "profile_version": 1,
+              "schema_version": 1,
+              "dataset_suggestion_id": null
+            }
+          ]
+        },
+        "structural_status": "CURRENT",
+        "verification_status": "CURRENT"
+      }
+    ],
+    "review_events": 2,
+    "existing_counts_unchanged": [
+      26,
+      41,
+      12,
+      10,
+      4
+    ],
+    "metadata_counts": {
+      "runs": 2,
+      "candidates": 10,
+      "reviews": 2
+    }
+  },
+  "validation": {
+    "backend_standard_passed": 206,
+    "backend_standard_db_gated_skipped": 133,
+    "backend_postgresql_relationship_passed": 16,
+    "frontend_suites_passed": 15,
+    "frontend_lint": "PASS",
+    "production_build": "PASS",
+    "git_diff_check": "PASS",
+    "browser_refresh_persistence": "PASS",
+    "browser_workspace_isolation": "PASS",
+    "mobile_width": 390,
+    "tablet_width": 768,
+    "horizontal_overflow": false,
+    "later_phase_started": false,
+    "agent_commit_created": false
+  }
+}

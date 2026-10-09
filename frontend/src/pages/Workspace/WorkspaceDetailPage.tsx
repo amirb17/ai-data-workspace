@@ -5,7 +5,7 @@ import { listDatasets } from "../../services/api/datasets"
 import { useApiResource } from "../../services/api/useApiResource"
 import { ApiFeedback } from "../../components/ui/ApiFeedback"
 import { StatusBadge } from "../../components/ui/StatusBadge"
-const tabs = [{label:"Overview",to:"",end:true},{label:"Datasets",to:"datasets"},{label:"Understanding",to:"understanding"},{label:"Processing",to:"processing"},{label:"Data Quality",to:"data-quality"},{label:"Analytics",to:"analytics"}]
+const tabs = [{label:"Overview",to:"",end:true},{label:"Datasets",to:"datasets"},{label:"Understanding",to:"understanding"},{label:"Data Model",to:"data-model"},{label:"Processing",to:"processing"},{label:"Data Quality",to:"data-quality"},{label:"Analytics",to:"analytics"}]
 export function WorkspaceDetailPage() {
   const { workspaceId = "" } = useParams()
   const datasetRoute = useMatch("/app/workspaces/:workspaceId/datasets/:datasetId/*")

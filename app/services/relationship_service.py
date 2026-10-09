@@ -55,6 +55,7 @@ def gather(conn, workspace, user, lock=False):
         pin = {'dataset_id':row['dataset_id'],'state_id':state['state_id'],'state_version':state['state_version'],
                'dataset_version_id':state['dataset_version_id'],'policy_id':state['policy_id'],
                'profile_id':p['profile_id'],'profile_version':p['profile_version'],
+               'schema_version':p['schema_version'],
                'dataset_suggestion_id':s['suggestion']['suggestion_id'] if s['status']=='READY' else None}
         eligible.append({'profile':p,'policy':policy,'state':state,'pin':pin,'semantic_roles':roles})
     ws_source = workspace_semantics.gather(conn,workspace,user)
@@ -126,6 +127,7 @@ def read_relationships(workspace,user,content=True):
         'run_version':run['run_version'] if run else None,'failure_code':failure,'can_discover':not problem and status not in ('READY','DISCOVERING'),
         'readiness_message':problem or 'Current profiles are eligible. Dataset/workspace AI context is optional.',
         'coverage':source['coverage'],'semantic_context':source['semantic_context'],'limits':LIMITS,
+        'source_pins':source['pins'],'review_revision':max((r['review_id'] for r in reviews),default=0),
         'candidates':candidates,'reviewed_relationships':reviewed_view(source,reviews) if content else []}
     return RelationshipsView.model_validate(view).model_dump()
 
