@@ -43,13 +43,13 @@ class SemanticReasoningProvider(Protocol):
     def generate(self, evidence_json: str) -> ProviderResult: ...
 
 
-def reasoning_schema():
+def reasoning_schema(model=SemanticReasoning):
     """Transport-compatible schema; full strict bounds/extra checks remain server-side.
 
     Gemini interactions rejects the constrained Pydantic JSON Schema. Inline refs
     and use its structural subset rather than dropping deterministic validation.
     """
-    schema = SemanticReasoning.model_json_schema()
+    schema = model.model_json_schema()
     definitions = schema.get('$defs', {})
     supported = {'type','properties','items','required','enum','anyOf','description'}
     def expand(node):
@@ -65,15 +65,18 @@ class GeminiSemanticProvider:
     provider = 'gemini'
     model = GEMINI_MODEL
     strategy = 'interactions-json-v1-timeout60-no-auto-retry'
+    system_prompt = SYSTEM_PROMPT
+    response_model = SemanticReasoning
+    input_label = 'UNTRUSTED_DATASET_EVIDENCE_JSON'
 
     def generate(self, evidence_json):
         try:
             with get_ai_client(timeout_ms=60000) as client:
                 response = client.interactions.create(model=self.model,
-                    input='UNTRUSTED_DATASET_EVIDENCE_JSON\n' + evidence_json,
-                    system_instruction=SYSTEM_PROMPT,
+                    input=self.input_label + '\n' + evidence_json,
+                    system_instruction=self.system_prompt,
                     response_format={'type':'text','mime_type':'application/json',
-                        'schema':reasoning_schema()},
+                        'schema':reasoning_schema(self.response_model)},
                     generation_config={'max_output_tokens':16000,'temperature':0},
                     store=False, timeout=60)
             if not response.output_text:

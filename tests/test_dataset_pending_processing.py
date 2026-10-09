@@ -155,13 +155,14 @@ def test_dataset_concurrency_refuses_duplicate_work(pipeline, monkeypatch):
     original = stages.process_silver
     def slow(**kwargs):
         entered.set()
-        assert release.wait(10)
+        # Coordinate overlap, rather than requiring PostgreSQL preparation within 10s.
+        assert release.wait(60)
         return original(**kwargs)
     monkeypatch.setattr(stages, "process_silver", slow)
     with ThreadPoolExecutor(max_workers=2) as executor:
         first = executor.submit(pending, pipeline)
-        assert entered.wait(10)
         try:
+            assert entered.wait(60)
             with pytest.raises(RuntimeError, match="already active"):
                 pending(pipeline)
         finally:

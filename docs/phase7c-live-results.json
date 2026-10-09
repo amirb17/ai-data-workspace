@@ -1,0 +1,702 @@
+{
+  "migration": {
+    "database": "ai_data_workspace",
+    "applied": "0020",
+    "table_added": "workspace_semantic_suggestions",
+    "protection_triggers": 1,
+    "existing_counts_unchanged": [
+      20,
+      34,
+      5,
+      4
+    ]
+  },
+  "workspace_id": 16,
+  "customers": 25,
+  "phase7c_customers": 80,
+  "customers_ready": {
+    "upload_id": 80,
+    "profile_id": 6,
+    "suggestion_id": 5
+  },
+  "products": 26,
+  "phase7c_products": 81,
+  "products_ready": {
+    "upload_id": 81,
+    "profile_id": 7,
+    "suggestion_id": 6
+  },
+  "orders": 27,
+  "phase7c_orders": 82,
+  "additional_approved_rules": {
+    "order_id:UNIQUE": "YES",
+    "payment_id:UNIQUE": "YES"
+  },
+  "orders_ready": {
+    "upload_id": 82,
+    "profile_id": 8,
+    "suggestion_id": 7
+  },
+  "payments": 28,
+  "phase7c_payments": 83,
+  "payments_ready": {
+    "upload_id": 83,
+    "profile_id": 9,
+    "suggestion_id": 8
+  },
+  "related_ready": {
+    "suggestion_id": 2,
+    "version": 2,
+    "coverage": {
+      "datasets_total": 4,
+      "datasets_analyzed": 4,
+      "datasets_excluded": 0,
+      "partial": false,
+      "excluded": []
+    },
+    "source_pins": [
+      {
+        "dataset_id": 25,
+        "dataset_name": "Customers",
+        "profile_id": 6,
+        "profile_version": 1,
+        "state_id": 35,
+        "state_version": 1,
+        "dataset_version_id": 27,
+        "schema_version": 1,
+        "suggestion_id": 5,
+        "suggestion_version": 1
+      },
+      {
+        "dataset_id": 26,
+        "dataset_name": "Products",
+        "profile_id": 7,
+        "profile_version": 1,
+        "state_id": 36,
+        "state_version": 1,
+        "dataset_version_id": 28,
+        "schema_version": 1,
+        "suggestion_id": 6,
+        "suggestion_version": 1
+      },
+      {
+        "dataset_id": 27,
+        "dataset_name": "Orders",
+        "profile_id": 8,
+        "profile_version": 1,
+        "state_id": 37,
+        "state_version": 1,
+        "dataset_version_id": 29,
+        "schema_version": 1,
+        "suggestion_id": 7,
+        "suggestion_version": 1
+      },
+      {
+        "dataset_id": 28,
+        "dataset_name": "Payments",
+        "profile_id": 9,
+        "profile_version": 1,
+        "state_id": 38,
+        "state_version": 1,
+        "dataset_version_id": 30,
+        "schema_version": 1,
+        "suggestion_id": 8,
+        "suggestion_version": 1
+      }
+    ],
+    "reasoning": {
+      "domain": {
+        "primary": {
+          "label": "Commerce",
+          "confidence": 0.85,
+          "rationale": "Datasets span customer records, product catalogs, customer orders, and financial payments."
+        },
+        "alternatives": [
+          {
+            "label": "Retail",
+            "confidence": 0.75,
+            "rationale": "Focuses on products, customers, orders, and payments."
+          }
+        ]
+      },
+      "subdomain": {
+        "primary": {
+          "label": "Order Management",
+          "confidence": 0.85,
+          "rationale": "Encompasses order capture, billing, and fulfillment supporting data."
+        },
+        "alternatives": [
+          {
+            "label": "Billing and Payments",
+            "confidence": 0.8,
+            "rationale": "Includes dedicated payment tracking and transaction amounts."
+          }
+        ]
+      },
+      "business_processes": [
+        {
+          "name": "Order Processing",
+          "confidence": 0.9,
+          "contributing_datasets": [
+            25,
+            26,
+            27,
+            28
+          ],
+          "rationale": "Involves customers placing orders for products and processing payments."
+        }
+      ],
+      "entities": [
+        {
+          "canonical_name": "Customer",
+          "confidence": 0.9,
+          "contributing_datasets": [
+            25
+          ],
+          "rationale": "Identified by customer_id and customer attributes."
+        },
+        {
+          "canonical_name": "Product",
+          "confidence": 0.9,
+          "contributing_datasets": [
+            26
+          ],
+          "rationale": "Identified by product_id and category attributes."
+        },
+        {
+          "canonical_name": "Order",
+          "confidence": 0.95,
+          "contributing_datasets": [
+            27
+          ],
+          "rationale": "Represented by order_id, order date, and order amount."
+        },
+        {
+          "canonical_name": "Payment",
+          "confidence": 0.95,
+          "contributing_datasets": [
+            28
+          ],
+          "rationale": "Represented by payment_id, payment date, and payment amount."
+        }
+      ],
+      "dataset_roles": [
+        {
+          "dataset_id": 25,
+          "role": "ENTITY_MASTER",
+          "confidence": 0.9,
+          "rationale": "Master list of customer entities."
+        },
+        {
+          "dataset_id": 26,
+          "role": "ENTITY_MASTER",
+          "confidence": 0.9,
+          "rationale": "Master product catalog data."
+        },
+        {
+          "dataset_id": 27,
+          "role": "TRANSACTION",
+          "confidence": 0.95,
+          "rationale": "Records transactional orders."
+        },
+        {
+          "dataset_id": 28,
+          "role": "TRANSACTION",
+          "confidence": 0.95,
+          "rationale": "Records financial payment transactions."
+        }
+      ],
+      "overall_confidence": 0.9,
+      "warnings": [],
+      "unresolved_questions": [
+        "What specific currency units apply to the amount fields in Orders and Payments?",
+        "What is the complete business scope of customer demographic attributes?"
+      ]
+    },
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "idempotency": true
+  },
+  "missing_dataset": 29,
+  "phase7c_missing_ai": 84,
+  "partial_ready": {
+    "suggestion_id": 3,
+    "version": 3,
+    "coverage": {
+      "datasets_total": 5,
+      "datasets_analyzed": 4,
+      "datasets_excluded": 1,
+      "partial": true,
+      "excluded": [
+        {
+          "dataset_id": 29,
+          "dataset_name": "Missing AI understanding",
+          "reason": "DATASET_UNDERSTANDING_NOT_GENERATED"
+        }
+      ]
+    },
+    "source_pins": [
+      {
+        "dataset_id": 25,
+        "dataset_name": "Customers",
+        "profile_id": 6,
+        "profile_version": 1,
+        "state_id": 35,
+        "state_version": 1,
+        "dataset_version_id": 27,
+        "schema_version": 1,
+        "suggestion_id": 5,
+        "suggestion_version": 1
+      },
+      {
+        "dataset_id": 26,
+        "dataset_name": "Products",
+        "profile_id": 7,
+        "profile_version": 1,
+        "state_id": 36,
+        "state_version": 1,
+        "dataset_version_id": 28,
+        "schema_version": 1,
+        "suggestion_id": 6,
+        "suggestion_version": 1
+      },
+      {
+        "dataset_id": 27,
+        "dataset_name": "Orders",
+        "profile_id": 8,
+        "profile_version": 1,
+        "state_id": 37,
+        "state_version": 1,
+        "dataset_version_id": 29,
+        "schema_version": 1,
+        "suggestion_id": 7,
+        "suggestion_version": 1
+      },
+      {
+        "dataset_id": 28,
+        "dataset_name": "Payments",
+        "profile_id": 9,
+        "profile_version": 1,
+        "state_id": 38,
+        "state_version": 1,
+        "dataset_version_id": 30,
+        "schema_version": 1,
+        "suggestion_id": 8,
+        "suggestion_version": 1
+      }
+    ],
+    "reasoning": {
+      "domain": {
+        "primary": {
+          "label": "Commerce",
+          "confidence": 0.85,
+          "rationale": "Datasets span customer accounts, product catalogs, order execution, and payment processing."
+        },
+        "alternatives": [
+          {
+            "label": "Retail",
+            "confidence": 0.8,
+            "rationale": "Strong focus on product categories, orders, and customer transactions."
+          }
+        ]
+      },
+      "subdomain": {
+        "primary": {
+          "label": "Order and Billing Operations",
+          "confidence": 0.85,
+          "rationale": "Core operations cover order placement, product management, and payment processing."
+        },
+        "alternatives": [
+          {
+            "label": "Transaction Processing",
+            "confidence": 0.75,
+            "rationale": "Involves tracking commercial orders and financial payments."
+          }
+        ]
+      },
+      "business_processes": [
+        {
+          "name": "Customer Ordering",
+          "confidence": 0.9,
+          "contributing_datasets": [
+            25,
+            27
+          ],
+          "rationale": "Customers place commercial orders over time."
+        },
+        {
+          "name": "Product Catalog Management",
+          "confidence": 0.85,
+          "contributing_datasets": [
+            26
+          ],
+          "rationale": "Maintains catalog items and their categorizations."
+        },
+        {
+          "name": "Payment Processing",
+          "confidence": 0.9,
+          "contributing_datasets": [
+            27,
+            28
+          ],
+          "rationale": "Records payments associated with placed orders."
+        }
+      ],
+      "entities": [
+        {
+          "canonical_name": "Customer",
+          "confidence": 0.95,
+          "contributing_datasets": [
+            25
+          ],
+          "rationale": "Represents individual buyer profiles and their geographic location."
+        },
+        {
+          "canonical_name": "Product",
+          "confidence": 0.95,
+          "contributing_datasets": [
+            26
+          ],
+          "rationale": "Represents items offered in the catalog grouped by category."
+        },
+        {
+          "canonical_name": "Order",
+          "confidence": 0.95,
+          "contributing_datasets": [
+            27
+          ],
+          "rationale": "Represents customer purchase transactions with monetary amounts and dates."
+        },
+        {
+          "canonical_name": "Payment",
+          "confidence": 0.95,
+          "contributing_datasets": [
+            28
+          ],
+          "rationale": "Represents financial settlements linked to orders."
+        }
+      ],
+      "dataset_roles": [
+        {
+          "dataset_id": 25,
+          "role": "ENTITY_MASTER",
+          "confidence": 0.95,
+          "rationale": "Acts as the master record for customer identities."
+        },
+        {
+          "dataset_id": 26,
+          "role": "REFERENCE",
+          "confidence": 0.9,
+          "rationale": "Provides reference classifications and details for products."
+        },
+        {
+          "dataset_id": 27,
+          "role": "TRANSACTION",
+          "confidence": 0.95,
+          "rationale": "Records transactional order activity."
+        },
+        {
+          "dataset_id": 28,
+          "role": "TRANSACTION",
+          "confidence": 0.95,
+          "rationale": "Records payment transaction records."
+        }
+      ],
+      "overall_confidence": 0.9,
+      "warnings": [
+        "Dataset 29 was excluded due to missing AI understanding."
+      ],
+      "unresolved_questions": [
+        "What specific currency units apply to monetary amounts?",
+        "What additional demographic attributes exist for customers?"
+      ]
+    },
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "idempotency": true
+  },
+  "phase7c_orders_second": 85,
+  "stale_source_hidden": true,
+  "orders_refreshed": {
+    "profile_id": 11,
+    "state_version": 2,
+    "suggestion_id": 9
+  },
+  "healthcare": 30,
+  "phase7c_healthcare": 86,
+  "adversarial": {
+    "validated": true,
+    "no_relationship_or_kpi_fields": true,
+    "roles": 5
+  },
+  "integrity": {
+    "database": "ai_data_workspace",
+    "source_ownership_mismatches": 0,
+    "other_workspace_id": 15,
+    "cross_workspace_isolation": true,
+    "typed_future_handoff": true,
+    "protection_trigger_present": true,
+    "current_suggestion_id": 4
+  },
+  "mixed_ready": {
+    "suggestion_id": 4,
+    "version": 4,
+    "coverage": {
+      "datasets_total": 6,
+      "datasets_analyzed": 5,
+      "datasets_excluded": 1,
+      "partial": true,
+      "excluded": [
+        {
+          "dataset_id": 29,
+          "dataset_name": "Missing AI understanding",
+          "reason": "DATASET_UNDERSTANDING_NOT_GENERATED"
+        }
+      ]
+    },
+    "source_pins": [
+      {
+        "dataset_id": 25,
+        "dataset_name": "Customers",
+        "profile_id": 6,
+        "profile_version": 1,
+        "state_id": 35,
+        "state_version": 1,
+        "dataset_version_id": 27,
+        "schema_version": 1,
+        "suggestion_id": 5,
+        "suggestion_version": 1
+      },
+      {
+        "dataset_id": 26,
+        "dataset_name": "Products",
+        "profile_id": 7,
+        "profile_version": 1,
+        "state_id": 36,
+        "state_version": 1,
+        "dataset_version_id": 28,
+        "schema_version": 1,
+        "suggestion_id": 6,
+        "suggestion_version": 1
+      },
+      {
+        "dataset_id": 27,
+        "dataset_name": "Orders",
+        "profile_id": 11,
+        "profile_version": 2,
+        "state_id": 40,
+        "state_version": 2,
+        "dataset_version_id": 29,
+        "schema_version": 1,
+        "suggestion_id": 9,
+        "suggestion_version": 2
+      },
+      {
+        "dataset_id": 28,
+        "dataset_name": "Payments",
+        "profile_id": 9,
+        "profile_version": 1,
+        "state_id": 38,
+        "state_version": 1,
+        "dataset_version_id": 30,
+        "schema_version": 1,
+        "suggestion_id": 8,
+        "suggestion_version": 1
+      },
+      {
+        "dataset_id": 30,
+        "dataset_name": "Patient Admissions",
+        "profile_id": 12,
+        "profile_version": 1,
+        "state_id": 41,
+        "state_version": 1,
+        "dataset_version_id": 32,
+        "schema_version": 1,
+        "suggestion_id": 10,
+        "suggestion_version": 1
+      }
+    ],
+    "reasoning": {
+      "domain": {
+        "primary": {
+          "label": null,
+          "confidence": 0.4,
+          "rationale": "The workspace contains mixed domains including commerce, retail, finance, and healthcare (patient admissions), preventing a single dominant domain above threshold."
+        },
+        "alternatives": [
+          {
+            "label": "Commerce",
+            "confidence": 0.35,
+            "rationale": "Several datasets cover customers, products, orders, and payments."
+          },
+          {
+            "label": "Healthcare",
+            "confidence": 0.25,
+            "rationale": "Dataset 30 explicitly covers patient admissions."
+          }
+        ]
+      },
+      "subdomain": {
+        "primary": {
+          "label": null,
+          "confidence": 0.4,
+          "rationale": "Mixed subdomains across sales, product catalog, billing, and admission management."
+        },
+        "alternatives": [
+          {
+            "label": "Sales",
+            "confidence": 0.35,
+            "rationale": "Covers order tracking and customer transactions."
+          }
+        ]
+      },
+      "business_processes": [
+        {
+          "name": "Customer Ordering",
+          "confidence": 0.85,
+          "contributing_datasets": [
+            25,
+            26,
+            27
+          ],
+          "rationale": "Involves customers placing orders for products."
+        },
+        {
+          "name": "Payment Processing",
+          "confidence": 0.85,
+          "contributing_datasets": [
+            27,
+            28
+          ],
+          "rationale": "Involves settling payments against orders."
+        },
+        {
+          "name": "Patient Admission Management",
+          "confidence": 0.8,
+          "contributing_datasets": [
+            30
+          ],
+          "rationale": "Tracks patient admission events over time."
+        }
+      ],
+      "entities": [
+        {
+          "canonical_name": "Customer",
+          "confidence": 0.95,
+          "contributing_datasets": [
+            25
+          ],
+          "rationale": "Dataset 25 represents customer master records."
+        },
+        {
+          "canonical_name": "Product",
+          "confidence": 0.95,
+          "contributing_datasets": [
+            26
+          ],
+          "rationale": "Dataset 26 represents catalog products."
+        },
+        {
+          "canonical_name": "Order",
+          "confidence": 0.95,
+          "contributing_datasets": [
+            27
+          ],
+          "rationale": "Dataset 27 represents sales orders."
+        },
+        {
+          "canonical_name": "Payment",
+          "confidence": 0.95,
+          "contributing_datasets": [
+            28
+          ],
+          "rationale": "Dataset 28 represents financial payments."
+        },
+        {
+          "canonical_name": "Patient Admission",
+          "confidence": 0.9,
+          "contributing_datasets": [
+            30
+          ],
+          "rationale": "Dataset 30 represents patient admission events."
+        }
+      ],
+      "dataset_roles": [
+        {
+          "dataset_id": 25,
+          "role": "ENTITY_MASTER",
+          "confidence": 0.9,
+          "rationale": "Stores customer dimension master records."
+        },
+        {
+          "dataset_id": 26,
+          "role": "REFERENCE",
+          "confidence": 0.9,
+          "rationale": "Serves as a product catalog reference."
+        },
+        {
+          "dataset_id": 27,
+          "role": "TRANSACTION",
+          "confidence": 0.95,
+          "rationale": "Captures order transactions."
+        },
+        {
+          "dataset_id": 28,
+          "role": "TRANSACTION",
+          "confidence": 0.9,
+          "rationale": "Captures payment transaction records."
+        },
+        {
+          "dataset_id": 30,
+          "role": "EVENT",
+          "confidence": 0.9,
+          "rationale": "Records patient admission events."
+        }
+      ],
+      "overall_confidence": 0.88,
+      "warnings": [
+        "Dataset 29 was excluded due to missing AI understanding.",
+        "Dataset 30 represents healthcare data within a primarily commerce-named workspace."
+      ],
+      "unresolved_questions": [
+        "What are the precise business meanings of unit measurements and currency codes across datasets?",
+        "How should the healthcare data in dataset 30 be scoped relative to the commerce datasets?"
+      ]
+    },
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "idempotency": true
+  },
+  "browser": {
+    "ready_reload_persistence": true,
+    "partial_exclusion_link": true,
+    "stale_content_hidden": true,
+    "mixed_domain_uncertainty_visible": true,
+    "workspace_switch_isolation": true,
+    "mobile_viewport": 390,
+    "mobile_scroll_width": 375,
+    "tablet_viewport": 768,
+    "tablet_scroll_width": 753,
+    "viewport_override_reset": true
+  },
+  "validation": {
+    "phase7c_backend_passed": 29,
+    "phase7c_backend_seconds": 433.9,
+    "fixed_existing_concurrency_test_passed": true,
+    "frontend_lint": "PASS",
+    "frontend_build": "PASS",
+    "frontend_lightweight_suites_passed": 14,
+    "git_diff_check": "PASS",
+    "new_text_whitespace_check": "PASS",
+    "full_backend": {
+      "passed": 315,
+      "failed": 1,
+      "seconds": 3799.98,
+      "failure": "original concurrency setup timeout"
+    },
+    "final_failed_test_rerun": {
+      "passed": 1,
+      "seconds": 29.08
+    }
+  }
+}

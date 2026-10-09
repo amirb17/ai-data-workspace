@@ -15,6 +15,7 @@ import { DataQualityPage } from "./pages/DataQuality/DataQualityPage"
 import { SettingsPage } from "./pages/Settings/SettingsPage"
 import { WorkspacesPage } from "./pages/Workspaces/WorkspacesPage"
 import { WorkspaceDetailPage } from "./pages/Workspace/WorkspaceDetailPage"
+import { WorkspaceUnderstandingPage } from "./features/workspaces/understanding/WorkspaceUnderstanding"
 import { WorkspaceOverviewPage } from "./pages/Workspace/Overview/WorkspaceOverviewPage"
 import { WorkspaceDatasetsPage } from "./pages/Workspace/Datasets/WorkspaceDatasetsPage"
 import { WorkspaceProcessingPage } from "./pages/Workspace/Processing/WorkspaceProcessingPage"
@@ -119,6 +120,7 @@ function AppLayout() {
           index
           element={<WorkspaceOverviewPage />}
         />
+        <Route path="understanding" element={<WorkspaceUnderstandingPage />} />
 
         <Route
           path="datasets"
