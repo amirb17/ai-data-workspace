@@ -1,5 +1,5 @@
 import { ApiError, backendId, request } from "./client"
-import type { DeliveryApplication } from "./incremental"
+import type { DeliveryApplication, SnapshotContext, SnapshotCoverage } from "./incremental"
 export type ProcessingContext = {
   upload_request_id: number; workspace_id: number; dataset_id: number; file_id: number
   archived_at?: string | null; archived_by?: number | null
@@ -11,7 +11,9 @@ export type ProcessingContext = {
   load_strategy?: string; application?: DeliveryApplication | null
   inserted_rows?: number | null; incremental_rejected_rows?: number | null; current_state_rows?: number | null
   unchanged_rows?: number | null; conflict_rows?: number | null; stale_rows?: number | null
-  load_policy?: { policy_id: number; policy_version: number; business_keys: string[]; event_time_column: string | null }
+  deactivated_rows?: number | null; reactivated_rows?: number | null; active_rows?: number | null; inactive_rows?: number | null
+  snapshot_context?: SnapshotContext | null; snapshot_outcome?: string | null
+  load_policy?: { policy_id: number; policy_version: number; business_keys: string[]; event_time_column: string | null; snapshot_coverage?: SnapshotCoverage | null }
   state_lineage?: { source_state_version: number | null; result_state_version: number } | null
   stages: { bronze: string; rules: string; silver: string; gold: string; dataset_update?: string }
   latest_attempt: { id: number; stage: string; status: string; started_at: string | null; completed_at: string | null } | null

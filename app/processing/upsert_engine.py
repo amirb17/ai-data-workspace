@@ -44,7 +44,7 @@ def state_index(frame, policy):
     return result
 
 
-def upsert_rows(current, incoming, policy, application):
+def upsert_rows(current, incoming, policy, application, allow_equal_correction=False):
     if policy['load_strategy'] != 'UPSERT' or policy['normalization_version'] != 1:
         raise ValueError('Only version 1 keyed UPSERT is executable')
     columns = [c['name'] for c in policy['schema_columns']]
@@ -90,7 +90,7 @@ def upsert_rows(current, incoming, policy, application):
                 kind, reason = 'REJECTED', 'INCOMPATIBLE_EVENT_TIME'
             elif incoming_time[1] < current_time[1]:
                 kind, reason = 'STALE', 'OLDER_EVENT_TIME'
-            elif incoming_time[1] == current_time[1] and kind == 'UPDATED':
+            elif incoming_time[1] == current_time[1] and kind == 'UPDATED' and not allow_equal_correction:
                 kind, reason = 'REJECTED', 'EQUAL_EVENT_TIME_CONFLICT'
         # Identical repeated rows perform one semantic operation, even if it is stale/rejected.
         outcome(index, kind, key, content, before, reason)

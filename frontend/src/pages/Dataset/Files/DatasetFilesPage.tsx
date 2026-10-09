@@ -34,6 +34,7 @@ export function DatasetFilesPage() {
         <details open={expanded === c.upload_request_id} id={`delivery-${c.upload_request_id}-details`}><summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-indigo-700">View delivery details</summary><div className="space-y-3 border-t pt-3 text-sm">
           <p>Valid: {countLabel(c.valid_rows)} · Quarantined: {countLabel(c.rejected_rows)} · Published: {countLabel(c.output_rows)}</p>
           {c.rule_state === "FINALIZED" && <p>Approved Rule Version {c.rule_version}{c.rules_reused ? " reused" : ""}</p>}
+          {c.load_strategy === "SNAPSHOT" && <div className="space-y-1"><p>Snapshot coverage: {c.snapshot_context?.coverage === "COMPLETE" ? "Complete" : "Partial / unknown"} · {c.snapshot_context?.delivery_kind ?? "Declaration required"}</p>{c.snapshot_context?.effective_at && <p>Effective snapshot time: {new Date(c.snapshot_context.effective_at).toLocaleString()}</p>}<p>Outcome: {c.snapshot_outcome ?? "Not applied"} · Deactivated: {countLabel(c.deactivated_rows)} · Reactivated: {countLabel(c.reactivated_rows)}</p></div>}
           {inspection && <p>Browser inspection: {inspection.sizeBytes.toLocaleString()} bytes · {countLabel(inspection.rowCount)} rows · {countLabel(inspection.columnCount)} columns</p>}
           <dl><dt className="text-slate-500">Upload reference</dt><dd>{c.upload_request_id}</dd></dl>
           <p className="text-slate-600">Removing or archiving a delivery retains its source file and historical lineage.</p>

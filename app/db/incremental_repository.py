@@ -44,12 +44,15 @@ def foundation(dataset_id):
             except ValueError:
                 version['columns'] = []
             version['event_time_columns']=event_columns(version['dataset_version_id'],version['columns'])
-        head = cursor.execute('''SELECT s.state_id,s.dataset_version_id,s.policy_id,s.state_version,s.row_count,s.published_at,d.state_analytics_status
-            FROM datasets d JOIN dataset_state_versions s ON s.state_id=d.current_state_id WHERE d.dataset_id=%s''', (dataset_id,)).fetchone()
+        head = cursor.execute('''SELECT s.state_id,s.dataset_version_id,s.policy_id,s.state_version,s.row_count,s.published_at,d.state_analytics_status,
+            a.active_rows,a.inactive_rows,a.snapshot_boundary_at
+            FROM datasets d JOIN dataset_state_versions s ON s.state_id=d.current_state_id
+            JOIN delivery_applications a ON a.application_id=s.source_application_id WHERE d.dataset_id=%s''', (dataset_id,)).fetchone()
         applications = cursor.execute('''SELECT a.application_id,a.upload_request_id,a.dataset_version_id,a.dataset_version_file_id,
             a.policy_id,a.applied_rule_version,a.source_dq_run_id,a.status,a.ingestion_time,a.started_at,a.completed_at,
             a.input_rows,a.valid_rows,a.rejected_rows,a.inserted_rows,a.updated_rows,a.unchanged_rows,a.duplicate_rows,
             a.deactivated_rows,a.current_state_rows,a.failure_code,a.result_state_id,a.incremental_rejected_rows,a.conflict_rows,a.stale_rows,
+            a.reactivated_rows,a.active_rows,a.inactive_rows,a.snapshot_coverage,a.snapshot_effective_at,a.snapshot_boundary_at,a.snapshot_outcome,a.delivery_kind,
             p.policy_version,p.load_strategy,p.business_keys,p.event_time_column,u.archived_at,COALESCE(u.source_file_name,f.file_name) AS source_file_name,
             s.previous_state_id,s.state_version AS result_state_version,prior.state_version AS source_state_version
             FROM delivery_applications a JOIN dataset_load_policies p ON p.policy_id=a.policy_id
@@ -70,14 +73,17 @@ def application_context(context):
         head=cursor.execute('SELECT s.policy_id,s.dataset_version_id FROM datasets d JOIN dataset_state_versions s ON s.state_id=d.current_state_id WHERE d.dataset_id=%s',(context['dataset_id'],)).fetchone()
     if not policy: return context
     context['load_strategy']=policy['load_strategy']
-    context['load_policy']={k:policy[k] for k in ('policy_id','policy_version','business_keys','event_time_column')}
+    context['load_policy']={k:policy[k] for k in ('policy_id','policy_version','business_keys','event_time_column','snapshot_coverage')}
+    if policy['load_strategy']=='SNAPSHOT':
+        from app.services.snapshot_context_service import read_snapshot_context
+        context['snapshot_context']=read_snapshot_context(context['upload_request_id'])
     context['application']=application
     stage='PENDING'
     if application: stage={'PREPARED':'PENDING','RUNNING':'PROCESSING','SUCCESS':'SUCCESS','FAILED':'FAILED'}[application['status']]
-    blocked=policy['load_strategy'] not in ('APPEND','UPSERT') or (context['dataset_version_id'] is not None and context['dataset_version_id']!=policy['dataset_version_id']) or (head is not None and (head['policy_id']!=policy['policy_id'] or head['dataset_version_id']!=policy['dataset_version_id']))
+    blocked=policy['load_strategy'] not in ('APPEND','UPSERT','SNAPSHOT') or (policy['load_strategy']=='SNAPSHOT' and not context.get('snapshot_context')) or (context['dataset_version_id'] is not None and context['dataset_version_id']!=policy['dataset_version_id']) or (head is not None and (head['policy_id']!=policy['policy_id'] or head['dataset_version_id']!=policy['dataset_version_id']))
     if blocked and context['stages']['silver']=='SUCCESS':
         stage='BLOCKED'; context['status']='DATASET_UPDATE_BLOCKED'; context['can_continue']=False
-        context['error_summary']='Dataset update requires an executable APPEND/UPSERT policy and compatible schema. Review Contract.'
+        context['error_summary']='Dataset update requires compatible policy/schema and an explicit snapshot declaration for SNAPSHOT. Review Contract and delivery metadata.'
     elif application and application['status'] in ('RUNNING','FAILED'):
         context['status']='DATASET_UPDATE_PROCESSING' if stage=='PROCESSING' else 'DATASET_UPDATE_FAILED'
         context['can_continue']=not context['archived_at'] and stage=='FAILED'
@@ -91,9 +97,11 @@ def application_context(context):
         context['incremental_rejected_rows']=application['incremental_rejected_rows']; context['current_state_rows']=application['current_state_rows']
         context['updated_rows']=application['updated_rows']; context['unchanged_rows']=application['unchanged_rows']
         context['conflict_rows']=application['conflict_rows']; context['stale_rows']=application['stale_rows']
+        for field in ('deactivated_rows','reactivated_rows','active_rows','inactive_rows','snapshot_outcome'):
+            context[field]=application[field]
         with get_connection() as conn:
             lineage=conn.cursor(row_factory=dict_row).execute('SELECT s.state_version AS result_state_version,prior.state_version AS source_state_version FROM dataset_state_versions s LEFT JOIN dataset_state_versions prior ON prior.state_id=s.previous_state_id WHERE s.state_id=%s',(application['result_state_id'],)).fetchone()
         context['state_lineage']=lineage
-        if context['status'] in ('SUCCESS','SUCCESS_WITH_WARNINGS') and (application['incremental_rejected_rows'] or application['stale_rows']): context['status']='SUCCESS_WITH_WARNINGS'
+        if context['status'] in ('SUCCESS','SUCCESS_WITH_WARNINGS') and (application['incremental_rejected_rows'] or application['stale_rows'] or application['snapshot_outcome'] in ('STALE','EQUAL_TIME_CONFLICT','DEACTIVATION_WITHHELD')): context['status']='SUCCESS_WITH_WARNINGS'
     if stage!='SUCCESS': context['completed_at']=None
     return context

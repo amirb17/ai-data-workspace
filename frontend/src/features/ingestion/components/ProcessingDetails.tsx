@@ -9,7 +9,8 @@ export function ProcessingDetails({ context, createdAt, qualityHref }: { context
     ...(context.load_policy ? [["Policy version",context.load_policy.policy_version],["Business key",context.load_policy.business_keys.join(" + ")],["Change ordering",context.load_policy.event_time_column]] : []),
     ...(context.state_lineage ? [["Source state version",context.state_lineage.source_state_version],["Result state version",context.state_lineage.result_state_version]] : [])]
   const dates = [["Uploaded", createdAt], ["Processing started", context.started_at], ["Processing completed", context.completed_at],
-    ...(context.application ? [["Dataset update started",context.application.started_at],["Dataset update completed",context.application.completed_at]] : [])]
+    ...(context.application ? [["Dataset update started",context.application.started_at],["Dataset update completed",context.application.completed_at]] : []),
+    ...(context.snapshot_context ? [["Effective snapshot time",context.snapshot_context.effective_at]] : [])]
   return <div className="space-y-6 border-t border-slate-200 pt-4 text-sm">
     <ProcessingStages context={context} />
     <ProcessingResult context={context} qualityHref={qualityHref} />

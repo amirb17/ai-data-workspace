@@ -45,7 +45,7 @@ export function DatasetContractForm({ initialContract, onSave, onCancel }: Props
           </select>
         </label>
       </div>
-      <p className="text-sm text-slate-500">UPSERT requires a business key. Exact structure blocks extra columns; allowing additional columns produces warnings without changing the contract. Saving does not start processing.</p>
+      <p className="text-sm text-slate-500">UPSERT and SNAPSHOT require a business key. Exact structure blocks extra columns; allowing additional columns produces warnings without changing the contract. Saving does not start processing.</p>
       {(validationError || saveError) && <p role="alert" className="text-sm text-red-700">{validationError || saveError}</p>}
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>

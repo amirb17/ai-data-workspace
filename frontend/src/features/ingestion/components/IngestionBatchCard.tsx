@@ -9,7 +9,9 @@ import { ProcessingDetails } from "./ProcessingDetails"
 export type BatchPresentation = Omit<IngestionBatch, "rowCount" | "columnCount"> & { rowCount: number | null; columnCount: number | null }
 export function IngestionBatchCard({ batch, context, children, qualityHref }: { batch: BatchPresentation; context?: ProcessingContext; children?: ReactNode; qualityHref?: string }) {
   const status = context ? deliveryStatus(context) : { label: "Ready to process", variant: "neutral" as const }
-  const metrics = context?.load_strategy === "UPSERT"
+  const metrics = context?.load_strategy === "SNAPSHOT"
+    ? [["Inserted",context.inserted_rows],["Updated",context.updated_rows],["Unchanged",context.unchanged_rows],["Deactivated",context.deactivated_rows],["Reactivated",context.reactivated_rows],["Conflicts",context.conflict_rows],["Older records ignored",context.stale_rows],["Active",context.active_rows],["Inactive",context.inactive_rows]] as const
+    : context?.load_strategy === "UPSERT"
     ? [["Inserted",context.inserted_rows],["Updated",context.updated_rows],["Unchanged",context.unchanged_rows],["Duplicates",context.duplicate_rows],["Conflicts",context.conflict_rows],["Older updates ignored",context.stale_rows]] as const
     : context?.load_strategy === "APPEND"
     ? [["Input",context.input_rows],["Inserted",context.inserted_rows],["Duplicates",context.duplicate_rows],["Incremental conflicts",context.incremental_rejected_rows]] as const

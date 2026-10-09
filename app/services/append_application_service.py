@@ -1,4 +1,4 @@
-"""Shared dataset application coordinator for APPEND/UPSERT; immutable publication."""
+"""Shared dataset application coordinator for APPEND/UPSERT/SNAPSHOT publication."""
 import hashlib
 import io
 import json
@@ -14,6 +14,7 @@ from app.db.database import get_connection,repository_transaction
 from app.db.incremental_repository import policies
 from app.processing.append_engine import append_rows,effective_schema,LINEAGE
 from app.processing.upsert_engine import upsert_rows,UPSERT_LINEAGE
+from app.processing.snapshot_engine import snapshot_rows,SNAPSHOT_LINEAGE
 from app.services.incremental_application_service import prepare_application,_publish_metadata,public_application
 from app.services.processing_context_service import validate_scope,owned_upload
 from app.services.dataset_processing_service import dataset_lock
@@ -48,6 +49,12 @@ def delivery_manifest(store,application,policy,file_id):
         manifest=json.loads(manifest_body)
         for field in ('application_id','upload_request_id','dataset_id','dataset_version_id','policy_id','source_dq_run_id','applied_rule_version'):
             if manifest[field]!=application[field]: raise ValueError('Delivery manifest pin differs')
+        if policy['load_strategy']=='SNAPSHOT':
+            for field in ('snapshot_coverage','delivery_kind'):
+                if manifest[field]!=application[field]: raise ValueError('Delivery snapshot context differs')
+            from app.processing.snapshot_engine import timestamp
+            if timestamp(manifest['snapshot_effective_at'])!=timestamp(application['snapshot_effective_at']):
+                raise ValueError('Delivery snapshot effective time differs')
         if manifest['policy']!=json.loads(store.json(policy)) or manifest['silver_key']!=existing['silver_key'] or manifest['silver_sha256']!=existing['silver_sha256']:
             raise ValueError('Manifest policy/input differs')
         frame=store.frame(existing['silver_key'],existing['silver_sha256'])
@@ -91,7 +98,7 @@ def current_state(store,application,policy):
     manifest=json.loads(body)
     # Validate historical ownership using the historical source application, not this arrival.
     columns=[c['name'] for c in policy['schema_columns']]
-    options={'policy':policy} if policy['load_strategy']=='UPSERT' else {}
+    options={'policy':policy} if policy['load_strategy'] in ('UPSERT','SNAPSHOT') else {}
     return state,store.validate_state(state['manifest_key'],state['manifest_sha256'],historical,columns,state['row_count'],manifest['effective_schema'],**options)
 
 
@@ -100,7 +107,7 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
     upload=owned_upload(upload_id,user,workspace_id,dataset_id)
     with dataset_lock(workspace_id,dataset_id),lifecycle_lock(upload_id):
         policy=selected_policy(dataset_id,upload_id)
-        if not policy or policy['load_strategy'] not in ('APPEND','UPSERT'): raise ValueError('An executable APPEND/UPSERT policy is required')
+        if not policy or policy['load_strategy'] not in ('APPEND','UPSERT','SNAPSHOT'): raise ValueError('An executable incremental policy is required')
         mode=policy['load_strategy']
         with get_connection() as conn:
             existing=conn.cursor(row_factory=dict_row).execute('SELECT * FROM delivery_applications WHERE upload_request_id=%s',(upload_id,)).fetchone()
@@ -117,15 +124,19 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
             manifest,incoming=delivery_manifest(store,application,policy,upload[2])
             head,current=current_state(store,application,policy)
             columns=[c['name'] for c in policy['schema_columns']]
-            if current is None: current=pd.DataFrame(columns=columns+(UPSERT_LINEAGE if mode=='UPSERT' else LINEAGE))
+            if current is None: current=pd.DataFrame(columns=columns+(SNAPSHOT_LINEAGE if mode=='SNAPSHOT' else UPSERT_LINEAGE if mode=='UPSERT' else LINEAGE))
             if len(current) and effective_schema(current,columns)!=manifest['effective_schema']: raise ValueError('Effective Silver schema requires migration')
-            engine=upsert_rows if mode=='UPSERT' else append_rows
+            if mode=='SNAPSHOT':
+                with get_connection() as conn:
+                    prior=conn.execute('SELECT snapshot_boundary_at FROM delivery_applications WHERE application_id=%s',(head['source_application_id'],)).fetchone() if head else None
+                application['previous_snapshot_boundary_at']=prior[0] if prior else None
+            engine=snapshot_rows if mode=='SNAPSHOT' else upsert_rows if mode=='UPSERT' else append_rows
             candidate,counts,outcomes=engine(current,incoming,policy,application)
             if mode=='APPEND' and len(current): pd.testing.assert_frame_equal(candidate.iloc[:len(current)].reset_index(drop=True),current.reset_index(drop=True),check_dtype=False,check_exact=True)
             schema=effective_schema(candidate,columns)
             prefix=f"silver/dataset_id={dataset_id}/dataset_version_id={application['dataset_version_id']}/state/application_id={application['application_id']}/candidate-{uuid4().hex}/"
             data_key=prefix+'data.parquet'; data_hash=store.put(data_key,store.parquet(candidate))
-            outcome_body={'ledger':outcomes,'rejected':[r for r in outcomes if r['outcome']=='REJECTED']} if mode=='UPSERT' else {'rejected':outcomes}
+            outcome_body={'ledger':outcomes,'rejected':[r for r in outcomes if r['outcome']=='REJECTED']} if mode in ('UPSERT','SNAPSHOT') else {'rejected':outcomes}
             conflict_key=prefix+'outcomes.json'; conflict_hash=store.put(conflict_key,store.json(outcome_body))
             state_manifest={**{k:application[k] for k in ('application_id','dataset_id','dataset_version_id','policy_id','upload_request_id')},
                 'previous_state_id':head['state_id'] if head else None,'delivery_manifest_id':manifest['manifest_id'],
@@ -133,23 +144,32 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
                 'normalization_version':1,'outcomes_key':conflict_key,'outcomes_sha256':conflict_hash,'counts':counts,
                 'load_strategy':mode,'business_keys':policy['business_keys'],'event_time_column':policy['event_time_column'],
                 'source_state_version':head['state_version'] if head else None}
+            if mode=='SNAPSHOT':
+                state_manifest.update({k:application[k] for k in ('snapshot_coverage','snapshot_effective_at','snapshot_boundary_at','snapshot_outcome','delivery_kind')})
             manifest_key=prefix+'manifest.json'; manifest_hash=store.put(manifest_key,store.json(state_manifest))
             with repository_transaction() as conn:
                 state_id=conn.execute('''INSERT INTO dataset_state_versions(dataset_id,dataset_version_id,policy_id,source_application_id,previous_state_id,state_version,manifest_key,manifest_sha256)
                     VALUES (%s,%s,%s,%s,%s,(SELECT COALESCE(MAX(state_version),0)+1 FROM dataset_state_versions WHERE dataset_id=%s),%s,%s) RETURNING state_id,state_version''',
                     (dataset_id,application['dataset_version_id'],policy['policy_id'],application['application_id'],head['state_id'] if head else None,dataset_id,manifest_key,manifest_hash)).fetchone()
                 state_id,state_version=state_id
-            options={'policy':policy} if mode=='UPSERT' else {}
-            store.validate_state(manifest_key,manifest_hash,application,columns,len(candidate),schema,**options)
+            options={'policy':policy} if mode in ('UPSERT','SNAPSHOT') else {}
+            verified=store.validate_state(manifest_key,manifest_hash,application,columns,len(candidate),schema,**options)
+            if mode=='SNAPSHOT':
+                from app.processing.snapshot_engine import validate_snapshot_transition
+                validate_snapshot_transition(current,verified,policy,application,counts,outcomes)
             if len(candidate)!=len(current)+counts['inserted_rows']: raise ValueError('Dataset state count invariant failed')
             with repository_transaction() as conn:
                 conn.execute("UPDATE dataset_state_versions SET status='VALIDATED',validated_at=NOW(),row_count=%s WHERE state_id=%s",(len(candidate),state_id))
                 conn.execute('''UPDATE delivery_applications SET inserted_rows=%s,duplicate_rows=%s,incremental_rejected_rows=%s,
-                    updated_rows=%s,unchanged_rows=%s,conflict_rows=%s,stale_rows=%s,deactivated_rows=NULL WHERE application_id=%s''',
-                    (counts['inserted_rows'],counts['duplicate_rows'],counts['incremental_rejected_rows'],counts.get('updated_rows'),counts.get('unchanged_rows'),counts.get('conflict_rows'),counts.get('stale_rows'),application['application_id']))
+                    updated_rows=%s,unchanged_rows=%s,conflict_rows=%s,stale_rows=%s,deactivated_rows=%s,
+                    reactivated_rows=%s,active_rows=%s,inactive_rows=%s,snapshot_boundary_at=%s,snapshot_outcome=%s WHERE application_id=%s''',
+                    (counts['inserted_rows'],counts['duplicate_rows'],counts['incremental_rejected_rows'],counts.get('updated_rows'),counts.get('unchanged_rows'),counts.get('conflict_rows'),counts.get('stale_rows'),counts.get('deactivated_rows'),
+                     counts.get('reactivated_rows'),counts.get('active_rows'),counts.get('inactive_rows'),application.get('snapshot_boundary_at'),application.get('snapshot_outcome'),application['application_id']))
                 result=_publish_metadata(conn,workspace_id,dataset_id,user,application['application_id'])
                 conn.execute("UPDATE datasets SET state_analytics_status='STALE' WHERE dataset_id=%s",(dataset_id,))
             # Log success/return only after COMMIT; response-loss retry reads durable success.
+            if mode=='SNAPSHOT':
+                logger.info('Snapshot context dataset=%s upload=%s application=%s coverage=%s effective_time=%s boundary=%s kind=%s outcome=%s',dataset_id,upload_id,application['application_id'],application['snapshot_coverage'],application['snapshot_effective_at'],application['snapshot_boundary_at'],application['delivery_kind'],application['snapshot_outcome'])
             logger.info('Dataset application status=SUCCESS mode=%s correlation=%s workspace=%s dataset=%s upload=%s application=%s source_version=%s target_version=%s policy=%s policy_version=%s event_ordering=%s outcomes=%s duration=%.3f',mode,correlation,workspace_id,dataset_id,upload_id,application['application_id'],head['state_version'] if head else None,state_version,policy['policy_id'],policy['policy_version'],bool(policy['event_time_column']),counts,time.monotonic()-started)
             return result
         except Exception as exc:

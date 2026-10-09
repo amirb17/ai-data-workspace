@@ -1,7 +1,4 @@
-"""Delivery application preparation and internal atomic metadata publication.
-
-No merge engine, S3 writer, processing integration or public publish endpoint.
-"""
+"""Pinned delivery preparation and shared internal atomic metadata publication."""
 from psycopg.rows import dict_row
 import logging
 from app.db.database import get_connection, repository_transaction
@@ -41,11 +38,24 @@ def prepare_application(workspace_id,dataset_id,user,upload_id,policy_id):
             ON s.state_id=d.current_state_id WHERE d.dataset_id=%s''',(dataset_id,)).fetchone()
         if head and (head['dataset_version_id'] != policy['dataset_version_id'] or head['policy_id'] != policy_id):
             raise IncrementalConflict('Current state uses another schema or policy; explicit migration required')
+        snapshot = None
+        if policy['load_strategy'] == 'SNAPSHOT':
+            from app.services.snapshot_context_service import read_snapshot_context
+            snapshot = read_snapshot_context(upload_id)
+            if not snapshot:
+                raise ValueError('Explicit snapshot delivery declaration required')
+            if snapshot['coverage'] == 'COMPLETE' and policy['snapshot_coverage'] != 'COMPLETE':
+                raise ValueError('Complete coverage not authorized by pinned policy')
+            if policy['event_time_column'] and snapshot['effective_at'] is None:
+                raise ValueError('Snapshot effective time required')
         row = cursor.execute('''INSERT INTO delivery_applications(upload_request_id,dataset_id,dataset_version_id,dataset_version_file_id,
-            policy_id,applied_rule_version,source_dq_run_id,ingestion_time,input_rows,valid_rows,rejected_rows)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *''',
+            policy_id,applied_rule_version,source_dq_run_id,ingestion_time,input_rows,valid_rows,rejected_rows,
+            snapshot_coverage,snapshot_effective_at,delivery_kind)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *''',
             (upload_id,dataset_id,context['dataset_version_id'],context['dataset_version_file_id'],policy_id,context['rule_version'],
-             dq['dq_run_id'],upload[6],dq['total_rows'],dq['valid_rows'],dq['rejected_rows'])).fetchone()
+             dq['dq_run_id'],upload[6],dq['total_rows'],dq['valid_rows'],dq['rejected_rows'],
+             snapshot['coverage'] if snapshot else None,snapshot['effective_at'] if snapshot else None,
+             snapshot['delivery_kind'] if snapshot else None)).fetchone()
         logging.getLogger(__name__).info('Application prepared workspace=%s dataset=%s upload=%s application=%s policy=%s',workspace_id,dataset_id,upload_id,row['application_id'],policy_id)
         return public_application(row)
 

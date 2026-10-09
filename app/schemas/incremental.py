@@ -1,5 +1,7 @@
 """Engine-independent incremental policy and application vocabulary."""
 from enum import StrEnum
+from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -16,6 +18,7 @@ class RowOutcome(StrEnum):
     DUPLICATE = "DUPLICATE"
     REJECTED = "REJECTED"
     DEACTIVATED = "DEACTIVATED"
+    REACTIVATED = "REACTIVATED"
 
 
 class LoadPolicyRequest(BaseModel):
@@ -26,6 +29,7 @@ class LoadPolicyRequest(BaseModel):
     schema_evolution_policy: str = Field(pattern="^(STRICT|ALLOW_ADDITIVE)$")
     event_time_column: str | None = None
     confirm_policy_change: bool = False
+    snapshot_coverage: Literal['COMPLETE','PARTIAL'] | None = None
 
     @model_validator(mode="after")
     def validate_keys(self):
@@ -33,6 +37,24 @@ class LoadPolicyRequest(BaseModel):
             raise ValueError("Business keys must be distinct ordered column names")
         if self.load_strategy in (LoadStrategy.UPSERT, LoadStrategy.SNAPSHOT) and not self.business_keys:
             raise ValueError("UPSERT and SNAPSHOT require an explicit business key")
+        if self.load_strategy == LoadStrategy.SNAPSHOT and self.snapshot_coverage is None:
+            raise ValueError('SNAPSHOT requires explicit coverage')
+        if self.load_strategy != LoadStrategy.SNAPSHOT and self.snapshot_coverage is not None:
+            raise ValueError('Coverage is only available for SNAPSHOT')
+        return self
+
+
+class SnapshotDeliveryRequest(BaseModel):
+    coverage: Literal['COMPLETE','PARTIAL']
+    effective_at: datetime | None = None
+    delivery_kind: Literal['NORMAL','CORRECTION','BACKFILL'] = 'NORMAL'
+
+    @model_validator(mode='after')
+    def explicit_timezone(self):
+        if self.effective_at is not None and self.effective_at.utcoffset() is None:
+            raise ValueError('Snapshot effective time requires an explicit timezone')
+        if self.delivery_kind != 'NORMAL' and self.effective_at is None:
+            raise ValueError('Correction/backfill requires explicit business effective time')
         return self
 
 

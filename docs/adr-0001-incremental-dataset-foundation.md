@@ -1,8 +1,8 @@
 # ADR 0001: Incremental dataset application foundation
 
-Status: Phase 6A foundation, Phase 6B APPEND and Phase 6C UPSERT implemented. SNAPSHOT execution and cumulative Gold remain future phases.
+Status: Phase 6A foundation, Phase 6B APPEND, Phase 6C UPSERT and Phase 6D SNAPSHOT implemented. Cumulative Gold remains a future phase.
 
-The sections below record the Phase 6A baseline and the approved direction. References to a "future engine" or "no execution" describe that baseline. Phase 6B executes APPEND through immutable delivery snapshots, validated candidate objects and the existing atomic publication boundary; see [Phase 6B implementation and validation](phase6b-append-execution.md). Phase 6C extends the same coordinator with UPSERT, update lineage and event ordering; see [Phase 6C implementation](phase6c-upsert-execution.md). SNAPSHOT remains design only. No Phase 6D work is implemented.
+The sections below record the Phase 6A baseline and the approved direction. References to a "future engine" or "no execution" describe that baseline. Phase 6B executes APPEND through immutable delivery snapshots, validated candidate objects and the existing atomic publication boundary; see [Phase 6B implementation and validation](phase6b-append-execution.md). Phase 6C extends the same coordinator with UPSERT, update lineage and event ordering; see [Phase 6C implementation](phase6c-upsert-execution.md). Phase 6D adds explicit snapshot coverage, activity lineage and conservative effective-time ordering; see [Phase 6D implementation](phase6d-snapshot-execution.md). The Phase 6D request supersedes the baseline suggestion to block partial snapshots: they may update present keys but never deactivate missing ones.
 
 ## Problem and verified current behavior
 
@@ -78,7 +78,7 @@ APPEND retains previous state and adds valid new records without updates. Same l
 
 UPSERT: absent key INSERTED, same key/same normalized content UNCHANGED, same key/changed content UPDATED. The explicit Phase 6C request supersedes the earlier identical-repeat proposal: identical incoming repeats perform one semantic operation and count remaining inputs as DUPLICATE. Conflicting repeated keys are all REJECTED. Preserve previous state for rejected/stale rows. Without event ordering, latest applied delivery wins; with a configured typed event column, older input is STALE, equal-time changed content is REJECTED, and only newer changed content updates. No priority from row order. Current-state update is not SCD2; immutable delivery/application/state lineage remains.
 
-SNAPSHOT applies keyed INSERTED/UPDATED/UNCHANGED, then missing previously active keys become DEACTIVATED via MARK_INACTIVE, never hard deletion. Reappearing inactive keys reactivate with an explicit update outcome. Empty snapshot and rejected/key-ambiguous/incomplete snapshots require explicit completeness confirmation before deactivation; no blanket source-missing operation may follow failed validation. V1 safe default is block publication/deactivation of an incomplete snapshot. These semantic decisions need explicit approval before execution.
+SNAPSHOT applies keyed INSERTED/UPDATED/UNCHANGED, then missing previously active keys become DEACTIVATED via MARK_INACTIVE only for explicitly complete deliveries, never hard deletion. Reappearing inactive keys have the exclusive REACTIVATED outcome, including changed content; identical reappearance does not invent an update. Partial/unknown snapshots preserve missing records. Any Silver or incremental rejection withholds all absence deactivation. Empty input still requires an explicit complete declaration. Corrections/backfills preserve missing records. Explicit effective timestamps protect current state from older snapshots and equal-time conflicts; equal-time corrections are explicit exceptions. No business timestamp or completeness is inferred.
 
 ## Event time, backfill and partition direction
 

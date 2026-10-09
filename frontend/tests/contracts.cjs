@@ -35,7 +35,8 @@ async function run() {
   assert.ok(validateContract({ ...configured, primaryKey: ['id', 'ID'] }))
   assert.ok(validateContract({ ...configured, primaryKey: ['missing'] }))
   assert.ok(validateContract({ ...configured, schemaEvolutionPolicy: 'UNKNOWN' }))
-  assert.equal(validateContract({ ...initial, loadMode: 'SNAPSHOT' }), null)
+  assert.ok(validateContract({ ...initial, loadMode: 'SNAPSHOT' }))
+  assert.equal(validateContract({ ...configured, loadMode: 'SNAPSHOT' }), null)
   let changed = 0
   window.addEventListener('datarise-contract-changed', () => changed++)
   saveDatasetContract('1', '99', configured)

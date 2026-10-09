@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { startBronze, continueProcessing, type ProcessingContext } from "../../../services/api/rules"
 import { executionAction } from "../processingState"
 import { IngestionBatchCard, type BatchPresentation } from "./IngestionBatchCard"
+import { SnapshotDelivery } from "./SnapshotDelivery"
 
 export function DeliveryRuleBridge({ batch, workspaceId, datasetId, context, reload, datasetBusy, onRequestActivity }: { batch: BatchPresentation; workspaceId: string; datasetId: string; context: ProcessingContext; reload: () => void; datasetBusy: boolean; onRequestActivity?: (started: boolean) => void }) {
   const [busy, setBusy] = useState(false)
@@ -20,6 +21,7 @@ export function DeliveryRuleBridge({ batch, workspaceId, datasetId, context, rel
   const qualityHref = `/app/workspaces/${workspaceId}/datasets/${datasetId}/data-quality`
   const failed = context.status.endsWith("_FAILED")
   return <IngestionBatchCard batch={batch} context={context} qualityHref={qualityHref}>
+    <SnapshotDelivery key={`${workspaceId}:${datasetId}:${context.upload_request_id}`} workspaceId={workspaceId} datasetId={datasetId} context={context} reload={reload} disabled={busy || datasetBusy} />
     {context.status === "AWAITING_RULES" && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">Bronze profiling is complete. Processing is waiting for your decisions before validation can continue.</p>}
     {failed && <div className="space-y-1 rounded-lg bg-red-50 p-3 text-sm text-red-800">
       <p>{context.error_summary ?? "Processing could not be completed. Review this delivery and retry."}</p>

@@ -6,6 +6,7 @@ import pandas as pd
 from app.config import get_boto3_session, S3_BUCKET_NAME
 from app.processing.append_engine import effective_schema, LINEAGE
 from app.processing.upsert_engine import UPSERT_LINEAGE,validate_upsert_candidate
+from app.processing.snapshot_engine import SNAPSHOT_LINEAGE,validate_snapshot_candidate,timestamp
 
 
 class IncrementalArtifacts:
@@ -53,20 +54,31 @@ class IncrementalArtifacts:
         outcomes=payload['rejected']
         counts=manifest['counts']
         is_upsert=policy is not None and policy['load_strategy']=='UPSERT'
+        is_snapshot=policy is not None and policy['load_strategy']=='SNAPSHOT'
         if manifest.get('load_strategy')=='UPSERT' and not is_upsert:
             raise ValueError('UPSERT validation requires its trusted policy')
-        total=sum(v for k,v in counts.items() if k!='conflict_rows')
+        if manifest.get('load_strategy')=='SNAPSHOT' and not is_snapshot:
+            raise ValueError('SNAPSHOT validation requires its trusted policy')
+        total=sum(v for k,v in counts.items() if k not in ('conflict_rows','deactivated_rows','active_rows','inactive_rows'))
         if len(outcomes)!=counts['incremental_rejected_rows'] or any(v<0 for v in counts.values()) or total!=application['valid_rows']:
             raise ValueError('Candidate outcome accounting differs')
         frame=self.frame(manifest['data_key'],manifest['data_sha256'])
         if len(frame)!=expected_rows or manifest['row_count']!=expected_rows:
             raise ValueError('Candidate row count differs')
-        lineage=UPSERT_LINEAGE if is_upsert else LINEAGE
+        lineage=SNAPSHOT_LINEAGE if is_snapshot else UPSERT_LINEAGE if is_upsert else LINEAGE
         if list(frame.columns)!=columns+lineage or effective_schema(frame,columns)!=expected_schema or manifest['effective_schema']!=expected_schema:
             raise ValueError('Candidate business schema differs')
-        if frame[lineage].isna().any().any(): raise ValueError('Candidate lineage incomplete')
-        if is_upsert:
+        required=UPSERT_LINEAGE if is_snapshot else lineage
+        if frame[required].isna().any().any(): raise ValueError('Candidate lineage incomplete')
+        if is_upsert or is_snapshot:
             if manifest.get('business_keys')!=policy['business_keys'] or manifest.get('event_time_column')!=policy['event_time_column'] or manifest.get('normalization_version')!=policy['normalization_version']:
                 raise ValueError('Candidate key/event policy differs')
-            validate_upsert_candidate(frame,policy,application,counts,payload['ledger'])
+            if is_snapshot:
+                for field in ('snapshot_coverage','delivery_kind','snapshot_outcome'):
+                    if manifest[field]!=application[field]: raise ValueError('Snapshot context differs')
+                for field in ('snapshot_effective_at','snapshot_boundary_at'):
+                    if timestamp(manifest[field])!=timestamp(application[field]): raise ValueError('Snapshot effective time differs')
+                validate_snapshot_candidate(frame,policy,application,counts,payload['ledger'])
+            else:
+                validate_upsert_candidate(frame,policy,application,counts,payload['ledger'])
         return frame

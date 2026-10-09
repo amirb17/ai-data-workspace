@@ -26,7 +26,7 @@ export function validateContract(value: unknown): string | null {
     keys.add(name)
     if (!contract.columns.find((column) => column.name.trim().toLowerCase() === name)?.required) return "Business key columns must be required."
   }
-  if (contract.loadMode === "UPSERT" && !keys.size) return "UPSERT requires at least one primary/business key."
+  if (["UPSERT","SNAPSHOT"].includes(contract.loadMode) && !keys.size) return `${contract.loadMode} requires at least one primary/business key.`
   return null
 }
 
