@@ -11,7 +11,7 @@ const tabs = [
   { label: "Overview", to: "", end: true }, { label: "Files", to: "files" },
   { label: "Contract", to: "contract" }, { label: "Rules", to: "rules" },
   { label: "Processing", to: "processing" }, { label: "Data Quality", to: "data-quality" },
-  { label: "Analytics", to: "analytics" }, { label: "Data Profile", to: "profile" }, { label: "History", to: "history" },
+  { label: "Analytics", to: "analytics" }, { label: "Data Profile", to: "profile" }, { label: "AI Understanding", to: "understanding" }, { label: "History", to: "history" },
 ]
 
 export function DatasetDetailPage() {

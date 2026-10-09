@@ -10,6 +10,7 @@ from app.api.workspaces import router as workspaces_router
 from app.api.incremental import router as incremental_router
 from app.api.dataset_analytics import router as dataset_analytics_router
 from app.api.dataset_profiles import router as dataset_profiles_router
+from app.api.dataset_understanding import router as dataset_understanding_router
 app = FastAPI(
     title="AI Data Workspace",
     version="0.1.0"
@@ -28,6 +29,7 @@ app.include_router(incremental_router)
 app.include_router(analytics_router)
 app.include_router(dataset_analytics_router)
 app.include_router(dataset_profiles_router)
+app.include_router(dataset_understanding_router)
 
 @app.get("/health")
 def health_check():

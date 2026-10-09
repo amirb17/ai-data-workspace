@@ -29,6 +29,7 @@ import { DatasetDataQualityPage } from "./pages/Dataset/DataQuality/DatasetDataQ
 import { DatasetAnalyticsPage } from "./pages/Dataset/Analytics/DatasetAnalyticsPage"
 import { DatasetHistoryPage } from "./pages/Dataset/History/DatasetHistoryPage"
 import { DatasetProfilePage } from "./pages/Dataset/Profile/DatasetProfilePage"
+import { DatasetUnderstandingPage } from "./pages/Dataset/Understanding/DatasetUnderstandingPage"
 
 import { IdentityBootstrap } from "./components/layout/IdentityBootstrap"
 import { NotFoundPage } from "./components/ui/NotFoundPage"
@@ -87,6 +88,7 @@ function AppLayout() {
 
       <Route path="contract" element={<DatasetContractPage />} />
       <Route path="profile" element={<DatasetProfilePage />} />
+      <Route path="understanding" element={<DatasetUnderstandingPage />} />
 
       <Route
         path="rules"

@@ -1,0 +1,152 @@
+{
+  "migration": {
+    "database": "ai_data_workspace",
+    "applied": "0019",
+    "tables_added": [
+      "semantic_suggestions"
+    ],
+    "protection_triggers": 2,
+    "existing_dataset_state_profile_counts_unchanged": [
+      20,
+      33,
+      4
+    ]
+  },
+  "23": {
+    "suggestion_id": 4,
+    "suggestion_version": 3,
+    "source_profile_id": 5,
+    "source_state_version": 4,
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "resolved_model": "gemini-3.5-flash-lite",
+    "domain": {
+      "primary": {
+        "label": "Commerce",
+        "confidence": 0.9,
+        "rationale": "Dataset names and columns strongly indicate sales and order processing records."
+      },
+      "alternatives": [
+        {
+          "label": "Finance",
+          "confidence": 0.6,
+          "rationale": "Order amounts may relate to financial transactions or invoicing."
+        }
+      ]
+    },
+    "entity": {
+      "primary": {
+        "label": "Order",
+        "confidence": 0.95,
+        "rationale": "Each record represents an individual order instance identified by order_id."
+      },
+      "alternatives": [
+        {
+          "label": "Transaction",
+          "confidence": 0.6,
+          "rationale": "Amount and customer details suggest commercial transaction records."
+        }
+      ]
+    },
+    "roles": {
+      "amount": "MEASURE",
+      "customer_id": "ENTITY_REFERENCE",
+      "order_date": "TIME_DIMENSION",
+      "order_id": "IDENTIFIER",
+      "status": "STATUS"
+    },
+    "idempotency": true
+  },
+  "adversarial_metadata": {
+    "structured_response_valid": true,
+    "original_columns_preserved": true,
+    "no_relationship_or_kpi_output": true,
+    "resolved_model": "gemini-3.5-flash-lite"
+  },
+  "24": {
+    "suggestion_id": 3,
+    "suggestion_version": 1,
+    "source_profile_id": 2,
+    "source_state_version": 1,
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "resolved_model": "gemini-3.5-flash-lite",
+    "domain": {
+      "primary": {
+        "label": "Healthcare",
+        "confidence": 0.95,
+        "rationale": "Evidence explicitly refers to patient IDs, admissions, diagnoses, and treatment costs."
+      },
+      "alternatives": [
+        {
+          "label": "Clinical Operations",
+          "confidence": 0.8,
+          "rationale": "Tracks patient admission dates and medical diagnoses."
+        }
+      ]
+    },
+    "entity": {
+      "primary": {
+        "label": "Patient Admission",
+        "confidence": 0.9,
+        "rationale": "Row-level records tie a patient ID to an admission date, diagnosis, and cost."
+      },
+      "alternatives": [
+        {
+          "label": "Patient",
+          "confidence": 0.7,
+          "rationale": "Patient ID is the authoritative business key."
+        }
+      ]
+    },
+    "roles": {
+      "admission_date": "TIME_DIMENSION",
+      "contact_email": "TEXT_ATTRIBUTE",
+      "diagnosis_code": "CODE",
+      "patient_id": "IDENTIFIER",
+      "treatment_cost": "MEASURE"
+    },
+    "idempotency": true
+  },
+  "workspace_id": 15,
+  "phase7b_orders_staleness": 79,
+  "stale_suggestion_withheld": true,
+  "integrity": {
+    "invalid_ownership_or_source_pins": 0,
+    "synthetic_suggestion_counts": {
+      "FAILED": 1,
+      "READY": 3
+    },
+    "orders_history": [
+      [
+        1,
+        4,
+        3,
+        "FAILED"
+      ],
+      [
+        2,
+        4,
+        3,
+        "READY"
+      ],
+      [
+        4,
+        5,
+        4,
+        "READY"
+      ]
+    ]
+  },
+  "workspace_isolation_verified": true,
+  "browser": {
+    "initial_and_analyzing": true,
+    "reload_persistence": true,
+    "stale_prerequisite": true,
+    "mobile_width": 390,
+    "mobile_scroll_width": 375,
+    "tablet_width": 768,
+    "tablet_scroll_width": 753,
+    "viewport_reset": true
+  }
+}
