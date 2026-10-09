@@ -30,7 +30,7 @@ export type IncrementalFoundation = {
   workspace_id: number; dataset_id: number; execution_available: boolean
   schema_versions: { dataset_version_id: number; version_number: number; columns: { name: string; data_type: string }[]; event_time_columns?: string[] }[]
   policies: LoadPolicy[]; applications: DeliveryApplication[]
-  current_state: { state_id: number; row_count: number; published_at: string; state_analytics_status?: "STALE" | null; policy_id?: number; active_rows?: number | null; inactive_rows?: number | null; snapshot_boundary_at?: string | null } | null
+  current_state: { state_id: number; row_count: number; published_at: string; state_analytics_status?: "STALE" | "FRESH" | "REFRESHING" | "FAILED" | null; policy_id?: number; active_rows?: number | null; inactive_rows?: number | null; snapshot_boundary_at?: string | null } | null
 }
 export type PolicyInput = {
   dataset_version_id: number; expected_policy_version: number; load_strategy: LoadStrategy

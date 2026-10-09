@@ -5,6 +5,7 @@ import { getDatasetContract } from "../../../features/datasets/contracts/storage
 import { ApiFeedback } from "../../../components/ui/ApiFeedback"
 import { StatusBadge } from "../../../components/ui/StatusBadge"
 import { IncrementalPolicy } from "../../../features/datasets/contracts/components/IncrementalPolicy"
+import { AnalyticsReadiness } from "../../../features/datasets/AnalyticsReadiness"
 import { deliveryStatus, overviewAttention, terminalDelivery, countLabel } from "../../../features/ingestion/processingPresentation"
 export function DatasetOverviewPage() {
   const { workspaceId = "", datasetId = "" } = useParams()
@@ -22,5 +23,6 @@ export function DatasetOverviewPage() {
     <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5"><h3 className="font-semibold">Latest delivery</h3>{latest ? <><p className="break-words font-medium">{latest.source_file_name}</p><p>{deliveryStatus(latest.context).label}</p><p className="text-sm text-slate-600">{latest.context.rule_state === "FINALIZED" ? `Approved Rule Version ${latest.context.rule_version}${latest.context.rules_reused ? " reused" : ""}` : latest.context.status === "AWAITING_RULES" ? "Rules need review" : "Rules not yet approved"}</p></> : <p className="text-sm text-slate-600">No deliveries yet. Add a CSV to begin.</p>}</section>
     <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5"><h3 className="font-semibold">Last completed processing</h3>{lastProcessed ? <><p className="break-words font-medium">{lastProcessed.source_file_name}</p><p>{deliveryStatus(lastProcessed.context).label}</p><p className="text-sm text-slate-600">{lastProcessed.context.load_strategy === "UPSERT" ? `${countLabel(lastProcessed.context.inserted_rows)} inserted · ${countLabel(lastProcessed.context.updated_rows)} updated · ${countLabel(lastProcessed.context.unchanged_rows)} unchanged · ${countLabel(lastProcessed.context.rejected_rows)} quarantined` : lastProcessed.context.load_strategy === "APPEND" ? `${countLabel(lastProcessed.context.inserted_rows)} inserted · ${countLabel(lastProcessed.context.duplicate_rows)} duplicates · ${countLabel(lastProcessed.context.incremental_rejected_rows)} incremental conflicts` : `${countLabel(lastProcessed.context.valid_rows)} valid · ${countLabel(lastProcessed.context.rejected_rows)} quarantined · ${countLabel(lastProcessed.context.output_rows)} published`}</p></> : <p className="text-sm text-slate-600">No completed processing yet. Follow your deliveries in Processing.</p>}</section>
     <IncrementalPolicy workspaceId={workspaceId} datasetId={datasetId} summaryOnly />
+    <AnalyticsReadiness workspaceId={workspaceId} datasetId={datasetId} />
   </section>
 }

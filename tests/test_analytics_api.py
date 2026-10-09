@@ -1,10 +1,19 @@
 from fastapi.testclient import TestClient
+import pytest
 
 import app.api.analytics as analytics_api
 from app.main import app
 
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def endpoint_unit_scope():
+    # These tests isolate response serialization; ownership is covered in database tests.
+    app.dependency_overrides[analytics_api.authorize_version] = lambda: None
+    yield
+    app.dependency_overrides.pop(analytics_api.authorize_version, None)
 
 
 def test_workspace_returns_dashboard_payload(

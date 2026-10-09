@@ -1,6 +1,8 @@
 # ADR 0001: Incremental dataset application foundation
 
-Status: Phase 6A foundation, Phase 6B APPEND, Phase 6C UPSERT and Phase 6D SNAPSHOT implemented. Cumulative Gold remains a future phase.
+Status: Phase 6A foundation, Phase 6B APPEND, Phase 6C UPSERT, Phase 6D SNAPSHOT and Phase 6E cumulative dataset Gold implemented.
+
+Phase 6E builds explicit dataset analytics from immutable trusted state and publishes a separate Gold pointer/freshness with stale-head protection. Delivery Gold remains historical; dataset analytics never substitutes it for cumulative state. See [Phase 6E implementation](phase6e-cumulative-gold.md).
 
 The sections below record the Phase 6A baseline and the approved direction. References to a "future engine" or "no execution" describe that baseline. Phase 6B executes APPEND through immutable delivery snapshots, validated candidate objects and the existing atomic publication boundary; see [Phase 6B implementation and validation](phase6b-append-execution.md). Phase 6C extends the same coordinator with UPSERT, update lineage and event ordering; see [Phase 6C implementation](phase6c-upsert-execution.md). Phase 6D adds explicit snapshot coverage, activity lineage and conservative effective-time ordering; see [Phase 6D implementation](phase6d-snapshot-execution.md). The Phase 6D request supersedes the baseline suggestion to block partial snapshots: they may update present keys but never deactivate missing ones.
 

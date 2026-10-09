@@ -1,4 +1,18 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from app.api.identity import get_current_user
+from app.services.processing_context_service import validate_scope
+from app.db.database import get_connection
+
+
+def authorize_version(dataset_version_id: int, user: dict = Depends(get_current_user)):
+    with get_connection() as conn:
+        row = conn.execute('SELECT d.workspace_id,d.dataset_id FROM dataset_versions v JOIN datasets d ON d.dataset_id=v.dataset_id WHERE v.dataset_version_id=%s', (dataset_version_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, 'Dataset schema not found')
+    try:
+        validate_scope(user,*row)
+    except PermissionError:
+        raise HTTPException(403, 'Dataset access denied') from None
 
 from app.services.analytics_service import (
     get_dataset_analytics_overview,
@@ -21,6 +35,7 @@ from app.schemas.ask_data import AskDataRequest
 router = APIRouter(
     prefix="/analytics",
     tags=["analytics"],
+    dependencies=[Depends(authorize_version)],
 )
 
 

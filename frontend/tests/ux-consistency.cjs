@@ -99,11 +99,12 @@ result={data:done}
 const completedFiles=render(DatasetFilesPage)
 assert.ok(completedFiles.includes('Completed') && completedFiles.includes('>Archive Delivery<') && completedFiles.includes('historical lineage'))
 assert.ok(render(DatasetDataQualityPage).includes('No data-quality issues detected'))
-assert.ok(render(DatasetAnalyticsPage).includes('Delivery processing output is available'))
+assert.ok(render(DatasetAnalyticsPage).includes('Dataset Analytics'))
+assert.ok(!render(DatasetAnalyticsPage).includes('Delivery processing output is available'))
 const rejected={...success,status:'SUCCESS_WITH_WARNINGS',valid_rows:0,rejected_rows:2,output_rows:0,stages:{...success.stages,gold:'SKIPPED'}}
 result={data:{...done,deliveries:[{...delivery,context:rejected}]}}
 assert.ok(render(DatasetDataQualityPage).includes('2 quarantined rows') && render(DatasetDataQualityPage).includes('coming in the next stage'))
-assert.ok(render(DatasetAnalyticsPage).includes('after successful processing produces valid output'))
+assert.ok(!render(DatasetAnalyticsPage).includes('after successful processing produces valid output'))
 result={data:pending}
 assert.ok(!render(DatasetDataQualityPage).includes('No data-quality issues detected'))
 assert.ok(render(RuleSituation,{context:success,reviewing:false,reviewHref:'rules'}).includes('Approved Rule Version 1 reused'))

@@ -1,0 +1,31 @@
+require('./incremental.cjs')
+const assert = require('node:assert/strict'), React = require('react')
+const {renderToStaticMarkup} = require('react-dom/server')
+const {AnalyticsStatus} = require('../src/features/datasets/AnalyticsReadiness.tsx')
+const api = require('../src/services/api/analytics.ts')
+const data = {workspace_id:10,dataset_id:20,analytics_ready:false,freshness:'STALE',current_state_id:5,trusted_rows:150,analytics_rows:100,state_updated_at:'2026-10-09T10:00:00Z',analytics_built_at:'2026-10-09T09:00:00Z',latest_source_file_name:'orders_october.csv',load_strategy:'APPEND'}
+const render=(changes={})=>renderToStaticMarkup(React.createElement(AnalyticsStatus,{data:{...data,...changes},refresh:()=>{}}))
+let html=render()
+for(const text of ['Refresh required','Refresh Analytics','150','Analytics last built','Dataset state updated','orders_october.csv']) assert.ok(html.includes(text),text)
+assert.ok(!html.includes('<dd>100</dd>'))
+html=render({freshness:'FRESH',analytics_ready:true,analytics_rows:150})
+assert.ok(html.includes('Fresh') && html.includes('Built from current trusted dataset state') && !html.includes('<button'))
+html=render({freshness:'REFRESHING'})
+assert.ok(html.includes('Refreshing analytics') && html.includes('disabled=""'))
+html=render({freshness:'FAILED'})
+assert.ok(html.includes('Needs attention') && html.includes('Retry Analytics Refresh') && html.includes('Trusted data is safe'))
+html=render({freshness:'NOT_READY',current_state_id:null,trusted_rows:null})
+assert.ok(!html.includes('<button') && html.includes('dataset update'))
+assert.ok(render({load_strategy:'SNAPSHOT'}).includes('active records only'))
+async function main(){
+  let call
+  global.fetch=async(url,options)=>{call={url,options}; return {ok:true,json:async()=>data}}
+  assert.deepEqual(await api.refreshDatasetAnalytics('10','20'),data)
+  assert.ok(call.url.endsWith('/workspaces/10/datasets/20/analytics/refresh'))
+  assert.equal(call.options.method,'POST')
+  assert.ok(!call.options.body)
+  global.fetch=async()=>({ok:true,json:async()=>({...data,workspace_id:11})})
+  await assert.rejects(api.getDatasetAnalytics('10','20'),/another dataset/)
+  console.log('Cumulative analytics freshness, counts, timestamps, retry, active semantics and scoped API checks passed')
+}
+main().catch(error=>{console.error(error);process.exitCode=1})

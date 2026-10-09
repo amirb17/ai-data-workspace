@@ -1,7 +1,3 @@
-from app.db.analytics_repository import (
-    get_gold_artifacts_for_dataset_version,
-    get_gold_artifact_semantic_columns_for_artifacts,
-)
 from app.processing.gold_artifact_reader import (
     read_gold_artifact,
 )
@@ -40,6 +36,21 @@ from app.ai.answer_generator import (
     generate_friendly_answer,
 )
 
+
+def _read_artifact(artifact):
+    if 'sha256' in artifact:
+        from app.storage.cumulative_gold_artifacts import CumulativeGoldArtifacts
+        return CumulativeGoldArtifacts().frame(artifact['storage_path'],artifact['sha256'])
+    return read_gold_artifact(artifact['storage_path'])
+
+
+def _assert_catalog_current(catalog):
+    if 'source_state_id' not in catalog:
+        return
+    latest = get_dataset_analytics_catalog(catalog['dataset_version_id'])
+    if not latest['analytics_ready'] or latest.get('gold_run_id')!=catalog['gold_run_id']:
+        raise ValueError('Analytics refresh required; trusted state changed during query')
+
 def get_dataset_analytics_catalog(
     dataset_version_id: int,
 ) -> dict:
@@ -50,104 +61,15 @@ def get_dataset_analytics_catalog(
     dashboard, KPI, query and AI analytics features.
     """
 
-    rows = get_gold_artifacts_for_dataset_version(
-        dataset_version_id
-    )
+    # Dataset analytics never treats an individual delivery as cumulative state.
+    from app.db.database import get_connection
+    from app.services.dataset_analytics_service import current_catalog
+    with get_connection() as conn:
+        row = conn.execute('SELECT dataset_id FROM dataset_versions WHERE dataset_version_id=%s', (dataset_version_id,)).fetchone()
+    if not row:
+        raise ValueError('Dataset schema not found')
+    return current_catalog(row[0])
 
-    artifacts = []
-
-    for row in rows:
-        artifacts.append(
-            {
-                "gold_artifact_id": row[0],
-                "gold_run_id": row[1],
-                "artifact_type": row[2],
-                "artifact_name": row[3],
-                "storage_path": row[4],
-                "row_count": row[5],
-                "grain": row[6],
-                "time_grain": row[7],
-                "created_at": row[8],
-            }
-        )
-        artifact_ids = [
-        artifact["gold_artifact_id"]
-        for artifact in artifacts
-    ]
-
-    semantic_rows = (
-        get_gold_artifact_semantic_columns_for_artifacts(
-            artifact_ids
-        )
-    )
-
-    semantic_columns_by_artifact = {}
-
-    for row in semantic_rows:
-        gold_artifact_id = row[1]
-
-        column = {
-            "column_name": row[2],
-            "column_role": row[3],
-            "source_column": row[4],
-            "aggregation_type": row[5],
-            "ordinal_position": row[6],
-            "data_type": row[7],
-        }
-
-        semantic_columns_by_artifact.setdefault(
-            gold_artifact_id,
-            [],
-        ).append(column)
-        for artifact in artifacts:
-            semantic_columns = (
-                semantic_columns_by_artifact.get(
-                    artifact["gold_artifact_id"],
-                    [],
-                )
-            )
-
-            artifact["columns"] = semantic_columns
-
-            artifact["dimensions"] = [
-                column["column_name"]
-                for column in semantic_columns
-                if column["column_role"] == "DIMENSION"
-            ]
-
-            artifact["measures"] = [
-                column["column_name"]
-                for column in semantic_columns
-                if column["column_role"] == "MEASURE"
-            ]
-
-            artifact["metrics"] = [
-                column["column_name"]
-                for column in semantic_columns
-                if column["column_role"] == "METRIC"
-            ]
-    base_artifact = next(
-        (
-            artifact
-            for artifact in artifacts
-            if artifact["artifact_type"] == "BASE"
-        ),
-        None,
-    )
-
-    marts = [
-        artifact
-        for artifact in artifacts
-        if artifact["artifact_type"] == "MART"
-    ]
-
-    return {
-        "dataset_version_id": dataset_version_id,
-        "analytics_ready": base_artifact is not None,
-        "base_artifact": base_artifact,
-        "mart_count": len(marts),
-        "marts": marts,
-    }
 
 def get_dataset_kpis(
     dataset_version_id: int,
@@ -182,14 +104,13 @@ def get_dataset_kpis(
         max_kpis=max_kpis,
     )
 
-    gold_df = read_gold_artifact(
-        base_artifact["storage_path"]
-    )
+    gold_df = _read_artifact(base_artifact)
 
     kpis = calculate_kpis(
         df=gold_df,
         plans=plans,
     )
+    _assert_catalog_current(catalog)
 
     return {
         "dataset_version_id": dataset_version_id,
@@ -351,9 +272,7 @@ def get_dataset_charts(
                 "could not be found"
             )
 
-        df = read_gold_artifact(
-            artifact["storage_path"]
-        )
+        df = _read_artifact(artifact)
 
         chart = build_chart_data(
             df=df,
@@ -361,6 +280,8 @@ def get_dataset_charts(
         )
 
         charts.append(chart)
+
+    _assert_catalog_current(catalog)
 
     return {
         "dataset_version_id":
@@ -429,14 +350,13 @@ def run_dataset_query(
         analytics_catalog=catalog,
     )
 
-    gold_df = read_gold_artifact(
-        artifact["storage_path"]
-    )
+    gold_df = _read_artifact(artifact)
 
     result = execute_query(
         df=gold_df,
         query=query,
     )
+    _assert_catalog_current(catalog)
 
     return {
         "dataset_version_id": dataset_version_id,
@@ -506,6 +426,7 @@ def ask_dataset(
     planned_query=ai_plan.query.model_dump(),
     result=query_result["result"],
 )
+    _assert_catalog_current(catalog)
 
     return {
     "dataset_version_id": dataset_version_id,
@@ -546,6 +467,7 @@ def get_dataset_analytics_workspace(
             catalog=catalog,
         )
     )
+    _assert_catalog_current(catalog)
 
     return {
         "dataset_version_id": dataset_version_id,
@@ -569,9 +491,7 @@ def _build_kpis_from_catalog(
     if not base_artifact:
         return []
 
-    df = read_gold_artifact(
-        base_artifact["storage_path"]
-    )
+    df = _read_artifact(base_artifact)
 
     return calculate_kpis(
         df=df,
@@ -600,9 +520,7 @@ def _build_charts_from_catalog(
             gold_artifact_id=plan.gold_artifact_id,
         )
 
-        df = read_gold_artifact(
-            artifact["storage_path"]
-        )
+        df = _read_artifact(artifact)
 
         charts.append(
             build_chart_data(

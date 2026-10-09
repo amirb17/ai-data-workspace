@@ -5,6 +5,8 @@ from app.services.processing_context_service import StaleRuleVersion
 def public_call(operation):
     try:
         return operation()
+    except HTTPException:
+        raise
     except PermissionError as exc:
         raise HTTPException(403, "Processing context access denied") from exc
     except LookupError as exc:
