@@ -1,0 +1,32 @@
+const assert=require('node:assert/strict'),React=require('react'),fs=require('node:fs'),ts=require('typescript')
+for(const ext of ['.ts','.tsx'])require.extensions[ext]=(module,file)=>module._compile(ts.transpileModule(fs.readFileSync(file,'utf8').replaceAll('import.meta.env','({VITE_API_BASE_URL:"http://localhost:8000"})'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText,file)
+const {MemoryRouter}=require('react-router-dom'),{renderToStaticMarkup}=require('react-dom/server')
+const {WorkspaceAnalyticsContent}=require('../src/pages/Workspace/Analytics/WorkspaceAnalyticsPage.tsx')
+const api=require('../src/services/api/workspaceAnalytics.ts')
+const metric={candidate_id:1,definition:{name:'Total amount',description:'Current amount',unit:'NUMBER'},decision:'AUTO_ACCEPT',required_datasets:[1],status:'NOT_COMPUTED',review_reasons:[],output:null,can_retry:false}
+const base={workspace_id:1,status:'NOT_COMPUTED',metrics_total:1,metrics_available:1,metrics_fresh:0,metrics_stale:0,metrics_failed:0,metrics_blocked:0,last_refreshed:null,can_refresh:true,metrics:[metric]}
+const render=(m={},data={},busy=false)=>renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(WorkspaceAnalyticsContent,{data:{...base,...data,metrics:[{...metric,...m}]},busy,refresh:()=>{},retry:()=>{}})))
+assert.ok(render().includes('Not calculated yet'))
+assert.ok(render({}, {}, true).includes('Refreshing'))
+let html=render({status:'FRESH',output:{kind:'scalar',value:12345,groups:[]}})
+assert.ok(html.includes('12,345')&&html.includes('Current')&&html.includes('Ready automatically')&&!html.includes('Approve'))
+html=render({status:'STALE',output:{kind:'scalar',value:12345,groups:[]}})
+assert.ok(html.includes('Refresh required')&&!html.includes('12,345'))
+html=render({status:'FAILED',can_retry:true},{status:'NEEDS_ATTENTION',metrics_failed:1})
+assert.ok(html.includes('Retry')&&html.includes('Your data is unchanged')&&html.includes('successful results remain available'))
+assert.ok(render({status:'BLOCKED',decision:'REVIEW_REQUIRED',review_reasons:['Multiple amount fields']}).includes('Review Metric'))
+html=render({status:'FRESH',decision:'REVIEW_RECOMMENDED',output:{kind:'scalar',value:20,groups:[]}})
+assert.ok(html.includes('Review is optional')&&html.includes('20'))
+html=render({status:'FRESH',output:{kind:'grouped',groups:[{dimensions:['SMB',null],value:20}],total_groups:101,truncated:true}})
+assert.ok(html.includes('SMB')&&html.includes('(null)')&&html.includes('ascending dimension order'))
+const code=fs.readFileSync(require('node:path').join(__dirname,'../src/pages/Workspace/Analytics/WorkspaceAnalyticsPage.tsx'),'utf8')
+for(const token of ['key={workspaceId}','scope.abort()','action.current','grid-cols-1','flex-wrap'])assert.ok(code.includes(token),token)
+async function main(){
+ let call;global.fetch=async(url,options)=>{call={url,options};return {ok:true,json:async()=>base}}
+ await api.refreshWorkspaceAnalytics('1');assert.ok(call.url.endsWith('/workspaces/1/analytics/refresh')&&!call.options.body)
+ await api.retryWorkspaceMetric('1',1);assert.ok(call.url.endsWith('/metrics/1/retry'))
+ global.fetch=async()=>({ok:true,json:async()=>({...base,workspace_id:2})})
+ await assert.rejects(api.getWorkspaceAnalytics('1'),/another workspace/)
+ console.log('Workspace analytics lifecycle, real-value gating, optional review, responsive structure and ownership passed')
+}
+main().catch(e=>{console.error(e);process.exitCode=1})

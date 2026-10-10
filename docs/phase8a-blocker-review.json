@@ -1,0 +1,1200 @@
+{
+  "workspace_id": 16,
+  "metrics": [
+    {
+      "candidate_id": 39,
+      "definition_version": 4,
+      "name": "Record count",
+      "description": "Total record count of customer master entities",
+      "base_dataset_id": 25,
+      "metric_type": "COUNT",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Business definition requires explicit scope, units or category meaning.",
+        "Customer dataset represents unique active customer entities."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Customer dataset represents unique active customer entities."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "customer_id"
+      ],
+      "formula": {
+        "root": "c1",
+        "nodes": [
+          {
+            "id": "c1",
+            "op": "COUNT",
+            "args": [],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 25,
+          "current_state_id": 35,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "REVIEW_REQUIRED",
+        "decision": "REVIEW_REQUIRED",
+        "errors": [],
+        "review_reasons": [
+          "Business definition requires explicit scope, units or category meaning."
+        ]
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 40,
+      "definition_version": 4,
+      "name": "Total amount",
+      "description": "Total sum of amount column in Orders",
+      "base_dataset_id": 27,
+      "metric_type": "SUM",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Order amount values are additive."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Order amount values are additive."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "order_id"
+      ],
+      "formula": {
+        "root": "sum1",
+        "nodes": [
+          {
+            "id": "col",
+            "op": "COLUMN",
+            "args": [],
+            "column": {
+              "column": "amount",
+              "dataset_id": 27
+            },
+            "filters": []
+          },
+          {
+            "id": "sum1",
+            "op": "SUM",
+            "args": [
+              "col"
+            ],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 27,
+          "current_state_id": 40,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "VALID",
+        "decision": "REVIEW_RECOMMENDED",
+        "errors": [],
+        "review_reasons": []
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 41,
+      "definition_version": 4,
+      "name": "Average amount",
+      "description": "Average of amount column in Orders",
+      "base_dataset_id": 27,
+      "metric_type": "AVG",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Order amount is numeric and mean is a valid measure."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Order amount is numeric and mean is a valid measure."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "order_id"
+      ],
+      "formula": {
+        "root": "avg1",
+        "nodes": [
+          {
+            "id": "col",
+            "op": "COLUMN",
+            "args": [],
+            "column": {
+              "column": "amount",
+              "dataset_id": 27
+            },
+            "filters": []
+          },
+          {
+            "id": "avg1",
+            "op": "AVG",
+            "args": [
+              "col"
+            ],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 27,
+          "current_state_id": 40,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "VALID",
+        "decision": "REVIEW_RECOMMENDED",
+        "errors": [],
+        "review_reasons": []
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 42,
+      "definition_version": 4,
+      "name": "Minimum amount",
+      "description": "Minimum of amount column in Orders",
+      "base_dataset_id": 27,
+      "metric_type": "MIN",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Zero or negative values are valid domain inputs."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Zero or negative values are valid domain inputs."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "order_id"
+      ],
+      "formula": {
+        "root": "min1",
+        "nodes": [
+          {
+            "id": "col",
+            "op": "COLUMN",
+            "args": [],
+            "column": {
+              "column": "amount",
+              "dataset_id": 27
+            },
+            "filters": []
+          },
+          {
+            "id": "min1",
+            "op": "MIN",
+            "args": [
+              "col"
+            ],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 27,
+          "current_state_id": 40,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "VALID",
+        "decision": "REVIEW_RECOMMENDED",
+        "errors": [],
+        "review_reasons": []
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 43,
+      "definition_version": 4,
+      "name": "Maximum amount",
+      "description": "Maximum of amount column in Orders",
+      "base_dataset_id": 27,
+      "metric_type": "MAX",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Order amounts are free of arbitrary unhandled scaling factors."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Order amounts are free of arbitrary unhandled scaling factors."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "order_id"
+      ],
+      "formula": {
+        "root": "max1",
+        "nodes": [
+          {
+            "id": "col",
+            "op": "COLUMN",
+            "args": [],
+            "column": {
+              "column": "amount",
+              "dataset_id": 27
+            },
+            "filters": []
+          },
+          {
+            "id": "max1",
+            "op": "MAX",
+            "args": [
+              "col"
+            ],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 27,
+          "current_state_id": 40,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "VALID",
+        "decision": "REVIEW_RECOMMENDED",
+        "errors": [],
+        "review_reasons": []
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 44,
+      "definition_version": 4,
+      "name": "Distinct customer_id count",
+      "description": "Distinct count of customer_id in Orders",
+      "base_dataset_id": 27,
+      "metric_type": "COUNT_DISTINCT",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Customer ordering activity is captured via customer_id references."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Customer ordering activity is captured via customer_id references."
+      ],
+      "grain": "RECORD",
+      "grain_keys": [],
+      "formula": {
+        "root": "cd1",
+        "nodes": [
+          {
+            "id": "col",
+            "op": "COLUMN",
+            "args": [],
+            "column": {
+              "column": "customer_id",
+              "dataset_id": 27
+            },
+            "filters": []
+          },
+          {
+            "id": "cd1",
+            "op": "COUNT_DISTINCT",
+            "args": [
+              "col"
+            ],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 27,
+          "current_state_id": 40,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "VALID",
+        "decision": "REVIEW_RECOMMENDED",
+        "errors": [],
+        "review_reasons": []
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 45,
+      "definition_version": 4,
+      "name": "Total amount",
+      "description": "Total sum of amount column in Payments",
+      "base_dataset_id": 28,
+      "metric_type": "SUM",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Payment amount values are additive."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Payment amount values are additive."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "payment_id"
+      ],
+      "formula": {
+        "root": "sum1",
+        "nodes": [
+          {
+            "id": "col",
+            "op": "COLUMN",
+            "args": [],
+            "column": {
+              "column": "amount",
+              "dataset_id": 28
+            },
+            "filters": []
+          },
+          {
+            "id": "sum1",
+            "op": "SUM",
+            "args": [
+              "col"
+            ],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 28,
+          "current_state_id": 38,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "VALID",
+        "decision": "REVIEW_RECOMMENDED",
+        "errors": [],
+        "review_reasons": []
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 46,
+      "definition_version": 4,
+      "name": "Average amount",
+      "description": "Average of amount column in Payments",
+      "base_dataset_id": 28,
+      "metric_type": "AVG",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Payment amount is numeric and mean is a valid measure."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Payment amount is numeric and mean is a valid measure."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "payment_id"
+      ],
+      "formula": {
+        "root": "avg1",
+        "nodes": [
+          {
+            "id": "col",
+            "op": "COLUMN",
+            "args": [],
+            "column": {
+              "column": "amount",
+              "dataset_id": 28
+            },
+            "filters": []
+          },
+          {
+            "id": "avg1",
+            "op": "AVG",
+            "args": [
+              "col"
+            ],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 28,
+          "current_state_id": 38,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "VALID",
+        "decision": "REVIEW_RECOMMENDED",
+        "errors": [],
+        "review_reasons": []
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 47,
+      "definition_version": 4,
+      "name": "Distinct order_id count",
+      "description": "Distinct count of order_id in Payments",
+      "base_dataset_id": 28,
+      "metric_type": "COUNT_DISTINCT",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Multiple payments can reference the same order_id."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Multiple payments can reference the same order_id."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "payment_id"
+      ],
+      "formula": {
+        "root": "cd1",
+        "nodes": [
+          {
+            "id": "col",
+            "op": "COLUMN",
+            "args": [],
+            "column": {
+              "column": "order_id",
+              "dataset_id": 28
+            },
+            "filters": []
+          },
+          {
+            "id": "cd1",
+            "op": "COUNT_DISTINCT",
+            "args": [
+              "col"
+            ],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 28,
+          "current_state_id": 38,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "VALID",
+        "decision": "REVIEW_RECOMMENDED",
+        "errors": [],
+        "review_reasons": []
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 48,
+      "definition_version": 4,
+      "name": "Record count",
+      "description": "Record count of products catalog",
+      "base_dataset_id": 26,
+      "metric_type": "COUNT",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Business definition requires explicit scope, units or category meaning.",
+        "Product catalog entries map to active distinct items."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Product catalog entries map to active distinct items."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "product_id"
+      ],
+      "formula": {
+        "root": "c1",
+        "nodes": [
+          {
+            "id": "c1",
+            "op": "COUNT",
+            "args": [],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 26,
+          "current_state_id": 36,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "REVIEW_REQUIRED",
+        "decision": "REVIEW_REQUIRED",
+        "errors": [],
+        "review_reasons": [
+          "Business definition requires explicit scope, units or category meaning."
+        ]
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 49,
+      "definition_version": 4,
+      "name": "Record count",
+      "description": "Record count of patient admissions",
+      "base_dataset_id": 30,
+      "metric_type": "COUNT",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Business definition requires explicit scope, units or category meaning.",
+        "Column meaning has unresolved warnings.",
+        "Patient admissions dataset is scoped correctly relative to commerce datasets."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Patient admissions dataset is scoped correctly relative to commerce datasets."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "patient_id"
+      ],
+      "formula": {
+        "root": "c1",
+        "nodes": [
+          {
+            "id": "c1",
+            "op": "COUNT",
+            "args": [],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 30,
+          "current_state_id": 41,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "REVIEW_REQUIRED",
+        "decision": "REVIEW_REQUIRED",
+        "errors": [],
+        "review_reasons": [
+          "Business definition requires explicit scope, units or category meaning.",
+          "Column meaning has unresolved warnings."
+        ]
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 50,
+      "definition_version": 4,
+      "name": "DIVIDE(SUM(amount), COUNT())",
+      "description": "Order amount per record ratio calculation",
+      "base_dataset_id": 27,
+      "metric_type": "RATIO",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Denominator is non-zero in production evaluation."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Denominator is non-zero in production evaluation."
+      ],
+      "grain": "RECORD",
+      "grain_keys": [],
+      "formula": {
+        "root": "div1",
+        "nodes": [
+          {
+            "id": "col",
+            "op": "COLUMN",
+            "args": [],
+            "column": {
+              "column": "amount",
+              "dataset_id": 27
+            },
+            "filters": []
+          },
+          {
+            "id": "sum1",
+            "op": "SUM",
+            "args": [
+              "col"
+            ],
+            "column": null,
+            "filters": []
+          },
+          {
+            "id": "cnt1",
+            "op": "COUNT",
+            "args": [],
+            "column": null,
+            "filters": []
+          },
+          {
+            "id": "div1",
+            "op": "DIVIDE",
+            "args": [
+              "sum1",
+              "cnt1"
+            ],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 27,
+          "current_state_id": 40,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "VALID",
+        "decision": "REVIEW_RECOMMENDED",
+        "errors": [],
+        "review_reasons": []
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 51,
+      "definition_version": 4,
+      "name": "DIVIDE(SUM(amount), COUNT())",
+      "description": "Payment amount per record ratio calculation",
+      "base_dataset_id": 28,
+      "metric_type": "RATIO",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Denominator is non-zero in production evaluation."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Denominator is non-zero in production evaluation."
+      ],
+      "grain": "RECORD",
+      "grain_keys": [],
+      "formula": {
+        "root": "div1",
+        "nodes": [
+          {
+            "id": "col",
+            "op": "COLUMN",
+            "args": [],
+            "column": {
+              "column": "amount",
+              "dataset_id": 28
+            },
+            "filters": []
+          },
+          {
+            "id": "sum1",
+            "op": "SUM",
+            "args": [
+              "col"
+            ],
+            "column": null,
+            "filters": []
+          },
+          {
+            "id": "cnt1",
+            "op": "COUNT",
+            "args": [],
+            "column": null,
+            "filters": []
+          },
+          {
+            "id": "div1",
+            "op": "DIVIDE",
+            "args": [
+              "sum1",
+              "cnt1"
+            ],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 28,
+          "current_state_id": 38,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "VALID",
+        "decision": "REVIEW_RECOMMENDED",
+        "errors": [],
+        "review_reasons": []
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 52,
+      "definition_version": 4,
+      "name": "Distinct product_id count",
+      "description": "Distinct count of product_id in Orders",
+      "base_dataset_id": 27,
+      "metric_type": "COUNT_DISTINCT",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Product identifiers match catalog items."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Product identifiers match catalog items."
+      ],
+      "grain": "RECORD",
+      "grain_keys": [],
+      "formula": {
+        "root": "cd1",
+        "nodes": [
+          {
+            "id": "col",
+            "op": "COLUMN",
+            "args": [],
+            "column": {
+              "column": "product_id",
+              "dataset_id": 27
+            },
+            "filters": []
+          },
+          {
+            "id": "cd1",
+            "op": "COUNT_DISTINCT",
+            "args": [
+              "col"
+            ],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 27,
+          "current_state_id": 40,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "VALID",
+        "decision": "REVIEW_RECOMMENDED",
+        "errors": [],
+        "review_reasons": []
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 53,
+      "definition_version": 4,
+      "name": "Record count",
+      "description": "Record count of orders dataset",
+      "base_dataset_id": 27,
+      "metric_type": "COUNT",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Business definition requires explicit scope, units or category meaning.",
+        "Orders dataset primary key guarantees entity uniqueness."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Orders dataset primary key guarantees entity uniqueness."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "order_id"
+      ],
+      "formula": {
+        "root": "c1",
+        "nodes": [
+          {
+            "id": "c1",
+            "op": "COUNT",
+            "args": [],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 27,
+          "current_state_id": 40,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "REVIEW_REQUIRED",
+        "decision": "REVIEW_REQUIRED",
+        "errors": [],
+        "review_reasons": [
+          "Business definition requires explicit scope, units or category meaning."
+        ]
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    },
+    {
+      "candidate_id": 54,
+      "definition_version": 4,
+      "name": "Record count",
+      "description": "Record count of payments dataset",
+      "base_dataset_id": 28,
+      "metric_type": "COUNT",
+      "decision": "REVIEW_REQUIRED",
+      "validation_status": "REVIEW_REQUIRED",
+      "eligibility": "BLOCKED",
+      "reason_code": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Business definition requires explicit scope, units or category meaning.",
+        "Payments dataset primary key guarantees entity uniqueness."
+      ],
+      "errors": [],
+      "unresolved_assumptions": [
+        "Payments dataset primary key guarantees entity uniqueness."
+      ],
+      "grain": "ENTITY",
+      "grain_keys": [
+        "payment_id"
+      ],
+      "formula": {
+        "root": "c1",
+        "nodes": [
+          {
+            "id": "c1",
+            "op": "COUNT",
+            "args": [],
+            "column": null,
+            "filters": []
+          }
+        ],
+        "scale": 1,
+        "zero_denominator": "NULL"
+      },
+      "default_filters": [],
+      "relationship_ids": [],
+      "inputs": [
+        {
+          "dataset_id": 28,
+          "current_state_id": 38,
+          "current_gold_run_id": null,
+          "gold_state_id": null,
+          "gold_status": null,
+          "state_analytics_status": "STALE"
+        }
+      ],
+      "diagnostic_without_assumptions": {
+        "validation_status": "REVIEW_REQUIRED",
+        "decision": "REVIEW_REQUIRED",
+        "errors": [],
+        "review_reasons": [
+          "Business definition requires explicit scope, units or category meaning."
+        ]
+      },
+      "freshness": {
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "candidate_id": 6,
+      "status": "CONFIRMED",
+      "structural_status": "CURRENT",
+      "verification_status": "CURRENT",
+      "relationship_version": 1,
+      "parent": {
+        "columns": [
+          "customer_id"
+        ],
+        "dataset_id": 25,
+        "dataset_name": "Customers",
+        "normalized_columns": [
+          "customer_id"
+        ]
+      },
+      "child": {
+        "columns": [
+          "customer_id"
+        ],
+        "dataset_id": 27,
+        "dataset_name": "Orders",
+        "normalized_columns": [
+          "customer_id"
+        ]
+      },
+      "cardinality": "ONE_TO_MANY"
+    },
+    {
+      "candidate_id": 7,
+      "status": "REJECTED",
+      "structural_status": "CURRENT",
+      "verification_status": "CURRENT",
+      "relationship_version": 1,
+      "parent": {
+        "columns": [
+          "customer_id"
+        ],
+        "dataset_id": 25,
+        "dataset_name": "Customers",
+        "normalized_columns": [
+          "customer_id"
+        ]
+      },
+      "child": {
+        "columns": [
+          "customer_id"
+        ],
+        "dataset_id": 29,
+        "dataset_name": "Missing AI understanding",
+        "normalized_columns": [
+          "customer_id"
+        ]
+      },
+      "cardinality": "UNKNOWN"
+    }
+  ],
+  "read_only": true,
+  "diagnostics_not_persisted_or_executed": true
+}

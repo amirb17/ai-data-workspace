@@ -24,7 +24,7 @@ class CumulativeGoldArtifacts(IncrementalArtifacts):
         checksum = self.put(key, self.json(manifest))
         return key, checksum, catalog
 
-    def validate(self, run, key, checksum, expected_rows, columns):
+    def validate(self, run, key, checksum, expected_rows, columns, *, base_only=False, frames=None):
         expected_prefix = f"gold/dataset_id={run['dataset_id']}/state_id={run['source_state_id']}/run_id={run['gold_run_id']}/"
         if not key.startswith(expected_prefix):
             raise ValueError('Gold manifest outside owned run')
@@ -48,7 +48,11 @@ class CumulativeGoldArtifacts(IncrementalArtifacts):
                     or artifact['dependencies'] != [{'dataset_id':run['dataset_id'],'state_id':run['source_state_id']}]
                     or artifact['artifact_type'] != ('BASE' if index==0 else 'MART')):
                 raise ValueError('Gold artifact ownership differs')
+            if base_only and artifact['artifact_type'] != 'BASE':
+                continue
             frame = self.frame(artifact['storage_path'], artifact['sha256'])
+            if frames is not None:
+                frames[artifact['gold_artifact_id']] = frame
             semantic = artifact['columns']
             if len(frame) != artifact['row_count'] or list(frame.columns) != [c['column_name'] for c in semantic]:
                 raise ValueError('Gold schema/catalog differs')

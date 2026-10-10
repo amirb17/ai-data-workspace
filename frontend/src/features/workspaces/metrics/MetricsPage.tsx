@@ -12,6 +12,7 @@ export function MetricsPage() {
 }
 export function MetricList({data,busy,generate,review}: {data: MetricView; busy: boolean; generate: ()=>void; review: (c: MetricCandidate,a: 'approve' | 'reject')=>void}) {
   return <section className="min-w-0 space-y-5"><h2 className="text-xl font-semibold">Suggested Metrics</h2>
+    <Link className="inline-flex min-h-11 items-center text-sm text-indigo-700 underline" to={`/app/workspaces/${data.workspace_id}/analytics`}>Open Workspace Analytics</Link>
     <p className="text-sm">Current semantic evidence and confirmed relationships inform proposals. Deterministic validation controls acceptance; AI confidence alone never grants trust.</p>
     <div className="space-y-2 rounded-xl border bg-indigo-50 p-4"><p>{data.coverage.datasets_analyzed} of {data.coverage.datasets_total} datasets eligible · {data.status.replaceAll('_',' ')}</p><p>{data.readiness_message}</p>
       <p className="text-sm">Discovery sends dataset/column names and redacted semantic metadata to the configured AI provider. No raw rows or categorical values are sent.</p>

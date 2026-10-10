@@ -1,0 +1,296 @@
+{
+  "fixture": "Isolated synthetic Orders; real PostgreSQL and cumulative Gold Parquet in in-memory S3",
+  "public_database_unchanged": true,
+  "api_read": {
+    "workspace_id": 1,
+    "status": "FRESH",
+    "metrics_total": 2,
+    "metrics_available": 2,
+    "metrics_fresh": 2,
+    "metrics_stale": 0,
+    "metrics_failed": 0,
+    "metrics_blocked": 0,
+    "last_refreshed": "2026-10-10T16:22:02.011889+05:30",
+    "can_refresh": true,
+    "metrics": [
+      {
+        "candidate_id": 1,
+        "definition_version": 1,
+        "definition": {
+          "name": "Record count",
+          "unit": "NUMBER",
+          "grain": "RECORD",
+          "formula": {
+            "root": "count",
+            "nodes": [
+              {
+                "id": "count",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Exact count of base records",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "base_entity": "Record",
+          "description": "Number of base records",
+          "metric_type": "COUNT",
+          "time_bucket": null,
+          "base_dataset_id": 1,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": []
+        },
+        "decision": "AUTO_ACCEPT",
+        "required_datasets": [
+          1
+        ],
+        "status": "FRESH",
+        "source_names": [
+          {
+            "dataset_id": 1,
+            "dataset_name": "Orders"
+          }
+        ],
+        "source_versions": [
+          {
+            "dataset_id": 1,
+            "state_id": 1,
+            "gold_run_id": 1
+          }
+        ],
+        "relationship_versions": [],
+        "execution_algorithm_version": 1,
+        "reason": null,
+        "review_reasons": [],
+        "result_id": 1,
+        "computed_at": "2026-10-10T16:22:01.652017+05:30",
+        "output": {
+          "kind": "scalar",
+          "value": 2,
+          "groups": [],
+          "truncated": false,
+          "input_rows": 2,
+          "display_hint": "scalar",
+          "total_groups": 0
+        },
+        "failure_code": null,
+        "can_retry": false
+      },
+      {
+        "candidate_id": 2,
+        "definition_version": 1,
+        "definition": {
+          "name": "Distinct id count",
+          "unit": "NUMBER",
+          "grain": "RECORD",
+          "formula": {
+            "root": "distinct",
+            "nodes": [
+              {
+                "id": "id",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "id",
+                  "dataset_id": 1
+                },
+                "filters": []
+              },
+              {
+                "id": "distinct",
+                "op": "COUNT_DISTINCT",
+                "args": [
+                  "id"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Exact count of base records",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "base_entity": "Record",
+          "description": "Distinct non-null id values in the synthetic Orders dataset",
+          "metric_type": "COUNT_DISTINCT",
+          "time_bucket": null,
+          "base_dataset_id": 1,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": []
+        },
+        "decision": "REVIEW_RECOMMENDED",
+        "required_datasets": [
+          1
+        ],
+        "status": "FRESH",
+        "source_names": [
+          {
+            "dataset_id": 1,
+            "dataset_name": "Orders"
+          }
+        ],
+        "source_versions": [
+          {
+            "dataset_id": 1,
+            "state_id": 1,
+            "gold_run_id": 1
+          }
+        ],
+        "relationship_versions": [],
+        "execution_algorithm_version": 1,
+        "reason": null,
+        "review_reasons": [],
+        "result_id": 2,
+        "computed_at": "2026-10-10T16:22:02.011889+05:30",
+        "output": {
+          "kind": "scalar",
+          "value": 2,
+          "groups": [],
+          "truncated": false,
+          "input_rows": 2,
+          "display_hint": "scalar",
+          "total_groups": 0
+        },
+        "failure_code": null,
+        "can_retry": false
+      }
+    ]
+  },
+  "persisted_results": [
+    {
+      "candidate_id": 1,
+      "definition_version": 1,
+      "status": "FRESH",
+      "value": 2
+    },
+    {
+      "candidate_id": 2,
+      "definition_version": 1,
+      "status": "FRESH",
+      "value": 2
+    }
+  ],
+  "plans": [
+    {
+      "candidate_id": 1,
+      "definition": {
+        "name": "Record count",
+        "description": "Number of base records",
+        "metric_type": "COUNT",
+        "base_dataset_id": 1,
+        "base_entity": "Record",
+        "grain": "RECORD",
+        "grain_keys": [],
+        "formula": {
+          "nodes": [
+            {
+              "id": "count",
+              "op": "COUNT",
+              "column": null,
+              "args": [],
+              "filters": []
+            }
+          ],
+          "root": "count",
+          "zero_denominator": "NULL",
+          "scale": 1
+        },
+        "dimensions": [],
+        "time_field": null,
+        "time_bucket": null,
+        "relationship_ids": [],
+        "default_filters": [],
+        "unit": "NUMBER",
+        "confidence": 0.95,
+        "rationale": "Exact count of base records",
+        "unresolved_assumptions": []
+      },
+      "source_versions": [
+        {
+          "dataset_id": 1,
+          "state_id": 1,
+          "gold_run_id": 1,
+          "structural_key": "4a071927d9248ac3e1424488da3850ad70b0e62f959bf87166af17c572bb45a3",
+          "semantic_key": "7fe72ab8a8f2a4a5fd9d748eb191778341c5b6a130f0a2451e2a1133cf81f04d"
+        }
+      ],
+      "joins": []
+    },
+    {
+      "candidate_id": 2,
+      "definition": {
+        "name": "Distinct id count",
+        "description": "Distinct non-null id values in the synthetic Orders dataset",
+        "metric_type": "COUNT_DISTINCT",
+        "base_dataset_id": 1,
+        "base_entity": "Record",
+        "grain": "RECORD",
+        "grain_keys": [],
+        "formula": {
+          "nodes": [
+            {
+              "id": "id",
+              "op": "COLUMN",
+              "column": {
+                "dataset_id": 1,
+                "column": "id"
+              },
+              "args": [],
+              "filters": []
+            },
+            {
+              "id": "distinct",
+              "op": "COUNT_DISTINCT",
+              "column": null,
+              "args": [
+                "id"
+              ],
+              "filters": []
+            }
+          ],
+          "root": "distinct",
+          "zero_denominator": "NULL",
+          "scale": 1
+        },
+        "dimensions": [],
+        "time_field": null,
+        "time_bucket": null,
+        "relationship_ids": [],
+        "default_filters": [],
+        "unit": "NUMBER",
+        "confidence": 0.95,
+        "rationale": "Exact count of base records",
+        "unresolved_assumptions": []
+      },
+      "source_versions": [
+        {
+          "dataset_id": 1,
+          "state_id": 1,
+          "gold_run_id": 1,
+          "structural_key": "4a071927d9248ac3e1424488da3850ad70b0e62f959bf87166af17c572bb45a3",
+          "semantic_key": "7fe72ab8a8f2a4a5fd9d748eb191778341c5b6a130f0a2451e2a1133cf81f04d"
+        }
+      ],
+      "joins": []
+    }
+  ],
+  "retry_reused_result_ids": [
+    1,
+    2
+  ],
+  "metric_review_count": 0,
+  "provider_calls_during_execution": 0
+}

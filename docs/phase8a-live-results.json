@@ -1,0 +1,40 @@
+{
+  "database": "ai_data_workspace",
+  "schema": "public",
+  "migration_present": true,
+  "existing_counts": {
+    "datasets": 26,
+    "dataset_state_versions": 41,
+    "dataset_gold_runs": 7,
+    "metric_candidates": 54,
+    "metric_reviews": 0,
+    "approved_metric_definitions": 0
+  },
+  "commerce_decisions": [
+    [
+      "REVIEW_REQUIRED",
+      "REVIEW_REQUIRED",
+      16
+    ]
+  ],
+  "analytics": {
+    "status": "NEEDS_ATTENTION",
+    "metrics_total": 16,
+    "metrics_available": 0,
+    "metrics_fresh": 0,
+    "metrics_stale": 0,
+    "metrics_failed": 0,
+    "metrics_blocked": 16
+  },
+  "values_exposed": 0,
+  "refresh_blocked_safely": true,
+  "other_workspace_metrics": 0,
+  "rejected_client_fields": {
+    "sql": 422,
+    "state_id": 422,
+    "relationship_ids": 422,
+    "result": 422
+  },
+  "invalid_metric_status": 404,
+  "existing_metadata_unchanged": true
+}
