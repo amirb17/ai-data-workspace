@@ -1,0 +1,14 @@
+import { backendId, request, ApiError } from './client'
+export interface MetricFilter { column: {dataset_id: number; column: string}; operator: string; category_ref: string }
+export interface MetricDefinition { name: string; description: string; base_dataset_id: number; base_entity: string; grain: string; grain_keys: string[]; metric_type: string; confidence: number; rationale: string; unit: string; formula: {root: string; zero_denominator: string; scale: number; nodes: {id: string; op: string; args: string[]; column: {dataset_id: number; column: string} | null; filters: MetricFilter[]}[]}; dimensions: {dataset_id: number; column: string}[]; relationship_ids: number[]; time_field: {dataset_id: number; column: string} | null; time_bucket: string | null; default_filters: MetricFilter[] }
+export interface MetricCandidate { workspace_id: number; candidate_id: number; run_id: number; dependencies: Record<string, unknown>[]; definition: MetricDefinition; validation_status: 'VALID' | 'REVIEW_REQUIRED' | 'INVALID'; decision: 'AUTO_ACCEPT' | 'REVIEW_RECOMMENDED' | 'REVIEW_REQUIRED'; errors: string[]; review_reasons: string[]; definition_freshness: string; dependency_freshness: string; data_freshness: string; review_status: string; review_version: number; can_approve: boolean; can_reject: boolean; approval_kind: string | null; recommendation_usable: boolean; execution_available: false; preview_value: null; required_columns: {dataset_id: number; column: string}[] }
+export interface MetricView { workspace_id: number; status: string; run_id: number | null; run_version: number | null; failure_code: string | null; source_pins: unknown[]; workspace_suggestion_id: number | null; review_revision: number; freshness_revision: string; can_discover: boolean; readiness_message: string; coverage: {datasets_analyzed: number; datasets_total: number; excluded: {dataset_id: number; dataset_name: string; reason: string}[]}; candidates: MetricCandidate[]; policy_version: number; discovery_context: Record<string, unknown> | null }
+async function scoped(workspace: string,suffix: string,options: RequestInit={}) {
+  const data=await request<MetricView>(`/workspaces/${backendId(workspace)}/metrics${suffix}`,options)
+  if(data.workspace_id!==backendId(workspace))throw new ApiError('Metrics belong to another workspace.')
+  return data
+}
+export const getMetrics=(workspace: string,signal?: AbortSignal)=>scoped(workspace,'',{signal})
+export const getMetricReadiness=(workspace: string,signal?: AbortSignal)=>scoped(workspace,'/readiness',{signal})
+export const discoverMetrics=(workspace: string,signal?: AbortSignal)=>scoped(workspace,'/discover',{method:'POST',signal})
+export const reviewMetric=(workspace: string,c: MetricCandidate,action: 'approve' | 'reject',signal?: AbortSignal)=>scoped(workspace,`/candidates/${c.candidate_id}/${action}`,{method:'POST',body:JSON.stringify({expected_review_version:c.review_version}),signal})

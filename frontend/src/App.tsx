@@ -17,6 +17,7 @@ import { WorkspacesPage } from "./pages/Workspaces/WorkspacesPage"
 import { WorkspaceDetailPage } from "./pages/Workspace/WorkspaceDetailPage"
 import { WorkspaceUnderstandingPage } from "./features/workspaces/understanding/WorkspaceUnderstanding"
 import { RelationshipsPage } from "./features/workspaces/relationships/RelationshipsPage"
+import { MetricsPage } from "./features/workspaces/metrics/MetricsPage"
 import { WorkspaceOverviewPage } from "./pages/Workspace/Overview/WorkspaceOverviewPage"
 import { WorkspaceDatasetsPage } from "./pages/Workspace/Datasets/WorkspaceDatasetsPage"
 import { WorkspaceProcessingPage } from "./pages/Workspace/Processing/WorkspaceProcessingPage"
@@ -123,6 +124,7 @@ function AppLayout() {
         />
         <Route path="understanding" element={<WorkspaceUnderstandingPage />} />
         <Route path="data-model" element={<RelationshipsPage />} />
+        <Route path="metrics" element={<MetricsPage />} />
 
         <Route
           path="datasets"

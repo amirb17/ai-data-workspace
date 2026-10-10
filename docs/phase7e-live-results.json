@@ -1,0 +1,1718 @@
+{
+  "migration": {
+    "database": "ai_data_workspace",
+    "migration": "0022",
+    "already_present": false,
+    "tables": [
+      "metric_discovery_runs",
+      "metric_candidates",
+      "metric_candidate_dependencies",
+      "metric_reviews",
+      "approved_metric_definitions"
+    ],
+    "protection_triggers": 5,
+    "constraints": 76,
+    "existing_counts_unchanged": [
+      26,
+      41,
+      12,
+      10,
+      4,
+      2
+    ]
+  },
+  "discovery": {
+    "workspace_id": 16,
+    "run_id": 4,
+    "run_version": 4,
+    "coverage": {
+      "datasets_total": 6,
+      "datasets_analyzed": 5,
+      "datasets_excluded": 1,
+      "partial": true,
+      "excluded": [
+        {
+          "dataset_id": 29,
+          "dataset_name": "Missing AI understanding",
+          "reason": "DATASET_UNDERSTANDING_NOT_GENERATED"
+        }
+      ]
+    },
+    "decisions": {
+      "AUTO_ACCEPT": 0,
+      "REVIEW_RECOMMENDED": 0,
+      "REVIEW_REQUIRED": 16
+    },
+    "candidates": [
+      {
+        "workspace_id": 16,
+        "candidate_id": 39,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Record count",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "c1",
+            "nodes": [
+              {
+                "id": "c1",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Exact entity grain COUNT over customers dataset using primary key customer_id.",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [
+            "customer_id"
+          ],
+          "time_field": null,
+          "base_entity": "Customer",
+          "description": "Total record count of customer master entities",
+          "metric_type": "COUNT",
+          "time_bucket": null,
+          "base_dataset_id": 25,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Customer dataset represents unique active customer entities."
+          ]
+        },
+        "formula_key": "48ff377ab468ff055f705c0715bb4b144cde247346970816e5c87e467005d123",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 35,
+            "dataset_id": 25,
+            "profile_id": 6,
+            "dataset_name": "Customers",
+            "semantic_key": "208a63c80f28b55ba7afbbf178d58baff1b2ed3912472acebd1bf8354c60a92b",
+            "state_version": 1,
+            "suggestion_id": 5,
+            "schema_version": 1,
+            "structural_key": "cc0b397aae1053d70c5b18cbf1be79ed4530833f27cff06645b3a50d27d93f01",
+            "profile_version": 1,
+            "dataset_version_id": 27,
+            "suggestion_version": 1
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Business definition requires explicit scope, units or category meaning.",
+          "Customer dataset represents unique active customer entities."
+        ],
+        "required_columns": [
+          {
+            "column": "customer_id",
+            "dataset_id": 25
+          }
+        ],
+        "required_datasets": [
+          25
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 40,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Total amount",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "sum1",
+            "nodes": [
+              {
+                "id": "col",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "amount",
+                  "dataset_id": 27
+                },
+                "filters": []
+              },
+              {
+                "id": "sum1",
+                "op": "SUM",
+                "args": [
+                  "col"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Sum of order amounts on order dataset.",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [
+            "order_id"
+          ],
+          "time_field": null,
+          "base_entity": "Order",
+          "description": "Total sum of amount column in Orders",
+          "metric_type": "SUM",
+          "time_bucket": null,
+          "base_dataset_id": 27,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Order amount values are additive."
+          ]
+        },
+        "formula_key": "99871144fdfd44303e4ff2119625e474f5cfab7b8a63139da21d44f031c41550",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 40,
+            "dataset_id": 27,
+            "profile_id": 11,
+            "dataset_name": "Orders",
+            "semantic_key": "1342d01ea23df660e47ae0d4949bf8fde0739e3ba2d1002e38f5516162af9f06",
+            "state_version": 2,
+            "suggestion_id": 9,
+            "schema_version": 1,
+            "structural_key": "1838ce107cf7ff1f1a6e7b76271ba010ae42c15fa5ac739118b226cabde3cbb2",
+            "profile_version": 2,
+            "dataset_version_id": 29,
+            "suggestion_version": 2
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Order amount values are additive."
+        ],
+        "required_columns": [
+          {
+            "column": "amount",
+            "dataset_id": 27
+          },
+          {
+            "column": "order_id",
+            "dataset_id": 27
+          }
+        ],
+        "required_datasets": [
+          27
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 41,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Average amount",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "avg1",
+            "nodes": [
+              {
+                "id": "col",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "amount",
+                  "dataset_id": 27
+                },
+                "filters": []
+              },
+              {
+                "id": "avg1",
+                "op": "AVG",
+                "args": [
+                  "col"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Average order amount across orders.",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [
+            "order_id"
+          ],
+          "time_field": null,
+          "base_entity": "Order",
+          "description": "Average of amount column in Orders",
+          "metric_type": "AVG",
+          "time_bucket": null,
+          "base_dataset_id": 27,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Order amount is numeric and mean is a valid measure."
+          ]
+        },
+        "formula_key": "e2e2571a39d415b475b3f0f636e2abc8ebc9f49883e73cbf813cd247d965bbde",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 40,
+            "dataset_id": 27,
+            "profile_id": 11,
+            "dataset_name": "Orders",
+            "semantic_key": "1342d01ea23df660e47ae0d4949bf8fde0739e3ba2d1002e38f5516162af9f06",
+            "state_version": 2,
+            "suggestion_id": 9,
+            "schema_version": 1,
+            "structural_key": "1838ce107cf7ff1f1a6e7b76271ba010ae42c15fa5ac739118b226cabde3cbb2",
+            "profile_version": 2,
+            "dataset_version_id": 29,
+            "suggestion_version": 2
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Order amount is numeric and mean is a valid measure."
+        ],
+        "required_columns": [
+          {
+            "column": "amount",
+            "dataset_id": 27
+          },
+          {
+            "column": "order_id",
+            "dataset_id": 27
+          }
+        ],
+        "required_datasets": [
+          27
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 42,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Minimum amount",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "min1",
+            "nodes": [
+              {
+                "id": "col",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "amount",
+                  "dataset_id": 27
+                },
+                "filters": []
+              },
+              {
+                "id": "min1",
+                "op": "MIN",
+                "args": [
+                  "col"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Minimum order amount on orders dataset.",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [
+            "order_id"
+          ],
+          "time_field": null,
+          "base_entity": "Order",
+          "description": "Minimum of amount column in Orders",
+          "metric_type": "MIN",
+          "time_bucket": null,
+          "base_dataset_id": 27,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Zero or negative values are valid domain inputs."
+          ]
+        },
+        "formula_key": "f057c247a10a4097ca93eb2eaa3cd711ea9cd623d2c6f6876e5467564d53e36c",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 40,
+            "dataset_id": 27,
+            "profile_id": 11,
+            "dataset_name": "Orders",
+            "semantic_key": "1342d01ea23df660e47ae0d4949bf8fde0739e3ba2d1002e38f5516162af9f06",
+            "state_version": 2,
+            "suggestion_id": 9,
+            "schema_version": 1,
+            "structural_key": "1838ce107cf7ff1f1a6e7b76271ba010ae42c15fa5ac739118b226cabde3cbb2",
+            "profile_version": 2,
+            "dataset_version_id": 29,
+            "suggestion_version": 2
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Zero or negative values are valid domain inputs."
+        ],
+        "required_columns": [
+          {
+            "column": "amount",
+            "dataset_id": 27
+          },
+          {
+            "column": "order_id",
+            "dataset_id": 27
+          }
+        ],
+        "required_datasets": [
+          27
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 43,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Maximum amount",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "max1",
+            "nodes": [
+              {
+                "id": "col",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "amount",
+                  "dataset_id": 27
+                },
+                "filters": []
+              },
+              {
+                "id": "max1",
+                "op": "MAX",
+                "args": [
+                  "col"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Maximum order amount on orders dataset.",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [
+            "order_id"
+          ],
+          "time_field": null,
+          "base_entity": "Order",
+          "description": "Maximum of amount column in Orders",
+          "metric_type": "MAX",
+          "time_bucket": null,
+          "base_dataset_id": 27,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Order amounts are free of arbitrary unhandled scaling factors."
+          ]
+        },
+        "formula_key": "afecbdee6c85b9b679f9d7d04870cdf82782fa6b2a1551d062cb95c4eb723618",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 40,
+            "dataset_id": 27,
+            "profile_id": 11,
+            "dataset_name": "Orders",
+            "semantic_key": "1342d01ea23df660e47ae0d4949bf8fde0739e3ba2d1002e38f5516162af9f06",
+            "state_version": 2,
+            "suggestion_id": 9,
+            "schema_version": 1,
+            "structural_key": "1838ce107cf7ff1f1a6e7b76271ba010ae42c15fa5ac739118b226cabde3cbb2",
+            "profile_version": 2,
+            "dataset_version_id": 29,
+            "suggestion_version": 2
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Order amounts are free of arbitrary unhandled scaling factors."
+        ],
+        "required_columns": [
+          {
+            "column": "amount",
+            "dataset_id": 27
+          },
+          {
+            "column": "order_id",
+            "dataset_id": 27
+          }
+        ],
+        "required_datasets": [
+          27
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 44,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Distinct customer_id count",
+          "unit": "NUMBER",
+          "grain": "RECORD",
+          "formula": {
+            "root": "cd1",
+            "nodes": [
+              {
+                "id": "col",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "customer_id",
+                  "dataset_id": 27
+                },
+                "filters": []
+              },
+              {
+                "id": "cd1",
+                "op": "COUNT_DISTINCT",
+                "args": [
+                  "col"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Counts distinct customer references within the orders transaction log.",
+          "confidence": 0.9,
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "base_entity": "Order",
+          "description": "Distinct count of customer_id in Orders",
+          "metric_type": "COUNT_DISTINCT",
+          "time_bucket": null,
+          "base_dataset_id": 27,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Customer ordering activity is captured via customer_id references."
+          ]
+        },
+        "formula_key": "be66df43c8025f20f25f428c54a47a22977d68e26cb10fb6e4071a16a206e483",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 40,
+            "dataset_id": 27,
+            "profile_id": 11,
+            "dataset_name": "Orders",
+            "semantic_key": "1342d01ea23df660e47ae0d4949bf8fde0739e3ba2d1002e38f5516162af9f06",
+            "state_version": 2,
+            "suggestion_id": 9,
+            "schema_version": 1,
+            "structural_key": "1838ce107cf7ff1f1a6e7b76271ba010ae42c15fa5ac739118b226cabde3cbb2",
+            "profile_version": 2,
+            "dataset_version_id": 29,
+            "suggestion_version": 2
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Customer ordering activity is captured via customer_id references."
+        ],
+        "required_columns": [
+          {
+            "column": "customer_id",
+            "dataset_id": 27
+          }
+        ],
+        "required_datasets": [
+          27
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 45,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Total amount",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "sum1",
+            "nodes": [
+              {
+                "id": "col",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "amount",
+                  "dataset_id": 28
+                },
+                "filters": []
+              },
+              {
+                "id": "sum1",
+                "op": "SUM",
+                "args": [
+                  "col"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Sum of payment amounts on payments dataset.",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [
+            "payment_id"
+          ],
+          "time_field": null,
+          "base_entity": "Payment",
+          "description": "Total sum of amount column in Payments",
+          "metric_type": "SUM",
+          "time_bucket": null,
+          "base_dataset_id": 28,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Payment amount values are additive."
+          ]
+        },
+        "formula_key": "6c24eb13d5030e19843af49d0283c98f1234191fdd21403a02a934e67cfd1291",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 38,
+            "dataset_id": 28,
+            "profile_id": 9,
+            "dataset_name": "Payments",
+            "semantic_key": "90dde2d37a65afc32711bc6b61becf1c29c29c43e13aaedf9451629e912736b1",
+            "state_version": 1,
+            "suggestion_id": 8,
+            "schema_version": 1,
+            "structural_key": "6123f37f9f793abffc7897bcae65abc47b02fc1a829740760661fd4e290a8beb",
+            "profile_version": 1,
+            "dataset_version_id": 30,
+            "suggestion_version": 1
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Payment amount values are additive."
+        ],
+        "required_columns": [
+          {
+            "column": "amount",
+            "dataset_id": 28
+          },
+          {
+            "column": "payment_id",
+            "dataset_id": 28
+          }
+        ],
+        "required_datasets": [
+          28
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 46,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Average amount",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "avg1",
+            "nodes": [
+              {
+                "id": "col",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "amount",
+                  "dataset_id": 28
+                },
+                "filters": []
+              },
+              {
+                "id": "avg1",
+                "op": "AVG",
+                "args": [
+                  "col"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Average payment amount across payments.",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [
+            "payment_id"
+          ],
+          "time_field": null,
+          "base_entity": "Payment",
+          "description": "Average of amount column in Payments",
+          "metric_type": "AVG",
+          "time_bucket": null,
+          "base_dataset_id": 28,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Payment amount is numeric and mean is a valid measure."
+          ]
+        },
+        "formula_key": "7b3d9ae7ad6682f319a3271f99c37bfe7864b1f679ce3f1bd8922a0c329ff050",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 38,
+            "dataset_id": 28,
+            "profile_id": 9,
+            "dataset_name": "Payments",
+            "semantic_key": "90dde2d37a65afc32711bc6b61becf1c29c29c43e13aaedf9451629e912736b1",
+            "state_version": 1,
+            "suggestion_id": 8,
+            "schema_version": 1,
+            "structural_key": "6123f37f9f793abffc7897bcae65abc47b02fc1a829740760661fd4e290a8beb",
+            "profile_version": 1,
+            "dataset_version_id": 30,
+            "suggestion_version": 1
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Payment amount is numeric and mean is a valid measure."
+        ],
+        "required_columns": [
+          {
+            "column": "amount",
+            "dataset_id": 28
+          },
+          {
+            "column": "payment_id",
+            "dataset_id": 28
+          }
+        ],
+        "required_datasets": [
+          28
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 47,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Distinct order_id count",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "cd1",
+            "nodes": [
+              {
+                "id": "col",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "order_id",
+                  "dataset_id": 28
+                },
+                "filters": []
+              },
+              {
+                "id": "cd1",
+                "op": "COUNT_DISTINCT",
+                "args": [
+                  "col"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Counts distinct orders referenced in payment transactions.",
+          "confidence": 0.9,
+          "dimensions": [],
+          "grain_keys": [
+            "payment_id"
+          ],
+          "time_field": null,
+          "base_entity": "Payment",
+          "description": "Distinct count of order_id in Payments",
+          "metric_type": "COUNT_DISTINCT",
+          "time_bucket": null,
+          "base_dataset_id": 28,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Multiple payments can reference the same order_id."
+          ]
+        },
+        "formula_key": "0dc6b3203eed508d883d32d8d3e6bdf8819ebe6dab96478a8e42fa466dd9b677",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 38,
+            "dataset_id": 28,
+            "profile_id": 9,
+            "dataset_name": "Payments",
+            "semantic_key": "90dde2d37a65afc32711bc6b61becf1c29c29c43e13aaedf9451629e912736b1",
+            "state_version": 1,
+            "suggestion_id": 8,
+            "schema_version": 1,
+            "structural_key": "6123f37f9f793abffc7897bcae65abc47b02fc1a829740760661fd4e290a8beb",
+            "profile_version": 1,
+            "dataset_version_id": 30,
+            "suggestion_version": 1
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Multiple payments can reference the same order_id."
+        ],
+        "required_columns": [
+          {
+            "column": "order_id",
+            "dataset_id": 28
+          },
+          {
+            "column": "payment_id",
+            "dataset_id": 28
+          }
+        ],
+        "required_datasets": [
+          28
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 48,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Record count",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "c1",
+            "nodes": [
+              {
+                "id": "c1",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Exact entity grain COUNT over products dataset using product_id.",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [
+            "product_id"
+          ],
+          "time_field": null,
+          "base_entity": "Product",
+          "description": "Record count of products catalog",
+          "metric_type": "COUNT",
+          "time_bucket": null,
+          "base_dataset_id": 26,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Product catalog entries map to active distinct items."
+          ]
+        },
+        "formula_key": "9507f13b6fde0b78ded5cde1c5be4e21dfaa26bb7a47b177067e1bc0b90d4bbd",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 36,
+            "dataset_id": 26,
+            "profile_id": 7,
+            "dataset_name": "Products",
+            "semantic_key": "04d7dc0d6c6e16e91809e678f467d287f538eedf8b965db457bf3f1c02bf3071",
+            "state_version": 1,
+            "suggestion_id": 6,
+            "schema_version": 1,
+            "structural_key": "f4b20f54a5f9585bb13efc935367251db82757a50f4d8bae5f67b62d91388d09",
+            "profile_version": 1,
+            "dataset_version_id": 28,
+            "suggestion_version": 1
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Business definition requires explicit scope, units or category meaning.",
+          "Product catalog entries map to active distinct items."
+        ],
+        "required_columns": [
+          {
+            "column": "product_id",
+            "dataset_id": 26
+          }
+        ],
+        "required_datasets": [
+          26
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 49,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Record count",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "c1",
+            "nodes": [
+              {
+                "id": "c1",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Exact entity grain COUNT over patient admissions dataset using patient_id.",
+          "confidence": 0.9,
+          "dimensions": [],
+          "grain_keys": [
+            "patient_id"
+          ],
+          "time_field": null,
+          "base_entity": "Patient Admission",
+          "description": "Record count of patient admissions",
+          "metric_type": "COUNT",
+          "time_bucket": null,
+          "base_dataset_id": 30,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Patient admissions dataset is scoped correctly relative to commerce datasets."
+          ]
+        },
+        "formula_key": "17af1b953b1fa3e2069149ce13ebd724314c4159a44252b1b520bf2071cb0744",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 41,
+            "dataset_id": 30,
+            "profile_id": 12,
+            "dataset_name": "Patient Admissions",
+            "semantic_key": "feb223af857117a5e0e0996b8cbdbc7a8100631536be3e2d10b25e1513f8fb67",
+            "state_version": 1,
+            "suggestion_id": 10,
+            "schema_version": 1,
+            "structural_key": "03303f1e5b92fe48dca4cf69f60c5b9c7920a79a9168f374288bf4ede9ede523",
+            "profile_version": 1,
+            "dataset_version_id": 32,
+            "suggestion_version": 1
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Business definition requires explicit scope, units or category meaning.",
+          "Column meaning has unresolved warnings.",
+          "Patient admissions dataset is scoped correctly relative to commerce datasets."
+        ],
+        "required_columns": [
+          {
+            "column": "patient_id",
+            "dataset_id": 30
+          }
+        ],
+        "required_datasets": [
+          30
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 50,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "DIVIDE(SUM(amount), COUNT())",
+          "unit": "RATIO",
+          "grain": "RECORD",
+          "formula": {
+            "root": "div1",
+            "nodes": [
+              {
+                "id": "col",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "amount",
+                  "dataset_id": 27
+                },
+                "filters": []
+              },
+              {
+                "id": "sum1",
+                "op": "SUM",
+                "args": [
+                  "col"
+                ],
+                "column": null,
+                "filters": []
+              },
+              {
+                "id": "cnt1",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              },
+              {
+                "id": "div1",
+                "op": "DIVIDE",
+                "args": [
+                  "sum1",
+                  "cnt1"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Ratio of total amount to record count.",
+          "confidence": 0.85,
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "base_entity": "Order",
+          "description": "Order amount per record ratio calculation",
+          "metric_type": "RATIO",
+          "time_bucket": null,
+          "base_dataset_id": 27,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Denominator is non-zero in production evaluation."
+          ]
+        },
+        "formula_key": "81a051f82a2659c1063ed2fc9dc6a2224636da9d6f4f0bf8db652bf81240428a",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 40,
+            "dataset_id": 27,
+            "profile_id": 11,
+            "dataset_name": "Orders",
+            "semantic_key": "1342d01ea23df660e47ae0d4949bf8fde0739e3ba2d1002e38f5516162af9f06",
+            "state_version": 2,
+            "suggestion_id": 9,
+            "schema_version": 1,
+            "structural_key": "1838ce107cf7ff1f1a6e7b76271ba010ae42c15fa5ac739118b226cabde3cbb2",
+            "profile_version": 2,
+            "dataset_version_id": 29,
+            "suggestion_version": 2
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Denominator is non-zero in production evaluation."
+        ],
+        "required_columns": [
+          {
+            "column": "amount",
+            "dataset_id": 27
+          }
+        ],
+        "required_datasets": [
+          27
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 51,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "DIVIDE(SUM(amount), COUNT())",
+          "unit": "RATIO",
+          "grain": "RECORD",
+          "formula": {
+            "root": "div1",
+            "nodes": [
+              {
+                "id": "col",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "amount",
+                  "dataset_id": 28
+                },
+                "filters": []
+              },
+              {
+                "id": "sum1",
+                "op": "SUM",
+                "args": [
+                  "col"
+                ],
+                "column": null,
+                "filters": []
+              },
+              {
+                "id": "cnt1",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              },
+              {
+                "id": "div1",
+                "op": "DIVIDE",
+                "args": [
+                  "sum1",
+                  "cnt1"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Ratio of total payment amount to record count.",
+          "confidence": 0.85,
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "base_entity": "Payment",
+          "description": "Payment amount per record ratio calculation",
+          "metric_type": "RATIO",
+          "time_bucket": null,
+          "base_dataset_id": 28,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Denominator is non-zero in production evaluation."
+          ]
+        },
+        "formula_key": "69be94f16b22bac2f2bd3dcd217ac5f1c475a0ccec9b8fd28d0905d9681c7dd0",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 38,
+            "dataset_id": 28,
+            "profile_id": 9,
+            "dataset_name": "Payments",
+            "semantic_key": "90dde2d37a65afc32711bc6b61becf1c29c29c43e13aaedf9451629e912736b1",
+            "state_version": 1,
+            "suggestion_id": 8,
+            "schema_version": 1,
+            "structural_key": "6123f37f9f793abffc7897bcae65abc47b02fc1a829740760661fd4e290a8beb",
+            "profile_version": 1,
+            "dataset_version_id": 30,
+            "suggestion_version": 1
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Denominator is non-zero in production evaluation."
+        ],
+        "required_columns": [
+          {
+            "column": "amount",
+            "dataset_id": 28
+          }
+        ],
+        "required_datasets": [
+          28
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 52,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Distinct product_id count",
+          "unit": "NUMBER",
+          "grain": "RECORD",
+          "formula": {
+            "root": "cd1",
+            "nodes": [
+              {
+                "id": "col",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "product_id",
+                  "dataset_id": 27
+                },
+                "filters": []
+              },
+              {
+                "id": "cd1",
+                "op": "COUNT_DISTINCT",
+                "args": [
+                  "col"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Counts distinct products ordered within the orders transaction log.",
+          "confidence": 0.9,
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "base_entity": "Order",
+          "description": "Distinct count of product_id in Orders",
+          "metric_type": "COUNT_DISTINCT",
+          "time_bucket": null,
+          "base_dataset_id": 27,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Product identifiers match catalog items."
+          ]
+        },
+        "formula_key": "7739528b3ca5ade8f8fbcc805a7a0f9176ffc4034be7702e45cdd989473a387e",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 40,
+            "dataset_id": 27,
+            "profile_id": 11,
+            "dataset_name": "Orders",
+            "semantic_key": "1342d01ea23df660e47ae0d4949bf8fde0739e3ba2d1002e38f5516162af9f06",
+            "state_version": 2,
+            "suggestion_id": 9,
+            "schema_version": 1,
+            "structural_key": "1838ce107cf7ff1f1a6e7b76271ba010ae42c15fa5ac739118b226cabde3cbb2",
+            "profile_version": 2,
+            "dataset_version_id": 29,
+            "suggestion_version": 2
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Product identifiers match catalog items."
+        ],
+        "required_columns": [
+          {
+            "column": "product_id",
+            "dataset_id": 27
+          }
+        ],
+        "required_datasets": [
+          27
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 53,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Record count",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "c1",
+            "nodes": [
+              {
+                "id": "c1",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Exact entity grain COUNT over orders dataset using order_id.",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [
+            "order_id"
+          ],
+          "time_field": null,
+          "base_entity": "Order",
+          "description": "Record count of orders dataset",
+          "metric_type": "COUNT",
+          "time_bucket": null,
+          "base_dataset_id": 27,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Orders dataset primary key guarantees entity uniqueness."
+          ]
+        },
+        "formula_key": "9406a5658cb9f8f9e882322718d00d60095ded4b743d5bd2ed9d7fcbb47b2d9d",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 40,
+            "dataset_id": 27,
+            "profile_id": 11,
+            "dataset_name": "Orders",
+            "semantic_key": "1342d01ea23df660e47ae0d4949bf8fde0739e3ba2d1002e38f5516162af9f06",
+            "state_version": 2,
+            "suggestion_id": 9,
+            "schema_version": 1,
+            "structural_key": "1838ce107cf7ff1f1a6e7b76271ba010ae42c15fa5ac739118b226cabde3cbb2",
+            "profile_version": 2,
+            "dataset_version_id": 29,
+            "suggestion_version": 2
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Business definition requires explicit scope, units or category meaning.",
+          "Orders dataset primary key guarantees entity uniqueness."
+        ],
+        "required_columns": [
+          {
+            "column": "order_id",
+            "dataset_id": 27
+          }
+        ],
+        "required_datasets": [
+          27
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      },
+      {
+        "workspace_id": 16,
+        "candidate_id": 54,
+        "run_id": 4,
+        "errors": [],
+        "decision": "REVIEW_REQUIRED",
+        "definition": {
+          "name": "Record count",
+          "unit": "NUMBER",
+          "grain": "ENTITY",
+          "formula": {
+            "root": "c1",
+            "nodes": [
+              {
+                "id": "c1",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Exact entity grain COUNT over payments dataset using payment_id.",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [
+            "payment_id"
+          ],
+          "time_field": null,
+          "base_entity": "Payment",
+          "description": "Record count of payments dataset",
+          "metric_type": "COUNT",
+          "time_bucket": null,
+          "base_dataset_id": 28,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": [
+            "Payments dataset primary key guarantees entity uniqueness."
+          ]
+        },
+        "formula_key": "35da0f1d3a62b7d5fcb653736c0115b4e8b63fdaf685303e2396d5095de32469",
+        "dependencies": [
+          {
+            "kind": "DATASET",
+            "state_id": 38,
+            "dataset_id": 28,
+            "profile_id": 9,
+            "dataset_name": "Payments",
+            "semantic_key": "90dde2d37a65afc32711bc6b61becf1c29c29c43e13aaedf9451629e912736b1",
+            "state_version": 1,
+            "suggestion_id": 8,
+            "schema_version": 1,
+            "structural_key": "6123f37f9f793abffc7897bcae65abc47b02fc1a829740760661fd4e290a8beb",
+            "profile_version": 1,
+            "dataset_version_id": 30,
+            "suggestion_version": 1
+          },
+          {
+            "kind": "WORKSPACE",
+            "suggestion_id": 4
+          }
+        ],
+        "review_reasons": [
+          "Business definition requires explicit scope, units or category meaning.",
+          "Payments dataset primary key guarantees entity uniqueness."
+        ],
+        "required_columns": [
+          {
+            "column": "payment_id",
+            "dataset_id": 28
+          }
+        ],
+        "required_datasets": [
+          28
+        ],
+        "validation_status": "REVIEW_REQUIRED",
+        "definition_freshness": "CURRENT",
+        "dependency_freshness": "CURRENT",
+        "data_freshness": "REFRESH_REQUIRED",
+        "review_status": "UNREVIEWED",
+        "review_version": 0,
+        "reviewed_at": null,
+        "reviewer": null,
+        "metric_id": null,
+        "approval_kind": null,
+        "can_approve": false,
+        "can_reject": true,
+        "recommendation_usable": false,
+        "execution_available": false,
+        "preview_value": null
+      }
+    ],
+    "idempotency": true,
+    "raw_value_privacy": true,
+    "other_workspace_isolation": true,
+    "existing_counts_unchanged": true,
+    "user_reviews_recorded": 0
+  }
+}
