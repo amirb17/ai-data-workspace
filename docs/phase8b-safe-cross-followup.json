@@ -1,0 +1,79 @@
+{
+  "answer_id": 2,
+  "workspace_id": 1,
+  "question": "What about that?",
+  "intent": {
+    "question_type": "GROUPED",
+    "context_mode": "FOLLOW_UP",
+    "metric_candidate_id": null,
+    "base_dataset_id": 2,
+    "aggregation": "SUM",
+    "measure": {
+      "dataset_id": 2,
+      "column": "amount"
+    },
+    "dimensions": [
+      {
+        "dataset_id": 1,
+        "column": "status"
+      }
+    ],
+    "time_field": null,
+    "time_grain": null,
+    "periods": [],
+    "relationship_ids": [
+      1
+    ],
+    "top_n": 10,
+    "direction": "DESC",
+    "meaning": "LITERAL"
+  },
+  "status": "ANSWERED",
+  "freshness": "FRESH",
+  "computed_at": "2026-10-11T11:37:01.871880+05:30",
+  "primary_answer": "1 groups calculated.",
+  "result_kind": "grouped",
+  "value": null,
+  "groups": [
+    {
+      "dimensions": [
+        "open"
+      ],
+      "value": 30
+    }
+  ],
+  "comparison": null,
+  "metric_reference": {
+    "name": "SUM(amount)",
+    "temporary": true
+  },
+  "dimensions": [
+    "status"
+  ],
+  "provenance": [
+    {
+      "state_id": 1,
+      "dataset_id": 1,
+      "gold_run_id": 2,
+      "dataset_name": "Orders"
+    },
+    {
+      "state_id": 2,
+      "dataset_id": 2,
+      "gold_run_id": 1,
+      "dataset_name": "Customers"
+    }
+  ],
+  "relationship_versions": [
+    {
+      "version": 1,
+      "relationship_id": 1
+    }
+  ],
+  "interpretation": "SUM(amount)",
+  "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+  "caveats": [],
+  "follow_ups": [],
+  "choices": [],
+  "reused": false
+}

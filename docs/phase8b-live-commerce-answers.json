@@ -1,0 +1,44 @@
+{
+  "workspace_id": 16,
+  "answers": [
+    {
+      "answer_id": 1,
+      "workspace_id": 16,
+      "question": "How many orders?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": 27,
+        "aggregation": "COUNT_DISTINCT",
+        "measure": null,
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "UNSUPPORTED",
+      "freshness": "UNAVAILABLE",
+      "computed_at": "2026-10-10T23:34:33.647166+05:30",
+      "primary_answer": "This measure is not available at the selected dataset grain.",
+      "result_kind": null,
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": null,
+      "dimensions": [],
+      "provenance": [],
+      "relationship_versions": [],
+      "interpretation": "",
+      "explanation": "",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [],
+      "reused": false
+    }
+  ]
+}

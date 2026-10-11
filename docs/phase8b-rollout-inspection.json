@@ -1,0 +1,22 @@
+{
+  "database": "ai_data_workspace",
+  "schema": "public",
+  "migration_present": true,
+  "existing_counts": {
+    "datasets": 26,
+    "dataset_state_versions": 41,
+    "dataset_gold_runs": 7,
+    "metric_candidates": 54,
+    "metric_reviews": 0,
+    "approved_metric_definitions": 0,
+    "workspace_metric_results": 0
+  },
+  "commerce_readiness": {
+    "workspace_id": 16,
+    "suggested_questions": [],
+    "status": "NEEDS_REFRESH",
+    "ready": false,
+    "message": "Current trusted measures are unavailable. Refresh dataset profiles, understanding and analytics as needed."
+  },
+  "ai_called": false
+}

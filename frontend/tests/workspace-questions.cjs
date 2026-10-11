@@ -1,0 +1,32 @@
+const assert = require('node:assert/strict'), React = require('react'), fs = require('node:fs'), ts = require('typescript')
+for (const ext of ['.ts', '.tsx']) require.extensions[ext] = (module, file) => module._compile(ts.transpileModule(fs.readFileSync(file, 'utf8').replaceAll('import.meta.env', '({VITE_API_BASE_URL:"http://localhost:8000"})'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText, file)
+const { renderToStaticMarkup } = require('react-dom/server')
+const { AnswerCard } = require('../src/features/workspaces/ask/AnswerCard.tsx')
+const { WorkspaceAsk } = require('../src/features/workspaces/ask/WorkspaceAsk.tsx')
+const api = require('../src/services/api/workspaceQuestions.ts')
+const answer = { answer_id: 1, workspace_id: 1, question: 'Distinct id count', status: 'ANSWERED', freshness: 'FRESH', computed_at: '2026-10-10T12:00:00Z', primary_answer: '12,345', result_kind: 'scalar', value: 12345, groups: [], comparison: null, dimensions: [], provenance: [{ dataset_id: 1, dataset_name: 'Orders', state_id: 2, gold_run_id: 3 }], relationship_versions: [], interpretation: 'COUNT_DISTINCT(id)', explanation: 'Calculated from current cumulative Gold.', caveats: [], follow_ups: ['Break this down by status'], choices: [], reused: false }
+const render = (changes = {}) => renderToStaticMarkup(React.createElement(AnswerCard, { answer: { ...answer, ...changes }, busy: false, refresh() {}, choose() {}, followUp() {} }))
+assert.ok(render().includes('12,345') && render().includes('COUNT_DISTINCT(id)') && render().includes('Orders') && render().includes('Break this down'))
+assert.ok(!render().includes('Approve') && !render().includes('ANSWERED'))
+assert.ok(!render({ freshness: 'STALE' }).includes('12,345') && render({ freshness: 'STALE' }).includes('Refresh answer'))
+for (const [status, text] of [['CLARIFICATION_REQUIRED', 'Needs clarification'], ['REFRESH_REQUIRED', 'Refresh needed'], ['UNSUPPORTED', 'Not supported yet'], ['NO_DATA', 'No data'], ['FAILED', 'Could not answer']]) assert.ok(render({ status, freshness: 'UNAVAILABLE', primary_answer: text, value: null }).includes(text))
+assert.ok(render({ status: 'CLARIFICATION_REQUIRED', choices: [{ choice_id: 0, label: 'Total amount' }] }).includes('Clarification choices'))
+assert.ok(render({ result_kind: 'grouped', dimensions: ['segment'], groups: [{ dimensions: ['SMB'], value: 30 }, { dimensions: ['Enterprise'], value: 20 }] }).includes('exact values in the table below'))
+assert.ok(render({ result_kind: 'grouped', dimensions: ['event'], caveats: ['Time display groups by month.'], groups: [{ dimensions: ['2026-01-01'], value: 30 }, { dimensions: ['2026-02-01'], value: 20 }] }).includes('Line chart'))
+const empty = renderToStaticMarkup(React.createElement(WorkspaceAsk, { workspaceId: '1' }))
+for (const text of ['Your question', 'New analysis', 'Ask workspace', 'maxLength="1000"']) assert.ok(empty.includes(text), text)
+const code = fs.readFileSync(require('node:path').join(__dirname, '../src/features/workspaces/ask/WorkspaceAsk.tsx'), 'utf8')
+for (const text of ['scope.abort()', 'active.current', 'startedRevision === revision.current', 'clearInterval(timer)', 'previous_answer_id', 'min-h-11']) assert.ok(code.includes(text), text)
+async function main() {
+  let call
+  global.fetch = async (url, options) => { call = { url, options }; return { ok: true, json: async () => answer } }
+  await api.askWorkspace('1', { question: 'Count ids', timezone: 'UTC' })
+  assert.ok(call.url.endsWith('/workspaces/1/questions'))
+  assert.deepEqual(JSON.parse(call.options.body), { question: 'Count ids', timezone: 'UTC' })
+  await api.refreshWorkspaceAnswer('1', 1)
+  assert.ok(call.url.endsWith('/answers/1/refresh') && !call.options.body)
+  global.fetch = async () => ({ ok: true, json: async () => ({ ...answer, workspace_id: 2 }) })
+  await assert.rejects(api.askWorkspace('1', { question: 'Count' }), /another workspace/)
+  console.log('Workspace question states, scalar/table/charts, provenance, clarification, scoping and API passed')
+}
+main().catch(error => { console.error(error); process.exitCode = 1 })

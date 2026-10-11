@@ -1,0 +1,182 @@
+{
+  "database": "ai_data_workspace",
+  "schema": "public",
+  "verified": true,
+  "core_counts_unchanged": true,
+  "core_counts": {
+    "datasets": 26,
+    "dataset_state_versions": 41,
+    "dataset_gold_runs": 7,
+    "metric_candidates": 54,
+    "metric_reviews": 0,
+    "approved_metric_definitions": 0,
+    "workspace_metric_results": 0
+  },
+  "columns": [
+    [
+      "answer_id",
+      "bigint",
+      "NO",
+      "nextval('workspace_answers_answer_id_seq'::regclass)"
+    ],
+    [
+      "workspace_id",
+      "bigint",
+      "NO",
+      null
+    ],
+    [
+      "previous_answer_id",
+      "bigint",
+      "YES",
+      null
+    ],
+    [
+      "question_hash",
+      "text",
+      "NO",
+      null
+    ],
+    [
+      "planner_key",
+      "text",
+      "NO",
+      null
+    ],
+    [
+      "cache_key",
+      "text",
+      "YES",
+      null
+    ],
+    [
+      "algorithm_version",
+      "integer",
+      "NO",
+      null
+    ],
+    [
+      "payload",
+      "jsonb",
+      "NO",
+      null
+    ],
+    [
+      "internal",
+      "jsonb",
+      "NO",
+      null
+    ],
+    [
+      "created_at",
+      "timestamp with time zone",
+      "NO",
+      "now()"
+    ]
+  ],
+  "indexes": [
+    [
+      "workspace_answer_cache",
+      "CREATE INDEX workspace_answer_cache ON public.workspace_answers USING btree (workspace_id, cache_key) WHERE ((payload ->> 'status'::text) = 'ANSWERED'::text)"
+    ],
+    [
+      "workspace_answer_history",
+      "CREATE INDEX workspace_answer_history ON public.workspace_answers USING btree (workspace_id, answer_id DESC)"
+    ],
+    [
+      "workspace_answers_pkey",
+      "CREATE UNIQUE INDEX workspace_answers_pkey ON public.workspace_answers USING btree (answer_id)"
+    ],
+    [
+      "workspace_answers_workspace_id_answer_id_key",
+      "CREATE UNIQUE INDEX workspace_answers_workspace_id_answer_id_key ON public.workspace_answers USING btree (workspace_id, answer_id)"
+    ]
+  ],
+  "constraints": [
+    [
+      "c",
+      "CHECK ((algorithm_version > 0))"
+    ],
+    [
+      "n",
+      "NOT NULL algorithm_version"
+    ],
+    [
+      "n",
+      "NOT NULL answer_id"
+    ],
+    [
+      "c",
+      "CHECK ((length(cache_key) = 64))"
+    ],
+    [
+      "n",
+      "NOT NULL created_at"
+    ],
+    [
+      "c",
+      "CHECK ((jsonb_typeof(internal) = 'object'::text))"
+    ],
+    [
+      "n",
+      "NOT NULL internal"
+    ],
+    [
+      "c",
+      "CHECK ((jsonb_typeof(payload) = 'object'::text))"
+    ],
+    [
+      "c",
+      "CHECK (((payload ->> 'status'::text) = ANY (ARRAY['ANSWERED'::text, 'CLARIFICATION_REQUIRED'::text, 'REFRESH_REQUIRED'::text, 'UNSUPPORTED'::text, 'NO_DATA'::text, 'FAILED'::text])))"
+    ],
+    [
+      "n",
+      "NOT NULL payload"
+    ],
+    [
+      "p",
+      "PRIMARY KEY (answer_id)"
+    ],
+    [
+      "c",
+      "CHECK ((length(planner_key) = 64))"
+    ],
+    [
+      "n",
+      "NOT NULL planner_key"
+    ],
+    [
+      "c",
+      "CHECK ((length(question_hash) = 64))"
+    ],
+    [
+      "n",
+      "NOT NULL question_hash"
+    ],
+    [
+      "u",
+      "UNIQUE (workspace_id, answer_id)"
+    ],
+    [
+      "f",
+      "FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id)"
+    ],
+    [
+      "n",
+      "NOT NULL workspace_id"
+    ],
+    [
+      "f",
+      "FOREIGN KEY (workspace_id, previous_answer_id) REFERENCES workspace_answers(workspace_id, answer_id)"
+    ]
+  ],
+  "trigger": [
+    [
+      "O",
+      "CREATE TRIGGER workspace_answer_history BEFORE DELETE OR UPDATE ON public.workspace_answers FOR EACH ROW EXECUTE FUNCTION protect_workspace_answer()"
+    ]
+  ],
+  "function": "CREATE OR REPLACE FUNCTION public.protect_workspace_answer()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n RAISE EXCEPTION 'Workspace answer history is immutable';\nEND $function$\n",
+  "sequence": "public.workspace_answers_answer_id_seq",
+  "answer_rows": 39
+}

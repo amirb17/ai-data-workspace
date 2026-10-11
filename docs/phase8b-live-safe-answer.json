@@ -1,0 +1,221 @@
+{
+  "fixture": "Disposable PostgreSQL schema, synthetic current metadata and checksummed in-memory cumulative Gold",
+  "live_gemini": true,
+  "typed_plan": {
+    "status": "ANSWERABLE",
+    "intent": {
+      "question_type": "SCALAR",
+      "context_mode": "NEW",
+      "metric_candidate_id": null,
+      "base_dataset_id": 1,
+      "aggregation": "COUNT_DISTINCT",
+      "measure": {
+        "dataset_id": 1,
+        "column": "id"
+      },
+      "dimensions": [],
+      "time_field": null,
+      "time_grain": null,
+      "periods": [],
+      "relationship_ids": [],
+      "top_n": 10,
+      "direction": "DESC",
+      "meaning": "LITERAL"
+    }
+  },
+  "failure_code": null,
+  "validation_errors": null,
+  "synthetic_planner_context": {
+    "question": "What is the distinct id count?",
+    "workspace_semantics": {
+      "domain": null,
+      "subdomain": null,
+      "entities": [
+        {
+          "canonical_name": "Order",
+          "contributing_datasets": [
+            1
+          ]
+        }
+      ],
+      "dataset_roles": [
+        {
+          "dataset_id": 1,
+          "role": "UNKNOWN"
+        }
+      ],
+      "has_unresolved_business_questions": false
+    },
+    "datasets": [
+      {
+        "dataset_id": 1,
+        "name": "Orders",
+        "entity": "Record",
+        "business_key": [],
+        "columns": [
+          {
+            "column": "amount",
+            "type": "INTEGER",
+            "role": "MEASURE"
+          },
+          {
+            "column": "id",
+            "type": "DECIMAL",
+            "role": "UNKNOWN"
+          },
+          {
+            "column": "status",
+            "type": "TEXT",
+            "role": "UNKNOWN"
+          }
+        ]
+      }
+    ],
+    "validated_metrics": [
+      {
+        "candidate_id": 1,
+        "name": "Record count",
+        "definition": {
+          "unit": "NUMBER",
+          "grain": "RECORD",
+          "formula": {
+            "root": "count",
+            "nodes": [
+              {
+                "id": "count",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "metric_type": "COUNT",
+          "time_bucket": null,
+          "base_dataset_id": 1,
+          "relationship_ids": []
+        }
+      },
+      {
+        "candidate_id": 2,
+        "name": "Total amount",
+        "definition": {
+          "unit": "NUMBER",
+          "grain": "RECORD",
+          "formula": {
+            "root": "sum",
+            "nodes": [
+              {
+                "id": "amount",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "amount",
+                  "dataset_id": 1
+                },
+                "filters": []
+              },
+              {
+                "id": "sum",
+                "op": "SUM",
+                "args": [
+                  "amount"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "metric_type": "SUM",
+          "time_bucket": null,
+          "base_dataset_id": 1,
+          "relationship_ids": []
+        }
+      }
+    ],
+    "confirmed_relationships": [],
+    "previous_intent": null,
+    "capabilities": {
+      "max_dimensions": 2,
+      "max_groups": 100,
+      "max_top_n": 20,
+      "categorical_filters": false,
+      "multi_hop": false,
+      "raw_rows": false,
+      "forecast": false,
+      "time_grains": [
+        "DAY",
+        "WEEK",
+        "MONTH",
+        "QUARTER",
+        "YEAR"
+      ]
+    }
+  },
+  "answer": {
+    "answer_id": 1,
+    "workspace_id": 1,
+    "question": "What is the distinct id count?",
+    "intent": {
+      "question_type": "SCALAR",
+      "context_mode": "NEW",
+      "metric_candidate_id": null,
+      "base_dataset_id": 1,
+      "aggregation": "COUNT_DISTINCT",
+      "measure": {
+        "dataset_id": 1,
+        "column": "id"
+      },
+      "dimensions": [],
+      "time_field": null,
+      "time_grain": null,
+      "periods": [],
+      "relationship_ids": [],
+      "top_n": 10,
+      "direction": "DESC",
+      "meaning": "LITERAL"
+    },
+    "status": "ANSWERED",
+    "freshness": "FRESH",
+    "computed_at": "2026-10-11T11:20:52.069688+05:30",
+    "primary_answer": "2",
+    "result_kind": "scalar",
+    "value": 2,
+    "groups": [],
+    "comparison": null,
+    "metric_reference": {
+      "name": "COUNT_DISTINCT(id)",
+      "temporary": true
+    },
+    "dimensions": [],
+    "provenance": [
+      {
+        "state_id": 1,
+        "dataset_id": 1,
+        "gold_run_id": 1,
+        "dataset_name": "Orders"
+      }
+    ],
+    "relationship_versions": [],
+    "interpretation": "COUNT_DISTINCT(id)",
+    "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+    "caveats": [],
+    "follow_ups": [],
+    "choices": [],
+    "reused": false
+  },
+  "retry_reused": true,
+  "api_read_verified": true,
+  "approval_events": 0,
+  "live_frontend_verified": true
+}

@@ -68,6 +68,7 @@ class GeminiSemanticProvider:
     system_prompt = SYSTEM_PROMPT
     response_model = SemanticReasoning
     input_label = 'UNTRUSTED_DATASET_EVIDENCE_JSON'
+    max_output_tokens = 16000
 
     def generate(self, evidence_json):
         try:
@@ -77,7 +78,7 @@ class GeminiSemanticProvider:
                     system_instruction=self.system_prompt,
                     response_format={'type':'text','mime_type':'application/json',
                         'schema':reasoning_schema(self.response_model)},
-                    generation_config={'max_output_tokens':16000,'temperature':0},
+                    generation_config={'max_output_tokens':self.max_output_tokens,'temperature':0},
                     store=False, timeout=60)
             if not response.output_text:
                 raise ProviderFailure('REFUSED')

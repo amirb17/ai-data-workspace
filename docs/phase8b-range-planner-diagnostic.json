@@ -1,0 +1,35 @@
+{
+  "question": "Show total order amount from 1900-01-01 to 1900-02-01.",
+  "business_data_changed": false,
+  "typed_plan": {
+    "status": "CLARIFICATION_REQUIRED",
+    "intent": {
+      "question_type": "SCALAR",
+      "context_mode": "NEW",
+      "metric_candidate_id": null,
+      "base_dataset_id": 27,
+      "aggregation": "SUM",
+      "measure": {
+        "dataset_id": 27,
+        "column": "amount"
+      },
+      "dimensions": [],
+      "time_field": {
+        "dataset_id": 27,
+        "column": "order_date"
+      },
+      "time_grain": null,
+      "periods": [
+        {
+          "relative": null,
+          "start": "1900-01-01",
+          "end": "1900-02-01"
+        }
+      ],
+      "relationship_ids": [],
+      "top_n": 10,
+      "direction": "DESC",
+      "meaning": "BUSINESS_AMBIGUOUS"
+    }
+  }
+}

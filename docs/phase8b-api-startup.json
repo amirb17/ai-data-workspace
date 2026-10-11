@@ -1,0 +1,17 @@
+{
+  "health": {
+    "status": "healthy"
+  },
+  "database": {
+    "database": "connected",
+    "result": 1
+  },
+  "api_process": 7228,
+  "readiness": {
+    "workspace_id": 16,
+    "suggested_questions": [],
+    "status": "NEEDS_REFRESH",
+    "ready": false,
+    "message": "Current trusted measures are unavailable. Refresh dataset profiles, understanding and analytics as needed."
+  }
+}

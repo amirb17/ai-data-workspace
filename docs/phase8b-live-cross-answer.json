@@ -1,0 +1,273 @@
+{
+  "fixture": "Disposable PostgreSQL schema, synthetic current metadata and checksummed in-memory cumulative Gold",
+  "live_gemini": true,
+  "typed_plan": {
+    "status": "ANSWERABLE",
+    "intent": {
+      "question_type": "GROUPED",
+      "context_mode": "NEW",
+      "metric_candidate_id": null,
+      "base_dataset_id": 2,
+      "aggregation": "SUM",
+      "measure": {
+        "dataset_id": 2,
+        "column": "amount"
+      },
+      "dimensions": [
+        {
+          "dataset_id": 1,
+          "column": "status"
+        }
+      ],
+      "time_field": null,
+      "time_grain": null,
+      "periods": [],
+      "relationship_ids": [
+        1
+      ],
+      "top_n": 10,
+      "direction": "DESC",
+      "meaning": "LITERAL"
+    }
+  },
+  "failure_code": null,
+  "validation_errors": null,
+  "synthetic_planner_context": {
+    "question": "Calculate the literal sum of amount in Customers grouped by status in Orders, using the existing confirmed relationship.",
+    "workspace_semantics": {
+      "domain": null,
+      "subdomain": null,
+      "entities": [
+        {
+          "canonical_name": "Order",
+          "contributing_datasets": [
+            1,
+            2
+          ]
+        }
+      ],
+      "dataset_roles": [
+        {
+          "dataset_id": 1,
+          "role": "UNKNOWN"
+        },
+        {
+          "dataset_id": 2,
+          "role": "UNKNOWN"
+        }
+      ],
+      "has_unresolved_business_questions": false
+    },
+    "datasets": [
+      {
+        "dataset_id": 1,
+        "name": "Orders",
+        "entity": "Record",
+        "business_key": [],
+        "columns": [
+          {
+            "column": "amount",
+            "type": "INTEGER",
+            "role": "MEASURE"
+          },
+          {
+            "column": "id",
+            "type": "DECIMAL",
+            "role": "UNKNOWN"
+          },
+          {
+            "column": "status",
+            "type": "TEXT",
+            "role": "STATUS"
+          }
+        ]
+      },
+      {
+        "dataset_id": 2,
+        "name": "Customers",
+        "entity": "Record",
+        "business_key": [],
+        "columns": [
+          {
+            "column": "amount",
+            "type": "INTEGER",
+            "role": "MEASURE"
+          },
+          {
+            "column": "id",
+            "type": "DECIMAL",
+            "role": "UNKNOWN"
+          },
+          {
+            "column": "status",
+            "type": "TEXT",
+            "role": "STATUS"
+          }
+        ]
+      }
+    ],
+    "validated_metrics": [
+      {
+        "candidate_id": 1,
+        "name": "COUNT()",
+        "definition": {
+          "unit": "NUMBER",
+          "grain": "RECORD",
+          "formula": {
+            "root": "count",
+            "nodes": [
+              {
+                "id": "count",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "dimensions": [
+            {
+              "column": "status",
+              "dataset_id": 1
+            }
+          ],
+          "grain_keys": [],
+          "time_field": null,
+          "metric_type": "COUNT",
+          "time_bucket": null,
+          "base_dataset_id": 2,
+          "relationship_ids": [
+            1
+          ]
+        }
+      }
+    ],
+    "confirmed_relationships": [
+      {
+        "relationship_id": 1,
+        "parent": {
+          "columns": [
+            "id"
+          ],
+          "dataset_id": 1,
+          "dataset_name": "Orders",
+          "normalized_columns": [
+            "id"
+          ]
+        },
+        "child": {
+          "columns": [
+            "id"
+          ],
+          "dataset_id": 2,
+          "dataset_name": "Customers",
+          "normalized_columns": [
+            "id"
+          ]
+        },
+        "cardinality": "ONE_TO_ONE"
+      }
+    ],
+    "previous_intent": null,
+    "capabilities": {
+      "max_dimensions": 2,
+      "max_groups": 100,
+      "max_top_n": 20,
+      "categorical_filters": false,
+      "multi_hop": false,
+      "raw_rows": false,
+      "forecast": false,
+      "time_grains": [
+        "DAY",
+        "WEEK",
+        "MONTH",
+        "QUARTER",
+        "YEAR"
+      ]
+    }
+  },
+  "answer": {
+    "answer_id": 1,
+    "workspace_id": 1,
+    "question": "Calculate the literal sum of amount in Customers grouped by status in Orders, using the existing confirmed relationship.",
+    "intent": {
+      "question_type": "GROUPED",
+      "context_mode": "NEW",
+      "metric_candidate_id": null,
+      "base_dataset_id": 2,
+      "aggregation": "SUM",
+      "measure": {
+        "dataset_id": 2,
+        "column": "amount"
+      },
+      "dimensions": [
+        {
+          "dataset_id": 1,
+          "column": "status"
+        }
+      ],
+      "time_field": null,
+      "time_grain": null,
+      "periods": [],
+      "relationship_ids": [
+        1
+      ],
+      "top_n": 10,
+      "direction": "DESC",
+      "meaning": "LITERAL"
+    },
+    "status": "ANSWERED",
+    "freshness": "FRESH",
+    "computed_at": "2026-10-11T00:27:03.605658+05:30",
+    "primary_answer": "1 groups calculated.",
+    "result_kind": "grouped",
+    "value": null,
+    "groups": [
+      {
+        "dimensions": [
+          "open"
+        ],
+        "value": 30
+      }
+    ],
+    "comparison": null,
+    "metric_reference": {
+      "name": "SUM(amount)",
+      "temporary": true
+    },
+    "dimensions": [
+      "status"
+    ],
+    "provenance": [
+      {
+        "state_id": 1,
+        "dataset_id": 1,
+        "gold_run_id": 2,
+        "dataset_name": "Orders"
+      },
+      {
+        "state_id": 2,
+        "dataset_id": 2,
+        "gold_run_id": 1,
+        "dataset_name": "Customers"
+      }
+    ],
+    "relationship_versions": [
+      {
+        "version": 1,
+        "relationship_id": 1
+      }
+    ],
+    "interpretation": "SUM(amount)",
+    "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+    "caveats": [],
+    "follow_ups": [],
+    "choices": [],
+    "reused": false
+  },
+  "retry_reused": true,
+  "api_read_verified": true,
+  "approval_events": 0
+}

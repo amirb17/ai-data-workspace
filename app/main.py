@@ -15,6 +15,7 @@ from app.api.workspace_understanding import router as workspace_understanding_ro
 from app.api.relationships import router as relationships_router
 from app.api.metrics import router as metrics_router
 from app.api.workspace_analytics import router as workspace_analytics_router
+from app.api.workspace_questions import router as workspace_questions_router
 app = FastAPI(
     title="AI Data Workspace",
     version="0.1.0"
@@ -38,6 +39,7 @@ app.include_router(workspace_understanding_router)
 app.include_router(relationships_router)
 app.include_router(metrics_router)
 app.include_router(workspace_analytics_router)
+app.include_router(workspace_questions_router)
 
 @app.get("/health")
 def health_check():

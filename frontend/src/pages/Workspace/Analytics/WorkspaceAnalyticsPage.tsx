@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { getWorkspaceAnalytics, refreshWorkspaceAnalytics, retryWorkspaceMetric } from '../../../services/api/workspaceAnalytics'
 import type { WorkspaceAnalytics } from '../../../services/api/workspaceAnalytics'
 import { WorkspaceMetricCard } from '../../../features/workspaces/analytics/WorkspaceMetricCard'
+import { WorkspaceAsk } from '../../../features/workspaces/ask/WorkspaceAsk'
 
 export function WorkspaceAnalyticsContent({data, busy, refresh, retry}: {data: WorkspaceAnalytics; busy: boolean; refresh: () => void; retry: (id: number) => void}) {
   const workspaceId = String(data.workspace_id)
@@ -52,5 +53,5 @@ function ScopedAnalytics({workspaceId}: {workspaceId: string}) {
 }
 export function WorkspaceAnalyticsPage() {
   const {workspaceId = ''} = useParams()
-  return <ScopedAnalytics key={workspaceId} workspaceId={workspaceId} />
+  return <div className="min-w-0 space-y-6"><WorkspaceAsk key={`ask-${workspaceId}`} workspaceId={workspaceId} /><ScopedAnalytics key={workspaceId} workspaceId={workspaceId} /></div>
 }

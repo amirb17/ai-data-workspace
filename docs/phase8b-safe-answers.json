@@ -1,0 +1,162 @@
+{
+  "fixture": "Disposable PostgreSQL schema and checksummed cumulative Gold in in-memory S3",
+  "answers": [
+    {
+      "answer_id": 1,
+      "workspace_id": 1,
+      "question": "What is the distinct id count?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": 1,
+        "aggregation": "COUNT_DISTINCT",
+        "measure": {
+          "dataset_id": 1,
+          "column": "id"
+        },
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "ANSWERED",
+      "freshness": "FRESH",
+      "computed_at": "2026-10-11T11:34:44.819424+05:30",
+      "primary_answer": "2",
+      "result_kind": "scalar",
+      "value": 2,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": {
+        "name": "COUNT_DISTINCT(id)",
+        "temporary": true
+      },
+      "dimensions": [],
+      "provenance": [
+        {
+          "state_id": 1,
+          "dataset_id": 1,
+          "gold_run_id": 1,
+          "dataset_name": "Orders"
+        }
+      ],
+      "relationship_versions": [],
+      "interpretation": "COUNT_DISTINCT(id)",
+      "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 3,
+      "workspace_id": 1,
+      "question": "What is revenue?",
+      "intent": {
+        "question_type": "SCALAR",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": 1,
+        "aggregation": "SUM",
+        "measure": {
+          "dataset_id": 1,
+          "column": "amount"
+        },
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "BUSINESS_AMBIGUOUS"
+      },
+      "status": "CLARIFICATION_REQUIRED",
+      "freshness": "UNAVAILABLE",
+      "computed_at": "2026-10-11T11:34:52.067417+05:30",
+      "primary_answer": "Which confirmed business measure should this question use?",
+      "result_kind": null,
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": null,
+      "dimensions": [],
+      "provenance": [],
+      "relationship_versions": [],
+      "interpretation": "",
+      "explanation": "",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [
+        {
+          "label": "Total amount in Orders",
+          "choice_id": 0
+        }
+      ],
+      "reused": false
+    },
+    {
+      "answer_id": 4,
+      "workspace_id": 1,
+      "question": "What is revenue?",
+      "intent": {
+        "question_type": "SCALAR",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": 1,
+        "aggregation": "SUM",
+        "measure": {
+          "dataset_id": 1,
+          "column": "amount"
+        },
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "ANSWERED",
+      "freshness": "FRESH",
+      "computed_at": "2026-10-11T11:34:53.303975+05:30",
+      "primary_answer": "30",
+      "result_kind": "scalar",
+      "value": 30,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": {
+        "name": "SUM(amount)",
+        "temporary": true
+      },
+      "dimensions": [],
+      "provenance": [
+        {
+          "state_id": 1,
+          "dataset_id": 1,
+          "gold_run_id": 1,
+          "dataset_name": "Orders"
+        }
+      ],
+      "relationship_versions": [],
+      "interpretation": "SUM(amount)",
+      "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+      "caveats": [
+        "Business interpretation selected for this question only."
+      ],
+      "follow_ups": [],
+      "choices": [],
+      "reused": false
+    }
+  ],
+  "retry_reused": true,
+  "planner_calls_before_clarification": 1,
+  "metric_reviews": 0,
+  "public_database_unchanged": true
+}
