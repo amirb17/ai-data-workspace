@@ -14,6 +14,8 @@ export interface MetricResult {
   result_id: number | null
   computed_at: string | null
   can_retry: boolean
+  source_versions?: {dataset_id: number; state_id: number; gold_run_id: number}[]
+  relationship_versions?: {relationship_id: number; version: number}[]
   output: {kind: 'scalar' | 'grouped'; value: number | string | null; groups: {dimensions: (number | string | boolean | null)[]; value: number | string | null}[]; input_rows: number; total_groups: number; truncated: boolean; display_hint: string} | null
 }
 export interface WorkspaceAnalytics {
@@ -28,6 +30,11 @@ export interface WorkspaceAnalytics {
   last_refreshed: string | null
   can_refresh: boolean
   metrics: MetricResult[]
+  workspace_name?: string
+  readiness?: 'NO_DATA' | 'NOT_READY' | 'PARTIAL' | 'STALE' | 'REFRESHING' | 'READY' | 'NEEDS_ATTENTION' | 'FAILED'
+  summary?: {trusted_datasets: number; available_metrics: number; current_metrics: number; needs_attention: number; confirmed_relationships: number}
+  relationships?: {relationship_id: number; version: number; parent_name: string; child_name: string}[]
+  recent_updates?: {dataset_id: number; dataset_name: string; published_at: string; file_name: string; inserted_rows: number | null; updated_rows: number | null}[]
 }
 async function scoped(workspace: string, suffix: string, options: RequestInit = {}) {
   const data = await request<WorkspaceAnalytics>(`/workspaces/${backendId(workspace)}/analytics${suffix}`, options)

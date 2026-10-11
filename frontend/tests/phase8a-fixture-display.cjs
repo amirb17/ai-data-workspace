@@ -11,7 +11,9 @@ assert.ok(data.metrics.every(m=>m.output.value===2))
 const html=renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(WorkspaceAnalyticsContent,{data,busy:false,refresh:()=>{},retry:()=>{}})))
 for(const text of ['Record count','Distinct id count','Ready automatically','Review is optional','Current'])assert.ok(html.includes(text),text)
 assert.ok(!html.includes('Review Metric')&&!html.includes('Approve')&&!html.includes('Needs definition'))
-assert.equal((html.match(/class="text-3xl font-semibold">2<\/p>/g)||[]).length,2,'Both real metric values rendered')
+const cards=html.match(/<article\b[^>]*>[\s\S]*?<\/article>/g)||[]
+assert.equal(cards.length,2,'Both current metric cards rendered')
+assert.ok(cards.every(card=>/<p\b[^>]*>2<\/p>/.test(card)),'Both real metric values rendered')
 const document='<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Phase 8A isolated execution evidence</title><style>body{font:16px system-ui;margin:2rem;max-width:1100px}section>div{margin:1rem 0}article{border:1px solid #ccc;padding:1rem;margin:1rem 0}button{padding:.7rem}h3{margin-bottom:.5rem}</style><h1>Isolated synthetic fixture — real API result</h1><p>Production WorkspaceAnalyticsContent rendered from PostgreSQL API evidence. Controls in this saved static evidence are inert.</p>'+html+'</html>'
 fs.writeFileSync(path.resolve(__dirname,'../../docs/phase8a-safe-fixture.html'),document)
 console.log('Real PostgreSQL API → production frontend: both numeric values 2, fresh, automatic/optional labels, no approval dialog')

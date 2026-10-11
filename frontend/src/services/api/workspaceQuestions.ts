@@ -5,6 +5,7 @@ export interface WorkspaceAnswer {
   answer_id: number
   workspace_id: number
   question: string
+  intent?: {question_type: string; time_grain?: string | null} | null
   status: AnswerStatus
   freshness: 'FRESH' | 'STALE' | 'UNAVAILABLE'
   computed_at: string

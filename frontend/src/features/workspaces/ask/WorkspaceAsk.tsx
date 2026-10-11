@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { askWorkspace, getQuestionReadiness, getWorkspaceAnswers, refreshWorkspaceAnswer } from '../../../services/api/workspaceQuestions'
 import type { QuestionReadiness, WorkspaceAnswer } from '../../../services/api/workspaceQuestions'
+import type { WorkspaceAnalytics } from '../../../services/api/workspaceAnalytics'
 import { AnswerCard } from './AnswerCard'
 
-export function WorkspaceAsk({ workspaceId }: { workspaceId: string }) {
+function ScopedWorkspaceAsk({ workspaceId, relationships }: { workspaceId: string; relationships?: WorkspaceAnalytics['relationships'] }) {
   const [question, setQuestion] = useState('')
   const [answers, setAnswers] = useState<WorkspaceAnswer[]>([])
   const [readiness, setReadiness] = useState<QuestionReadiness | null>(null)
@@ -13,6 +14,8 @@ export function WorkspaceAsk({ workspaceId }: { workspaceId: string }) {
   const controller = useRef<AbortController | null>(null)
   const active = useRef(false)
   const revision = useRef(0)
+  const input = useRef<HTMLTextAreaElement | null>(null)
+  const reload = useRef<(() => Promise<void>) | null>(null)
   useEffect(() => {
     const scope = new AbortController(); controller.current = scope
     let reading = false
@@ -22,13 +25,14 @@ export function WorkspaceAsk({ workspaceId }: { workspaceId: string }) {
       const startedRevision = revision.current
       try {
         const [ready, history] = await Promise.all([getQuestionReadiness(workspaceId, scope.signal), getWorkspaceAnswers(workspaceId, scope.signal)])
-        if (!scope.signal.aborted && startedRevision === revision.current) { setReadiness(ready); setAnswers(history) }
-      } catch { if (!scope.signal.aborted && startedRevision === revision.current) setError('Could not load workspace questions. Reload to retry.') }
+        if (!scope.signal.aborted && startedRevision === revision.current) { setReadiness(ready); setAnswers(history); setError('') }
+      } catch { if (!scope.signal.aborted && startedRevision === revision.current) {setAnswers([]); setReadiness(null); setContext(undefined); setError('Could not load workspace questions. Reload to retry.')} }
       finally { reading = false }
     }
+    reload.current = load
     void load()
     const timer = setInterval(() => void load(), 15000)
-    return () => { scope.abort(); clearInterval(timer) }
+    return () => { scope.abort(); clearInterval(timer); reload.current = null }
   }, [workspaceId])
   async function run(text: string, refreshId?: number, clarification?: { answer: number; choice: number }) {
     if (active.current || (!text.trim() && !refreshId)) return
@@ -44,18 +48,22 @@ export function WorkspaceAsk({ workspaceId }: { workspaceId: string }) {
         setAnswers(old => [answer, ...old.filter(item => item.answer_id !== answer.answer_id)].slice(0, 20))
         setQuestion(''); setContext(answer.status === 'ANSWERED' ? answer.answer_id : undefined)
       }
-    } catch { if (!signal?.aborted) setError('Could not answer. Reload to check saved answers, or retry.') }
+    } catch { if (!signal?.aborted) {setAnswers([]); setReadiness(null); setContext(undefined); setError('Could not answer. Check saved answers, or retry your question.')} }
     finally { active.current = false; if (!signal?.aborted) setBusy(false) }
   }
   return <section className="min-w-0 space-y-4 rounded-xl border bg-slate-50 p-4 sm:p-5" aria-labelledby="ask-workspace-title">
-    <header className="flex flex-wrap justify-between gap-3"><div><h2 id="ask-workspace-title" className="text-xl font-semibold">Ask your workspace</h2><p className="text-sm text-slate-600">Grounded answers from current trusted analytics.</p></div><button type="button" disabled={busy} onClick={() => { setContext(undefined); setQuestion('') }} className="min-h-11 rounded-lg border bg-white px-3 text-sm">New analysis</button></header>
+    <header className="flex flex-wrap justify-between gap-3"><div><h2 id="ask-workspace-title" className="text-xl font-semibold">Ask your workspace</h2><p className="text-sm text-slate-600">Grounded answers from current trusted analytics.</p></div><button type="button" disabled={busy} onClick={() => { setContext(undefined); setQuestion(''); input.current?.focus() }} className="min-h-11 rounded-lg border bg-white px-3 text-sm">New analysis</button></header>
     {readiness && <p className="text-sm text-slate-600">{readiness.message}</p>}
     {context && <p className="text-xs text-slate-500">Following up on the previous answer. Choose New analysis to reset the context.</p>}
-    <form onSubmit={event => { event.preventDefault(); void run(question) }} className="space-y-2"><label htmlFor="workspace-question" className="block text-sm font-medium">Your question</label><textarea id="workspace-question" value={question} onChange={event => setQuestion(event.target.value)} maxLength={1000} rows={2} disabled={busy} placeholder="How many orders are there?" className="w-full min-w-0 resize-y rounded-lg border bg-white p-3 focus:ring-2 focus:ring-indigo-500" /><button disabled={busy || !question.trim()} className="min-h-11 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Preparing your answer…' : 'Ask workspace'}</button></form>
+    <form onSubmit={event => { event.preventDefault(); void run(question) }} className="space-y-2"><label htmlFor="workspace-question" className="block text-sm font-medium">Your question</label><textarea ref={input} id="workspace-question" value={question} onChange={event => setQuestion(event.target.value)} maxLength={1000} rows={2} disabled={busy} placeholder="Ask a question about this workspace..." className="w-full min-w-0 resize-y rounded-lg border bg-white p-3 focus:ring-2 focus:ring-indigo-500" /><button disabled={busy || !question.trim()} className="min-h-11 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Preparing your answer…' : 'Ask workspace'}</button></form>
     {busy && <p role="status" className="text-sm">Preparing a safe plan and checking current analytics…</p>}
-    {error && <p role="alert" className="break-words text-sm text-red-700">{error}</p>}
-    <div className="flex flex-wrap gap-2">{readiness?.suggested_questions.map(text => <button key={text} disabled={busy} onClick={() => { setContext(undefined); setQuestion(text) }} className="min-h-11 max-w-full break-words rounded-lg border bg-white px-3 text-left text-sm">{text}</button>)}</div>
+    {error && <div role="alert" className="space-y-2 break-words text-sm text-red-700"><p>{error}</p><button type="button" disabled={busy} onClick={() => void reload.current?.()} className="min-h-11 rounded-lg border bg-white px-3">Reload answers</button></div>}
+    {!!readiness?.suggested_questions.length && <div><h3 className="mb-2 text-xs font-medium text-slate-500">Suggested questions</h3><div className="flex flex-wrap gap-2">{readiness.suggested_questions.slice(0, 4).map(text => <button key={text} disabled={busy} onClick={() => { setContext(undefined); setQuestion(text); input.current?.focus() }} className="min-h-11 max-w-full break-words rounded-lg border bg-white px-3 text-left text-sm">{text}</button>)}</div></div>}
     {answers.length > 0 && <h3 className="text-sm font-semibold">Recent answers</h3>}
-    {answers.map(answer => <AnswerCard key={answer.answer_id} answer={answer} busy={busy} refresh={() => void run(answer.question, answer.answer_id)} choose={choice => void run(answer.question, undefined, { answer: answer.answer_id, choice })} followUp={text => { setContext(answer.answer_id); setQuestion(text) }} />)}
+    {answers.slice(0, 3).map(answer => <AnswerCard key={answer.answer_id} answer={answer} busy={busy} relationships={relationships} refresh={() => void run(answer.question, answer.answer_id)} choose={choice => void run(answer.question, undefined, { answer: answer.answer_id, choice })} followUp={text => { setContext(answer.answer_id); setQuestion(text); input.current?.focus() }} />)}
+    {answers.length > 3 && <details><summary className="min-h-11 cursor-pointer text-sm font-medium">Earlier answers · {answers.length - 3}</summary><div className="space-y-3">{answers.slice(3).map(answer => <AnswerCard key={answer.answer_id} answer={answer} busy={busy} relationships={relationships} refresh={() => void run(answer.question, answer.answer_id)} choose={choice => void run(answer.question, undefined, {answer: answer.answer_id, choice})} followUp={text => {setContext(answer.answer_id); setQuestion(text); input.current?.focus()}} />)}</div></details>}
   </section>
+}
+export function WorkspaceAsk(props: {workspaceId: string; relationships?: WorkspaceAnalytics['relationships']}) {
+  return <ScopedWorkspaceAsk key={props.workspaceId} {...props} />
 }

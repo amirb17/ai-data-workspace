@@ -1,0 +1,149 @@
+{
+  "workspace_id": 1,
+  "status": "FRESH",
+  "metrics_total": 1,
+  "metrics_available": 1,
+  "metrics_fresh": 1,
+  "metrics_stale": 0,
+  "metrics_failed": 0,
+  "metrics_blocked": 0,
+  "last_refreshed": "2026-10-11 17:32:18.287364+05:30",
+  "can_refresh": true,
+  "metrics": [
+    {
+      "candidate_id": 1,
+      "definition_version": 1,
+      "definition": {
+        "name": "COUNT()",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "count",
+          "nodes": [
+            {
+              "id": "count",
+              "op": "COUNT",
+              "args": [],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Exact count of base records",
+        "confidence": 0.95,
+        "dimensions": [
+          {
+            "column": "status",
+            "dataset_id": 1
+          }
+        ],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Record",
+        "description": "Number of base records",
+        "metric_type": "COUNT",
+        "time_bucket": null,
+        "base_dataset_id": 2,
+        "default_filters": [],
+        "relationship_ids": [
+          1
+        ],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        1,
+        2
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 1,
+          "dataset_name": "Orders"
+        },
+        {
+          "dataset_id": 2,
+          "dataset_name": "Customers"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 1,
+          "state_id": 1,
+          "gold_run_id": 2
+        },
+        {
+          "dataset_id": 2,
+          "state_id": 2,
+          "gold_run_id": 1
+        }
+      ],
+      "relationship_versions": [
+        {
+          "relationship_id": 1,
+          "version": 1
+        }
+      ],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 1,
+      "computed_at": "2026-10-11 17:32:18.287364+05:30",
+      "output": {
+        "kind": "grouped",
+        "value": null,
+        "groups": [
+          {
+            "value": 2,
+            "dimensions": [
+              "open"
+            ]
+          }
+        ],
+        "truncated": false,
+        "input_rows": 2,
+        "display_hint": "table",
+        "total_groups": 1
+      },
+      "failure_code": null,
+      "can_retry": false
+    }
+  ],
+  "workspace_name": "Test",
+  "readiness": "READY",
+  "summary": {
+    "trusted_datasets": 2,
+    "available_metrics": 1,
+    "current_metrics": 1,
+    "needs_attention": 0,
+    "confirmed_relationships": 1
+  },
+  "relationships": [
+    {
+      "relationship_id": 1,
+      "version": 1,
+      "parent_name": "Orders",
+      "child_name": "Customers"
+    }
+  ],
+  "recent_updates": [
+    {
+      "dataset_id": 2,
+      "dataset_name": "Customers",
+      "published_at": "2026-10-11 17:31:41.858884+05:30",
+      "inserted_rows": 2,
+      "updated_rows": null,
+      "file_name": "test.csv"
+    },
+    {
+      "dataset_id": 1,
+      "dataset_name": "Orders",
+      "published_at": "2026-10-11 17:31:23.219223+05:30",
+      "inserted_rows": 2,
+      "updated_rows": null,
+      "file_name": "test.csv"
+    }
+  ]
+}

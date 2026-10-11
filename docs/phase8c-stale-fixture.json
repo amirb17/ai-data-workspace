@@ -1,0 +1,160 @@
+{
+  "workspace_id": 1,
+  "status": "NEEDS_ATTENTION",
+  "metrics_total": 2,
+  "metrics_available": 0,
+  "metrics_fresh": 0,
+  "metrics_stale": 2,
+  "metrics_failed": 0,
+  "metrics_blocked": 0,
+  "last_refreshed": "2026-10-11T17:30:53.156071+05:30",
+  "can_refresh": false,
+  "metrics": [
+    {
+      "candidate_id": 1,
+      "definition_version": 1,
+      "definition": {
+        "name": "Record count",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "count",
+          "nodes": [
+            {
+              "id": "count",
+              "op": "COUNT",
+              "args": [],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Exact count of base records",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Record",
+        "description": "Number of base records",
+        "metric_type": "COUNT",
+        "time_bucket": null,
+        "base_dataset_id": 1,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "AUTO_ACCEPT",
+      "required_datasets": [
+        1
+      ],
+      "status": "STALE",
+      "source_names": [
+        {
+          "dataset_id": 1,
+          "dataset_name": "Orders"
+        }
+      ],
+      "source_versions": [],
+      "relationship_versions": [],
+      "execution_algorithm_version": null,
+      "reason": "REFRESH_REQUIRED",
+      "review_reasons": [],
+      "result_id": null,
+      "computed_at": null,
+      "output": null,
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 2,
+      "definition_version": 1,
+      "definition": {
+        "name": "Total amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "sum",
+          "nodes": [
+            {
+              "id": "amount",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "amount",
+                "dataset_id": 1
+              },
+              "filters": []
+            },
+            {
+              "id": "sum",
+              "op": "SUM",
+              "args": [
+                "amount"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Exact count of base records",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Record",
+        "description": "Number of base records",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 1,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        1
+      ],
+      "status": "STALE",
+      "source_names": [
+        {
+          "dataset_id": 1,
+          "dataset_name": "Orders"
+        }
+      ],
+      "source_versions": [],
+      "relationship_versions": [],
+      "execution_algorithm_version": null,
+      "reason": "REFRESH_REQUIRED",
+      "review_reasons": [],
+      "result_id": null,
+      "computed_at": null,
+      "output": null,
+      "failure_code": null,
+      "can_retry": false
+    }
+  ],
+  "workspace_name": "Test",
+  "readiness": "STALE",
+  "summary": {
+    "trusted_datasets": 1,
+    "available_metrics": 0,
+    "current_metrics": 0,
+    "needs_attention": 2,
+    "confirmed_relationships": 0
+  },
+  "relationships": [],
+  "recent_updates": [
+    {
+      "dataset_id": 1,
+      "dataset_name": "Orders",
+      "published_at": "2026-10-11T17:30:27.619873+05:30",
+      "inserted_rows": 2,
+      "updated_rows": null,
+      "file_name": "test.csv"
+    }
+  ]
+}

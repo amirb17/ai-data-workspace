@@ -1,0 +1,25 @@
+{
+  "live_http": true,
+  "numeric_results": true,
+  "followup_verified": true,
+  "workspace_isolation": true,
+  "mobile_no_overflow": true,
+  "keyboard_submit": true,
+  "focus_reset": true,
+  "tablet_no_overflow": true,
+  "fixture_planner": "typed synthetic; no Gemini call",
+  "single_count": 2,
+  "amount": 30,
+  "followup_groups": [
+    {
+      "status": "open",
+      "value": 2
+    }
+  ],
+  "cross_provenance": true,
+  "cross_mode": "saved verified PostgreSQL response replay",
+  "partial_visible": true,
+  "partial_mode": "saved verified PostgreSQL response replay",
+  "stale_hidden": true,
+  "chart_keyboard": true
+}

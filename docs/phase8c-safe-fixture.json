@@ -1,0 +1,495 @@
+{
+  "fixture": "Disposable keyed Orders with current checksummed Gold; typed synthetic planner, real execution/persistence/API",
+  "public_database_unchanged": true,
+  "current": {
+    "workspace_id": 1,
+    "status": "FRESH",
+    "metrics_total": 2,
+    "metrics_available": 2,
+    "metrics_fresh": 2,
+    "metrics_stale": 0,
+    "metrics_failed": 0,
+    "metrics_blocked": 0,
+    "last_refreshed": "2026-10-11T17:30:53.156071+05:30",
+    "can_refresh": true,
+    "metrics": [
+      {
+        "candidate_id": 1,
+        "definition_version": 1,
+        "definition": {
+          "name": "Record count",
+          "unit": "NUMBER",
+          "grain": "RECORD",
+          "formula": {
+            "root": "count",
+            "nodes": [
+              {
+                "id": "count",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Exact count of base records",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "base_entity": "Record",
+          "description": "Number of base records",
+          "metric_type": "COUNT",
+          "time_bucket": null,
+          "base_dataset_id": 1,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": []
+        },
+        "decision": "AUTO_ACCEPT",
+        "required_datasets": [
+          1
+        ],
+        "status": "FRESH",
+        "source_names": [
+          {
+            "dataset_id": 1,
+            "dataset_name": "Orders"
+          }
+        ],
+        "source_versions": [
+          {
+            "dataset_id": 1,
+            "state_id": 1,
+            "gold_run_id": 1
+          }
+        ],
+        "relationship_versions": [],
+        "execution_algorithm_version": 1,
+        "reason": null,
+        "review_reasons": [],
+        "result_id": 1,
+        "computed_at": "2026-10-11T17:30:50.077980+05:30",
+        "output": {
+          "kind": "scalar",
+          "value": 2,
+          "groups": [],
+          "truncated": false,
+          "input_rows": 2,
+          "display_hint": "scalar",
+          "total_groups": 0
+        },
+        "failure_code": null,
+        "can_retry": false
+      },
+      {
+        "candidate_id": 2,
+        "definition_version": 1,
+        "definition": {
+          "name": "Total amount",
+          "unit": "NUMBER",
+          "grain": "RECORD",
+          "formula": {
+            "root": "sum",
+            "nodes": [
+              {
+                "id": "amount",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "amount",
+                  "dataset_id": 1
+                },
+                "filters": []
+              },
+              {
+                "id": "sum",
+                "op": "SUM",
+                "args": [
+                  "amount"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Exact count of base records",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "base_entity": "Record",
+          "description": "Number of base records",
+          "metric_type": "SUM",
+          "time_bucket": null,
+          "base_dataset_id": 1,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": []
+        },
+        "decision": "REVIEW_RECOMMENDED",
+        "required_datasets": [
+          1
+        ],
+        "status": "FRESH",
+        "source_names": [
+          {
+            "dataset_id": 1,
+            "dataset_name": "Orders"
+          }
+        ],
+        "source_versions": [
+          {
+            "dataset_id": 1,
+            "state_id": 1,
+            "gold_run_id": 1
+          }
+        ],
+        "relationship_versions": [],
+        "execution_algorithm_version": 1,
+        "reason": null,
+        "review_reasons": [],
+        "result_id": 3,
+        "computed_at": "2026-10-11T17:30:53.156071+05:30",
+        "output": {
+          "kind": "scalar",
+          "value": 30,
+          "groups": [],
+          "truncated": false,
+          "input_rows": 2,
+          "display_hint": "scalar",
+          "total_groups": 0
+        },
+        "failure_code": null,
+        "can_retry": false
+      }
+    ],
+    "workspace_name": "Test",
+    "readiness": "READY",
+    "summary": {
+      "trusted_datasets": 1,
+      "available_metrics": 2,
+      "current_metrics": 2,
+      "needs_attention": 0,
+      "confirmed_relationships": 0
+    },
+    "relationships": [],
+    "recent_updates": [
+      {
+        "dataset_id": 1,
+        "dataset_name": "Orders",
+        "published_at": "2026-10-11T17:30:27.619873+05:30",
+        "inserted_rows": 2,
+        "updated_rows": null,
+        "file_name": "test.csv"
+      }
+    ]
+  },
+  "partial": {
+    "workspace_id": 1,
+    "status": "NEEDS_ATTENTION",
+    "metrics_total": 2,
+    "metrics_available": 2,
+    "metrics_fresh": 1,
+    "metrics_stale": 0,
+    "metrics_failed": 1,
+    "metrics_blocked": 0,
+    "last_refreshed": "2026-10-11 17:30:50.836811+05:30",
+    "can_refresh": true,
+    "metrics": [
+      {
+        "candidate_id": 1,
+        "definition_version": 1,
+        "definition": {
+          "name": "Record count",
+          "unit": "NUMBER",
+          "grain": "RECORD",
+          "formula": {
+            "root": "count",
+            "nodes": [
+              {
+                "id": "count",
+                "op": "COUNT",
+                "args": [],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Exact count of base records",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "base_entity": "Record",
+          "description": "Number of base records",
+          "metric_type": "COUNT",
+          "time_bucket": null,
+          "base_dataset_id": 1,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": []
+        },
+        "decision": "AUTO_ACCEPT",
+        "required_datasets": [
+          1
+        ],
+        "status": "FRESH",
+        "source_names": [
+          {
+            "dataset_id": 1,
+            "dataset_name": "Orders"
+          }
+        ],
+        "source_versions": [
+          {
+            "dataset_id": 1,
+            "state_id": 1,
+            "gold_run_id": 1
+          }
+        ],
+        "relationship_versions": [],
+        "execution_algorithm_version": 1,
+        "reason": null,
+        "review_reasons": [],
+        "result_id": 1,
+        "computed_at": "2026-10-11 17:30:50.077980+05:30",
+        "output": {
+          "kind": "scalar",
+          "value": 2,
+          "groups": [],
+          "truncated": false,
+          "input_rows": 2,
+          "display_hint": "scalar",
+          "total_groups": 0
+        },
+        "failure_code": null,
+        "can_retry": false
+      },
+      {
+        "candidate_id": 2,
+        "definition_version": 1,
+        "definition": {
+          "name": "Total amount",
+          "unit": "NUMBER",
+          "grain": "RECORD",
+          "formula": {
+            "root": "sum",
+            "nodes": [
+              {
+                "id": "amount",
+                "op": "COLUMN",
+                "args": [],
+                "column": {
+                  "column": "amount",
+                  "dataset_id": 1
+                },
+                "filters": []
+              },
+              {
+                "id": "sum",
+                "op": "SUM",
+                "args": [
+                  "amount"
+                ],
+                "column": null,
+                "filters": []
+              }
+            ],
+            "scale": 1,
+            "zero_denominator": "NULL"
+          },
+          "rationale": "Exact count of base records",
+          "confidence": 0.95,
+          "dimensions": [],
+          "grain_keys": [],
+          "time_field": null,
+          "base_entity": "Record",
+          "description": "Number of base records",
+          "metric_type": "SUM",
+          "time_bucket": null,
+          "base_dataset_id": 1,
+          "default_filters": [],
+          "relationship_ids": [],
+          "unresolved_assumptions": []
+        },
+        "decision": "REVIEW_RECOMMENDED",
+        "required_datasets": [
+          1
+        ],
+        "status": "FAILED",
+        "source_names": [
+          {
+            "dataset_id": 1,
+            "dataset_name": "Orders"
+          }
+        ],
+        "source_versions": [
+          {
+            "dataset_id": 1,
+            "state_id": 1,
+            "gold_run_id": 1
+          }
+        ],
+        "relationship_versions": [],
+        "execution_algorithm_version": 1,
+        "reason": null,
+        "review_reasons": [],
+        "result_id": null,
+        "computed_at": null,
+        "output": null,
+        "failure_code": "EXECUTION_FAILED",
+        "can_retry": true
+      }
+    ],
+    "workspace_name": "Test",
+    "readiness": "PARTIAL",
+    "summary": {
+      "trusted_datasets": 1,
+      "available_metrics": 2,
+      "current_metrics": 1,
+      "needs_attention": 1,
+      "confirmed_relationships": 0
+    },
+    "relationships": [],
+    "recent_updates": [
+      {
+        "dataset_id": 1,
+        "dataset_name": "Orders",
+        "published_at": "2026-10-11 17:30:27.619873+05:30",
+        "inserted_rows": 2,
+        "updated_rows": null,
+        "file_name": "test.csv"
+      }
+    ]
+  },
+  "answer": {
+    "answer_id": 1,
+    "workspace_id": 1,
+    "question": "How many orders do we have?",
+    "intent": {
+      "question_type": "COUNT",
+      "context_mode": "NEW",
+      "metric_candidate_id": null,
+      "base_dataset_id": 1,
+      "aggregation": "COUNT_DISTINCT",
+      "measure": {
+        "dataset_id": 1,
+        "column": "id"
+      },
+      "dimensions": [],
+      "time_field": null,
+      "time_grain": null,
+      "periods": [],
+      "relationship_ids": [],
+      "top_n": 10,
+      "direction": "DESC",
+      "meaning": "LITERAL"
+    },
+    "status": "ANSWERED",
+    "freshness": "FRESH",
+    "computed_at": "2026-10-11T17:30:55.064133+05:30",
+    "primary_answer": "2",
+    "result_kind": "scalar",
+    "value": 2,
+    "groups": [],
+    "comparison": null,
+    "metric_reference": {
+      "name": "COUNT_DISTINCT(id)",
+      "temporary": true
+    },
+    "dimensions": [],
+    "provenance": [
+      {
+        "state_id": 1,
+        "dataset_id": 1,
+        "gold_run_id": 1,
+        "dataset_name": "Orders"
+      }
+    ],
+    "relationship_versions": [],
+    "interpretation": "COUNT_DISTINCT(id)",
+    "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+    "caveats": [],
+    "follow_ups": [
+      "Break this down by status"
+    ],
+    "choices": [],
+    "reused": false
+  },
+  "followup": {
+    "answer_id": 2,
+    "workspace_id": 1,
+    "question": "Break this down by status",
+    "intent": {
+      "question_type": "BREAKDOWN",
+      "context_mode": "FOLLOW_UP",
+      "metric_candidate_id": null,
+      "base_dataset_id": 1,
+      "aggregation": "COUNT_DISTINCT",
+      "measure": {
+        "dataset_id": 1,
+        "column": "id"
+      },
+      "dimensions": [
+        {
+          "dataset_id": 1,
+          "column": "status"
+        }
+      ],
+      "time_field": null,
+      "time_grain": null,
+      "periods": [],
+      "relationship_ids": [],
+      "top_n": 10,
+      "direction": "DESC",
+      "meaning": "LITERAL"
+    },
+    "status": "ANSWERED",
+    "freshness": "FRESH",
+    "computed_at": "2026-10-11T17:30:58.429357+05:30",
+    "primary_answer": "1 groups calculated.",
+    "result_kind": "grouped",
+    "value": null,
+    "groups": [
+      {
+        "dimensions": [
+          "open"
+        ],
+        "value": 2
+      }
+    ],
+    "comparison": null,
+    "metric_reference": {
+      "name": "COUNT_DISTINCT(id)",
+      "temporary": true
+    },
+    "dimensions": [
+      "status"
+    ],
+    "provenance": [
+      {
+        "state_id": 1,
+        "dataset_id": 1,
+        "gold_run_id": 1,
+        "dataset_name": "Orders"
+      }
+    ],
+    "relationship_versions": [],
+    "interpretation": "COUNT_DISTINCT(id)",
+    "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+    "caveats": [],
+    "follow_ups": [
+      "Break this down by status"
+    ],
+    "choices": [],
+    "reused": false
+  },
+  "empty_workspace_id": 2
+}

@@ -42,7 +42,7 @@ def grounded(intent, source, resolved, question, chosen):
     """A provider-selected reference alone cannot ground an unrelated business question."""
     if not question or chosen:
         return
-    if intent.context_mode == 'FOLLOW_UP' and words(question) & {'this', 'that', 'it', 'last', 'previous', 'same'}:
+    if intent.context_mode == 'FOLLOW_UP' and re.search(r'\b(this|that|it|last|previous|same)\b', question, re.I):
         return
     asked = words(question)
     if intent.metric_candidate_id:

@@ -1,0 +1,42 @@
+{
+  "database": "ai_data_workspace",
+  "schema": "public",
+  "core_counts": {
+    "datasets": 26,
+    "dataset_state_versions": 41,
+    "dataset_gold_runs": 7,
+    "metric_candidates": 54,
+    "metric_reviews": 0,
+    "approved_metric_definitions": 0,
+    "workspace_metric_results": 0
+  },
+  "core_counts_unchanged_from_8b": true,
+  "public_answer_rows": 39,
+  "health": {
+    "status": "healthy"
+  },
+  "database_health": {
+    "database": "connected",
+    "result": 1
+  },
+  "ai_called": false,
+  "commerce": {
+    "workspace_id": 16,
+    "workspace_name": "Phase 7C Commerce Discovery",
+    "readiness": "NEEDS_ATTENTION",
+    "summary": {
+      "trusted_datasets": 6,
+      "available_metrics": 0,
+      "current_metrics": 0,
+      "needs_attention": 16,
+      "confirmed_relationships": 1
+    }
+  },
+  "ask_readiness": {
+    "workspace_id": 16,
+    "suggested_questions": [],
+    "status": "NEEDS_REFRESH",
+    "ready": false,
+    "message": "Current trusted measures are unavailable. Refresh dataset profiles, understanding and analytics as needed."
+  }
+}

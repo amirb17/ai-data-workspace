@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="236.984" timestamp="2026-10-11T17:24:00.253134+05:30" hostname="LAPTOP-TBCB0OLH"><testcase classname="tools.phase8c_fixture" name="test_safe_orders_experience" time="234.537" /></testsuite></testsuites>

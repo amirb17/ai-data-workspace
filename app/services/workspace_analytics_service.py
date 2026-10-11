@@ -31,8 +31,8 @@ def blocked_reason(row, source, review):
     return 'REVALIDATION_REQUIRED'
 
 
-def resolve(conn, workspace, user, lock=False):
-    source = metric_service.gather(conn, workspace, user, lock)
+def resolve(conn, workspace, user, lock=False, source=None):
+    source = source if source is not None else metric_service.gather(conn, workspace, user, lock)
     rows = repository.candidates(conn, workspace)
     reviews = {r['candidate_id']: r for r in metric_repository.latest_reviews(conn, workspace)}
     resolved = []
@@ -103,13 +103,49 @@ def view(workspace, resolved, history, computing=False):
             'can_refresh': not computing and available > 0, 'metrics': cards}
 
 
+def experience_summary(source, result):
+    """Presentation facts only; existing metric validation/execution remains authoritative."""
+    members = [m for m in source['members'].values() if m['status'] != 'ARCHIVED']
+    trusted = sum(bool(m['current_state_id']) for m in members)
+    current = result['metrics_fresh']
+    attention = result['metrics_stale'] + result['metrics_blocked'] + result['metrics_failed']
+    if result['status'] == 'COMPUTING': state = 'REFRESHING'
+    elif not trusted: state = 'NO_DATA'
+    elif current and current == result['metrics_total']: state = 'READY'
+    elif current: state = 'PARTIAL'
+    elif result['metrics_stale']: state = 'STALE'
+    elif result['metrics_failed']: state = 'FAILED'
+    elif attention: state = 'NEEDS_ATTENTION'
+    else: state = 'NOT_READY'
+    names = {i['pin']['dataset_id']: i['pin']['dataset_name'] for i in source['eligible']}
+    relations = [{'relationship_id': r['candidate_id'], 'version': r['relationship_version'],
+                  'parent_name': names[r['evidence']['parent']['dataset_id']],
+                  'child_name': names[r['evidence']['child']['dataset_id']]}
+                 for r in source['relationships']]
+    return {'workspace_name': source['workspace_name'], 'readiness': state,
+            'summary': {'trusted_datasets': trusted, 'available_metrics': result['metrics_available'],
+                        'current_metrics': current, 'needs_attention': attention,
+                        'confirmed_relationships': len(relations)}, 'relationships': relations}
+
+
 def read_analytics(workspace, user):
     validate_workspace(workspace, user)
     with repository_transaction() as conn:
         conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
-        resolved = resolve(conn, workspace, user)
+        source = metric_service.gather(conn, workspace, user)
+        resolved = resolve(conn, workspace, user, source=source)
         result = view(workspace, resolved, repository.results(conn, workspace, resolved), repository.active(conn, workspace))
         result['last_refreshed'] = conn.execute('SELECT MAX(computed_at) FROM workspace_metric_results WHERE workspace_id=%s', (workspace,)).fetchone()[0]
+        result.update(experience_summary(source, result))
+        result['recent_updates'] = conn.cursor(row_factory=dict_row).execute('''
+            SELECT d.dataset_id,d.dataset_name,s.published_at,a.inserted_rows,a.updated_rows,
+                   COALESCE(u.source_file_name,f.file_name) AS file_name
+            FROM datasets d JOIN dataset_state_versions s ON s.state_id=d.current_state_id
+            JOIN delivery_applications a ON a.application_id=s.source_application_id
+            JOIN upload_requests u ON u.upload_id=a.upload_request_id
+            JOIN physical_files f ON f.file_id=u.file_id
+            WHERE d.workspace_id=%s AND d.owner=%s AND d.status!='ARCHIVED'
+            ORDER BY s.published_at DESC,d.dataset_id LIMIT 3''', (workspace, user['owner_key'])).fetchall()
         return result
 
 
