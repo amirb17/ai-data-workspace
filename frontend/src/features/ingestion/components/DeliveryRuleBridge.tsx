@@ -23,6 +23,7 @@ export function DeliveryRuleBridge({ batch, workspaceId, datasetId, context, rel
   return <IngestionBatchCard batch={batch} context={context} qualityHref={qualityHref}>
     <SnapshotDelivery key={`${workspaceId}:${datasetId}:${context.upload_request_id}`} workspaceId={workspaceId} datasetId={datasetId} context={context} reload={reload} disabled={busy || datasetBusy} />
     {context.status === "AWAITING_RULES" && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">Bronze profiling is complete. Processing is waiting for your decisions before validation can continue.</p>}
+    {context.rule_state === "FINALIZED" && !context.load_strategy && context.stages.silver === "PENDING" && <p className="rounded-lg bg-indigo-50 p-3 text-sm text-indigo-900">To publish trusted cumulative data, configure a backend load policy before continuing. <Link className="inline-flex min-h-11 items-center font-medium underline" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/contract`}>Configure load policy</Link></p>}
     {failed && <div className="space-y-1 rounded-lg bg-red-50 p-3 text-sm text-red-800">
       <p>{context.error_summary ?? "Processing could not be completed. Review this delivery and retry."}</p>
       <p>{context.status === "GOLD_FAILED" ? "Silver output is available. Retrying Gold will reuse successful Silver processing." : "Your uploaded source file is safe. You do not need to upload it again."}</p>

@@ -1,0 +1,120 @@
+{
+  "health": {
+    "status": "healthy"
+  },
+  "database_health": {
+    "database": "connected",
+    "result": 1
+  },
+  "api_port": 8000,
+  "api_process_id": 17640,
+  "configured_identity_ready": true,
+  "catalogs": [
+    {
+      "workspace_id": 15,
+      "dialect": "DuckDB",
+      "datasets": [
+        {
+          "name": "Orders Profile Check",
+          "alias": "orders_profile_check_d23",
+          "queryable": false,
+          "freshness": "Refresh required"
+        },
+        {
+          "name": "Healthcare Profile Check",
+          "alias": "healthcare_profile_check_d24",
+          "queryable": false,
+          "freshness": "Refresh required"
+        }
+      ],
+      "saved_query_count": 0,
+      "history_count_before_check": 0
+    },
+    {
+      "workspace_id": 16,
+      "dialect": "DuckDB",
+      "datasets": [
+        {
+          "name": "Customers",
+          "alias": "customers_d25",
+          "queryable": false,
+          "freshness": "Refresh required"
+        },
+        {
+          "name": "Products",
+          "alias": "products_d26",
+          "queryable": false,
+          "freshness": "Refresh required"
+        },
+        {
+          "name": "Orders",
+          "alias": "orders_d27",
+          "queryable": false,
+          "freshness": "Refresh required"
+        },
+        {
+          "name": "Payments",
+          "alias": "payments_d28",
+          "queryable": false,
+          "freshness": "Refresh required"
+        },
+        {
+          "name": "Missing AI understanding",
+          "alias": "missing_ai_understanding_d29",
+          "queryable": false,
+          "freshness": "Refresh required"
+        },
+        {
+          "name": "Patient Admissions",
+          "alias": "patient_admissions_d30",
+          "queryable": false,
+          "freshness": "Refresh required"
+        }
+      ],
+      "saved_query_count": 0,
+      "history_count_before_check": 0
+    }
+  ],
+  "public_blocked_execution": {
+    "workspace_id": 16,
+    "execution_id": 1,
+    "status": "BLOCKED",
+    "diagnostics": [
+      {
+        "code": "REFRESH_REQUIRED",
+        "message": "Orders analytics and profile need refresh before this query can run.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "rows": [],
+    "freshness": "Unavailable"
+  },
+  "persisted_history_read_verified": true,
+  "commerce_metric_decisions": {
+    "REVIEW_REQUIRED": 16
+  },
+  "core_counts_after_rollout": {
+    "datasets": 26,
+    "dataset_state_versions": 41,
+    "dataset_gold_runs": 7,
+    "metric_candidates": 54,
+    "metric_reviews": 0,
+    "approved_metric_definitions": 0,
+    "workspace_metric_results": 0,
+    "workspace_answers": 39
+  },
+  "business_data_unchanged": true,
+  "public_successful_source_query_performed": false,
+  "reason": "Current public synthetic/commerce sources require refresh. Successful data execution was verified in the dedicated disposable real fixture.",
+  "production_ui": {
+    "route": "http://127.0.0.1:5173/app/workspaces/16/sql",
+    "catalog_loaded": true,
+    "current_datasets": 0,
+    "run_disabled": true,
+    "persisted_blocked_history_opened": true,
+    "refresh_reason_visible": true,
+    "current_rows_visible": false,
+    "screenshot": "screenshots/phase9/public-rollout.jpg"
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "counts": {
+    "customers": 250,
+    "customers_upsert_15": 15,
+    "orders": 1000,
+    "orders_exact_duplicate": 1000,
+    "orders_incremental_50": 50,
+    "order_items": 3081,
+    "order_items_incremental": 122,
+    "payments": 1078,
+    "products": 80,
+    "returns": 47
+  },
+  "columns": {
+    "customers": [
+      "customer_id",
+      "customer_name",
+      "segment",
+      "city",
+      "state",
+      "region",
+      "signup_date",
+      "active"
+    ],
+    "customers_upsert_15": [
+      "customer_id",
+      "customer_name",
+      "segment",
+      "city",
+      "state",
+      "region",
+      "signup_date",
+      "active"
+    ],
+    "orders": [
+      "order_id",
+      "customer_id",
+      "order_date",
+      "status",
+      "channel",
+      "subtotal_amount",
+      "shipping_amount",
+      "tax_amount",
+      "order_amount",
+      "currency"
+    ],
+    "orders_exact_duplicate": [
+      "order_id",
+      "customer_id",
+      "order_date",
+      "status",
+      "channel",
+      "subtotal_amount",
+      "shipping_amount",
+      "tax_amount",
+      "order_amount",
+      "currency"
+    ],
+    "orders_incremental_50": [
+      "order_id",
+      "customer_id",
+      "order_date",
+      "status",
+      "channel",
+      "subtotal_amount",
+      "shipping_amount",
+      "tax_amount",
+      "order_amount",
+      "currency"
+    ],
+    "order_items": [
+      "order_item_id",
+      "order_id",
+      "product_id",
+      "quantity",
+      "unit_price",
+      "discount_amount",
+      "line_amount"
+    ],
+    "order_items_incremental": [
+      "order_item_id",
+      "order_id",
+      "product_id",
+      "quantity",
+      "unit_price",
+      "discount_amount",
+      "line_amount"
+    ],
+    "payments": [
+      "payment_id",
+      "order_id",
+      "payment_date",
+      "payment_method",
+      "payment_status",
+      "payment_amount",
+      "currency"
+    ],
+    "products": [
+      "product_id",
+      "product_name",
+      "category",
+      "brand",
+      "unit_price",
+      "active"
+    ],
+    "returns": [
+      "return_id",
+      "order_id",
+      "product_id",
+      "return_date",
+      "reason",
+      "refund_amount"
+    ]
+  },
+  "orders_status": {
+    "Completed": 790,
+    "Cancelled": 63,
+    "Returned": 47,
+    "Processing": 100
+  },
+  "orders_channel": {
+    "Marketplace": 178,
+    "Web": 391,
+    "Mobile App": 431
+  },
+  "order_amount": "52732132.90",
+  "paid_payment_amount": "43584403.88",
+  "physical_duplicate_identical": true
+}

@@ -1,0 +1,118 @@
+[
+  {
+    "test": "analytics-ask-recovery.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "analytics-experience.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "backend-integration.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "contracts.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "cumulative-analytics.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "delivery-archive.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "file-content-duplicates.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "incremental.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "ingestion-batches.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "metrics.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "phase8a-fixture-display.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "phase8b-fixture-display.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "phase8c-fixture-display.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "processing.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "product-ux-interaction.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "relationships.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "rule-approval.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "semantic-profile.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "snapshot.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "sql-analytics.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "sql-editor-lifecycle.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "sql-refresh-recovery.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "sql-select-interaction.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "sql-workspace-interaction.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "understanding.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "ux-consistency.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "workspace-analytics.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "workspace-questions.cjs",
+    "exit_code": 0
+  },
+  {
+    "test": "workspace-understanding.cjs",
+    "exit_code": 0
+  }
+]

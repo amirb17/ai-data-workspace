@@ -49,8 +49,9 @@ export function RuleReviewForm({ workspaceId, datasetId, associationId, onChange
           {q.reason && <p id={`rule-help-${associationId}-${index}`} className="break-words text-sm text-slate-600">{q.reason}</p>}
           <select id={`rule-answer-${associationId}-${index}`} aria-describedby={q.reason ? `rule-help-${associationId}-${index}` : undefined} className="min-h-11 w-full rounded-lg border border-slate-300 bg-white p-2 sm:max-w-sm" required disabled={busy || review.rule_state === "FINALIZED"} value={answers[questionKey(q)] ?? ""} onChange={(event) => { setAnswers({ ...answers, [questionKey(q)]: event.target.value }); setDirty(true); setMessage("") }}>
             <option value="">Choose an answer</option>
-            {q.options.map((option) => <option key={option} value={option}>{option.replaceAll("_", " ")}</option>)}
+            {q.options.map((option) => <option key={option} value={option}>{option === "DATE" ? "Calendar date (YYYY-MM-DD)" : option === "DATETIME" ? "Timestamp (preserve supplied timezone)" : option.replaceAll("_", " ")}</option>)}
           </select>
+          {q.options.includes("DATE") && <p className="text-sm text-slate-600">Use calendar date for dates without a time. Timestamps need an explicit timezone for trusted dataset updates; no timezone is inferred.</p>}
         </div>)}
         {requiresRuleApproval(review) && <div className="flex flex-wrap gap-3">
           <button type="submit" className="min-h-11 rounded-lg bg-indigo-600 px-4 text-white disabled:opacity-50" disabled={busy || !answersComplete(review, answers) || !review.questions.length}>Save Answers</button>

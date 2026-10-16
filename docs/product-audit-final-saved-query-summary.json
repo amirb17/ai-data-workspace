@@ -1,0 +1,18 @@
+{
+  "workspace_id": 18,
+  "query_count": 3,
+  "queries": [
+    {
+      "name": "Retail Customer Count",
+      "version": 3
+    },
+    {
+      "name": "Retail Order Counts",
+      "version": 1
+    },
+    {
+      "name": "Retail Orders by Status",
+      "version": 1
+    }
+  ]
+}

@@ -30,7 +30,7 @@ def event_columns(version_id,columns):
         row=conn.execute('SELECT rules FROM approved_rule_policies WHERE dataset_version_id=%s ORDER BY rule_version DESC LIMIT 1',(version_id,)).fetchone()
     names={c['name'] for c in columns if c['data_type'] in ('DATE','DATETIME')}
     if row:
-        names.update(r['column_name'] for r in row[0] if r['rule_type']=='DATA_TYPE' and r['rule_config'].get('type')=='DATETIME')
+        names.update(r['column_name'] for r in row[0] if r['rule_type']=='DATA_TYPE' and r['rule_config'].get('type') in ('DATE','DATETIME'))
     return sorted(names & {c['name'] for c in columns})
 
 

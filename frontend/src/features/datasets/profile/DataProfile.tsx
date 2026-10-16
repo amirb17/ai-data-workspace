@@ -3,7 +3,7 @@ import { ApiFeedback } from '../../../components/ui/ApiFeedback'
 import { useApiResource } from '../../../services/api/useApiResource'
 import { getDatasetProfile,getProfileReadiness,refreshDatasetProfile,type DatasetProfile } from '../../../services/api/profile'
 import { ColumnEvidenceCard } from './ColumnEvidenceCard'
-const labels = {NOT_PROFILED:'Not profiled',STALE:'Dataset changed — refresh profile',PROFILING:'Profiling trusted data…',READY:'Profile ready',FAILED:'Profile needs attention'}
+const labels = {NOT_PROFILED:'Not prepared',STALE:'Refresh needed',PROFILING:'Preparing profile…',READY:'Profile current',FAILED:'Couldn’t complete'}
 export function ProfileEvidence({data,busy=false,error='',refresh}: {data: DatasetProfile; busy?: boolean; error?: string; refresh: () => void}) {
   const summary=data.profile_ready ? data.summary : null
   return <div className="min-w-0 space-y-5">
@@ -17,7 +17,7 @@ export function ProfileEvidence({data,busy=false,error='',refresh}: {data: Datas
       {!data.profile_ready && data.current_state_id != null && <button type="button" className="min-h-11 rounded-lg bg-indigo-600 px-4 text-white disabled:opacity-50" disabled={busy || !data.can_refresh} onClick={refresh}>{busy || data.freshness==='PROFILING' ? 'Profiling…' : data.freshness==='FAILED' ? 'Retry Profile' : 'Refresh Profile'}</button>}
     </section>
     {summary && <><dl className="grid grid-cols-2 gap-3 md:grid-cols-3">{[['Rows',summary.row_count],['Columns',summary.column_count],['Potential identifiers',summary.identifier_candidates.length],['Date/time columns',summary.datetime_candidates.length],['Numeric columns',summary.numeric_columns.length],['Potential sensitive fields',summary.potential_sensitive_fields.length]].map(([label,value])=><div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4" key={label}><dt className="text-sm text-slate-600">{label}</dt><dd className="text-xl font-semibold">{value.toLocaleString()}</dd></div>)}</dl>
-      <section className="space-y-2 text-sm [overflow-wrap:anywhere]"><p>{summary.load_strategy} · Dataset state {data.state_version} · Schema {data.schema_version} · Profile {data.profile_version}</p><p>Configured business key: {summary.business_key.join(' + ') || 'Not configured'}</p><p>Configured event time: {summary.event_time_column || 'Not configured'}</p>{summary.snapshot_effective_at && <p>Configured snapshot effective time: {summary.snapshot_effective_at}</p>}{summary.load_strategy==='SNAPSHOT' && <p>Profiles include active records only: {summary.active_rows} active, {summary.inactive_rows} inactive retained in history.</p>}</section>
+      <details className="space-y-2 text-sm [overflow-wrap:anywhere]"><summary className="min-h-11 cursor-pointer py-2 text-indigo-700">Profile configuration and versions</summary><p>{summary.load_strategy} · Dataset state {data.state_version} · Schema {data.schema_version} · Profile {data.profile_version}</p><p>Configured business key: {summary.business_key.join(' + ') || 'Not configured'}</p><p>Configured event time: {summary.event_time_column || 'Not configured'}</p>{summary.snapshot_effective_at && <p>Configured snapshot effective time: {summary.snapshot_effective_at}</p>}{summary.load_strategy==='SNAPSHOT' && <p>Profiles include active records only: {summary.active_rows} active, {summary.inactive_rows} inactive retained in history.</p>}</details>
       <div className="grid gap-4 xl:grid-cols-2">{data.columns.map(column=><ColumnEvidenceCard key={column.original_name} column={column} />)}</div></>}
   </div>
 }

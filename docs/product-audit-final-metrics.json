@@ -1,0 +1,1573 @@
+{
+  "workspace_id": 18,
+  "status": "READY",
+  "run_id": 7,
+  "run_version": 3,
+  "failure_code": null,
+  "source_pins": [
+    {
+      "dataset_id": 32,
+      "dataset_name": "Customers",
+      "profile_id": 20,
+      "profile_version": 2,
+      "state_id": 50,
+      "state_version": 2,
+      "dataset_version_id": 34,
+      "schema_version": 1,
+      "suggestion_id": 21,
+      "suggestion_version": 3,
+      "structural_key": "885502cdfec943d20e864eb95cdec056ded7df19946bdd438ac43b4451f75dc6",
+      "semantic_key": "8f3224887a860759bc3bde6935e812aeedd06ffd68bdf936228d64291e972973"
+    },
+    {
+      "dataset_id": 33,
+      "dataset_name": "Products",
+      "profile_id": 14,
+      "profile_version": 1,
+      "state_id": 44,
+      "state_version": 1,
+      "dataset_version_id": 35,
+      "schema_version": 1,
+      "suggestion_id": 17,
+      "suggestion_version": 2,
+      "structural_key": "fa4c14b3e665c987e92cd6305170dd530a2ed43772adcbb9469353f327535bd6",
+      "semantic_key": "5d7da8e28f3708dee9bb80132461f72aeb11d815ec7ebaa20dd87f5e7b139724"
+    },
+    {
+      "dataset_id": 34,
+      "dataset_name": "Orders",
+      "profile_id": 19,
+      "profile_version": 2,
+      "state_id": 49,
+      "state_version": 2,
+      "dataset_version_id": 36,
+      "schema_version": 1,
+      "suggestion_id": 20,
+      "suggestion_version": 3,
+      "structural_key": "78ed910ae4d6b38cc0584a796c93bfe83961fce0c23fdf893d84f87905a82ff3",
+      "semantic_key": "b174078c46517e772addd400510824d2b313bf0b9820a9346dd0ea7a3e7edd5e"
+    },
+    {
+      "dataset_id": 35,
+      "dataset_name": "OrderItems",
+      "profile_id": 16,
+      "profile_version": 1,
+      "state_id": 46,
+      "state_version": 1,
+      "dataset_version_id": 37,
+      "schema_version": 1,
+      "suggestion_id": 14,
+      "suggestion_version": 1,
+      "structural_key": "c89f08d6222f263703126737d68cfa14ea79a9c94afdf5a898cea5bc8dd881af",
+      "semantic_key": "fc19db6b6745f8b153ea4289e49cbf13e53f1e35b7f898cd280eeaa2ca3de33e"
+    },
+    {
+      "dataset_id": 36,
+      "dataset_name": "Payments",
+      "profile_id": 17,
+      "profile_version": 1,
+      "state_id": 47,
+      "state_version": 1,
+      "dataset_version_id": 38,
+      "schema_version": 1,
+      "suggestion_id": 18,
+      "suggestion_version": 1,
+      "structural_key": "2ce58a4fbaea332f671f312eadb65ade210427a39cc89f1cb512173573a11a5c",
+      "semantic_key": "182ad1e400b7690534d22e37f88d498d2602e33ecff6a1f7237e404f826eddae"
+    },
+    {
+      "dataset_id": 37,
+      "dataset_name": "Returns",
+      "profile_id": 18,
+      "profile_version": 1,
+      "state_id": 48,
+      "state_version": 1,
+      "dataset_version_id": 39,
+      "schema_version": 1,
+      "suggestion_id": 19,
+      "suggestion_version": 1,
+      "structural_key": "d68eabd124ea3e20429f45b1f8d0dfa4c446bf2c9be1577ca878be4038d52313",
+      "semantic_key": "85035ce76e59b7e0c8cd4ecd183f0ac9d58753eec316f04830c114b1ba5a1bd3"
+    }
+  ],
+  "workspace_suggestion_id": 6,
+  "review_revision": 0,
+  "freshness_revision": "b798690ee8a1c6dd1907e525688fed31b3082fc501b2afed7d25934d7e064531",
+  "coverage": {
+    "datasets_total": 6,
+    "datasets_analyzed": 6,
+    "datasets_excluded": 0,
+    "partial": false,
+    "excluded": []
+  },
+  "can_discover": false,
+  "readiness_message": "Definitions only; no metric query or dashboard runs.",
+  "candidates": [
+    {
+      "workspace_id": 18,
+      "candidate_id": 95,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Record count",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "c1",
+          "nodes": [
+            {
+              "id": "c1",
+              "op": "COUNT",
+              "args": [],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Base record count for Customers dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Customer",
+        "description": "Total number of customer records",
+        "metric_type": "COUNT",
+        "time_bucket": null,
+        "base_dataset_id": 32,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "e8fbaf31ec6f5bdea147a9db653073cb3310137bc08c139fe70fd977cdcfb51f",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 50,
+          "dataset_id": 32,
+          "profile_id": 20,
+          "dataset_name": "Customers",
+          "semantic_key": "8f3224887a860759bc3bde6935e812aeedd06ffd68bdf936228d64291e972973",
+          "state_version": 2,
+          "suggestion_id": 21,
+          "schema_version": 1,
+          "structural_key": "885502cdfec943d20e864eb95cdec056ded7df19946bdd438ac43b4451f75dc6",
+          "profile_version": 2,
+          "dataset_version_id": 34,
+          "suggestion_version": 3
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [],
+      "required_datasets": [
+        32
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 96,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Total order_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "sum1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "order_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "sum1",
+              "op": "SUM",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Transparent sum of the order_amount column.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Sum of order amounts across all orders",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "17f20c37b10983deb62052c3dff814c6ff4d3d8842ee8f521593a62dc969db47",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 49,
+          "dataset_id": 34,
+          "profile_id": 19,
+          "dataset_name": "Orders",
+          "semantic_key": "b174078c46517e772addd400510824d2b313bf0b9820a9346dd0ea7a3e7edd5e",
+          "state_version": 2,
+          "suggestion_id": 20,
+          "schema_version": 1,
+          "structural_key": "78ed910ae4d6b38cc0584a796c93bfe83961fce0c23fdf893d84f87905a82ff3",
+          "profile_version": 2,
+          "dataset_version_id": 36,
+          "suggestion_version": 3
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "order_amount",
+          "dataset_id": 34
+        }
+      ],
+      "required_datasets": [
+        34
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 97,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Average order_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "avg1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "order_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "avg1",
+              "op": "AVG",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Transparent average of the order_amount column.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Average order amount across all orders",
+        "metric_type": "AVG",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "74185bc9777af4bec1f263d94d17ac65abcde79069cfaa0acc2f6d1e6d4fab53",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 49,
+          "dataset_id": 34,
+          "profile_id": 19,
+          "dataset_name": "Orders",
+          "semantic_key": "b174078c46517e772addd400510824d2b313bf0b9820a9346dd0ea7a3e7edd5e",
+          "state_version": 2,
+          "suggestion_id": 20,
+          "schema_version": 1,
+          "structural_key": "78ed910ae4d6b38cc0584a796c93bfe83961fce0c23fdf893d84f87905a82ff3",
+          "profile_version": 2,
+          "dataset_version_id": 36,
+          "suggestion_version": 3
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "order_amount",
+          "dataset_id": 34
+        }
+      ],
+      "required_datasets": [
+        34
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 98,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Total shipping_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "sum1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "shipping_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "sum1",
+              "op": "SUM",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Transparent sum of the shipping_amount column.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Sum of shipping amounts across orders",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "cdf0b1cf26f73ae0ab4e42e822bad1384a79a0234e4229094f0c463a0ad301cb",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 49,
+          "dataset_id": 34,
+          "profile_id": 19,
+          "dataset_name": "Orders",
+          "semantic_key": "b174078c46517e772addd400510824d2b313bf0b9820a9346dd0ea7a3e7edd5e",
+          "state_version": 2,
+          "suggestion_id": 20,
+          "schema_version": 1,
+          "structural_key": "78ed910ae4d6b38cc0584a796c93bfe83961fce0c23fdf893d84f87905a82ff3",
+          "profile_version": 2,
+          "dataset_version_id": 36,
+          "suggestion_version": 3
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "shipping_amount",
+          "dataset_id": 34
+        }
+      ],
+      "required_datasets": [
+        34
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 99,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Total subtotal_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "sum1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "subtotal_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "sum1",
+              "op": "SUM",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Transparent sum of the subtotal_amount column.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Sum of subtotal amounts across orders",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "d3e09b0fe8643b69bc77c83ebdfb131a036e1605028639d2354cf0b18d7b8cf1",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 49,
+          "dataset_id": 34,
+          "profile_id": 19,
+          "dataset_name": "Orders",
+          "semantic_key": "b174078c46517e772addd400510824d2b313bf0b9820a9346dd0ea7a3e7edd5e",
+          "state_version": 2,
+          "suggestion_id": 20,
+          "schema_version": 1,
+          "structural_key": "78ed910ae4d6b38cc0584a796c93bfe83961fce0c23fdf893d84f87905a82ff3",
+          "profile_version": 2,
+          "dataset_version_id": 36,
+          "suggestion_version": 3
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "subtotal_amount",
+          "dataset_id": 34
+        }
+      ],
+      "required_datasets": [
+        34
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 100,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Total tax_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "sum1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "tax_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "sum1",
+              "op": "SUM",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Transparent sum of the tax_amount column.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Sum of tax amounts across orders",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "351d59866eaa1df4c8d3ee2b5e8348a64eafeaace353a755cd142417f3659843",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 49,
+          "dataset_id": 34,
+          "profile_id": 19,
+          "dataset_name": "Orders",
+          "semantic_key": "b174078c46517e772addd400510824d2b313bf0b9820a9346dd0ea7a3e7edd5e",
+          "state_version": 2,
+          "suggestion_id": 20,
+          "schema_version": 1,
+          "structural_key": "78ed910ae4d6b38cc0584a796c93bfe83961fce0c23fdf893d84f87905a82ff3",
+          "profile_version": 2,
+          "dataset_version_id": 36,
+          "suggestion_version": 3
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "tax_amount",
+          "dataset_id": 34
+        }
+      ],
+      "required_datasets": [
+        34
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 101,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Total line_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "sum1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "line_amount",
+                "dataset_id": 35
+              },
+              "filters": []
+            },
+            {
+              "id": "sum1",
+              "op": "SUM",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Transparent sum of line_amount in OrderItems.",
+        "confidence": 0.9,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "OrderItem",
+        "description": "Sum of line item amounts across order items",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 35,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "b50482d1178b44f9462447151c71798558ec71835321e4910b4118e610f65375",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 46,
+          "dataset_id": 35,
+          "profile_id": 16,
+          "dataset_name": "OrderItems",
+          "semantic_key": "fc19db6b6745f8b153ea4289e49cbf13e53f1e35b7f898cd280eeaa2ca3de33e",
+          "state_version": 1,
+          "suggestion_id": 14,
+          "schema_version": 1,
+          "structural_key": "c89f08d6222f263703126737d68cfa14ea79a9c94afdf5a898cea5bc8dd881af",
+          "profile_version": 1,
+          "dataset_version_id": 37,
+          "suggestion_version": 1
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "line_amount",
+          "dataset_id": 35
+        }
+      ],
+      "required_datasets": [
+        35
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 102,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Total discount_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "sum1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "discount_amount",
+                "dataset_id": 35
+              },
+              "filters": []
+            },
+            {
+              "id": "sum1",
+              "op": "SUM",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Transparent sum of discount_amount in OrderItems.",
+        "confidence": 0.9,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "OrderItem",
+        "description": "Sum of discount amounts across order items",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 35,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "fe0b38cfca21d7e47d73e0374a7337d342aa9bdd740a5d23aadbde131539c02e",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 46,
+          "dataset_id": 35,
+          "profile_id": 16,
+          "dataset_name": "OrderItems",
+          "semantic_key": "fc19db6b6745f8b153ea4289e49cbf13e53f1e35b7f898cd280eeaa2ca3de33e",
+          "state_version": 1,
+          "suggestion_id": 14,
+          "schema_version": 1,
+          "structural_key": "c89f08d6222f263703126737d68cfa14ea79a9c94afdf5a898cea5bc8dd881af",
+          "profile_version": 1,
+          "dataset_version_id": 37,
+          "suggestion_version": 1
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "discount_amount",
+          "dataset_id": 35
+        }
+      ],
+      "required_datasets": [
+        35
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 103,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Average quantity",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "avg1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "quantity",
+                "dataset_id": 35
+              },
+              "filters": []
+            },
+            {
+              "id": "avg1",
+              "op": "AVG",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Transparent average of quantity in OrderItems.",
+        "confidence": 0.9,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "OrderItem",
+        "description": "Average quantity ordered per line item",
+        "metric_type": "AVG",
+        "time_bucket": null,
+        "base_dataset_id": 35,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "0e72c0a45269151916c77c67ed5d61665a806b6dfb2fc2b78a00b8ba6de8b253",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 46,
+          "dataset_id": 35,
+          "profile_id": 16,
+          "dataset_name": "OrderItems",
+          "semantic_key": "fc19db6b6745f8b153ea4289e49cbf13e53f1e35b7f898cd280eeaa2ca3de33e",
+          "state_version": 1,
+          "suggestion_id": 14,
+          "schema_version": 1,
+          "structural_key": "c89f08d6222f263703126737d68cfa14ea79a9c94afdf5a898cea5bc8dd881af",
+          "profile_version": 1,
+          "dataset_version_id": 37,
+          "suggestion_version": 1
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "quantity",
+          "dataset_id": 35
+        }
+      ],
+      "required_datasets": [
+        35
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 104,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Total payment_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "sum1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "payment_amount",
+                "dataset_id": 36
+              },
+              "filters": []
+            },
+            {
+              "id": "sum1",
+              "op": "SUM",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Transparent sum of payment_amount in Payments.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Payment",
+        "description": "Sum of payment amounts across payments",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 36,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "320e52fa3484c1abbeddcf77cabf924631578649d8c41e52b3e7f4bdb31f5c10",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 47,
+          "dataset_id": 36,
+          "profile_id": 17,
+          "dataset_name": "Payments",
+          "semantic_key": "182ad1e400b7690534d22e37f88d498d2602e33ecff6a1f7237e404f826eddae",
+          "state_version": 1,
+          "suggestion_id": 18,
+          "schema_version": 1,
+          "structural_key": "2ce58a4fbaea332f671f312eadb65ade210427a39cc89f1cb512173573a11a5c",
+          "profile_version": 1,
+          "dataset_version_id": 38,
+          "suggestion_version": 1
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "payment_amount",
+          "dataset_id": 36
+        }
+      ],
+      "required_datasets": [
+        36
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 105,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_REQUIRED",
+      "definition": {
+        "name": "Total refund_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "sum1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "refund_amount",
+                "dataset_id": 37
+              },
+              "filters": []
+            },
+            {
+              "id": "sum1",
+              "op": "SUM",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Transparent sum of refund_amount in Returns.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Return",
+        "description": "Sum of refund amounts across returns",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 37,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "5d72d00c0872fc1e09424160c0e5df68489eebfddad0677bae8fdb078b69f10e",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 48,
+          "dataset_id": 37,
+          "profile_id": 18,
+          "dataset_name": "Returns",
+          "semantic_key": "85035ce76e59b7e0c8cd4ecd183f0ac9d58753eec316f04830c114b1ba5a1bd3",
+          "state_version": 1,
+          "suggestion_id": 19,
+          "schema_version": 1,
+          "structural_key": "d68eabd124ea3e20429f45b1f8d0dfa4c446bf2c9be1577ca878be4038d52313",
+          "profile_version": 1,
+          "dataset_version_id": 39,
+          "suggestion_version": 1
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [
+        "Column meaning has unresolved warnings."
+      ],
+      "required_columns": [
+        {
+          "column": "refund_amount",
+          "dataset_id": 37
+        }
+      ],
+      "required_datasets": [
+        37
+      ],
+      "validation_status": "REVIEW_REQUIRED",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": false,
+      "can_reject": true,
+      "recommendation_usable": false,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 106,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Average unit_price",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "avg1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "unit_price",
+                "dataset_id": 33
+              },
+              "filters": []
+            },
+            {
+              "id": "avg1",
+              "op": "AVG",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Transparent average of unit_price in Products.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Product",
+        "description": "Average unit price of products",
+        "metric_type": "AVG",
+        "time_bucket": null,
+        "base_dataset_id": 33,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "52fd7672637800cd664951611877240b691c1b8b10955e48e8902ec2432f543f",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 44,
+          "dataset_id": 33,
+          "profile_id": 14,
+          "dataset_name": "Products",
+          "semantic_key": "5d7da8e28f3708dee9bb80132461f72aeb11d815ec7ebaa20dd87f5e7b139724",
+          "state_version": 1,
+          "suggestion_id": 17,
+          "schema_version": 1,
+          "structural_key": "fa4c14b3e665c987e92cd6305170dd530a2ed43772adcbb9469353f327535bd6",
+          "profile_version": 1,
+          "dataset_version_id": 35,
+          "suggestion_version": 2
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "unit_price",
+          "dataset_id": 33
+        }
+      ],
+      "required_datasets": [
+        33
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 107,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Distinct customer_id count",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "cd1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "customer_id",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "cd1",
+              "op": "COUNT_DISTINCT",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Distinct count of customer_id references in Orders.",
+        "confidence": 0.9,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Distinct count of customers who placed orders",
+        "metric_type": "COUNT_DISTINCT",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "f716e01e8447acf0e31f48ebd7f71665dbf760675b8e65bfa2e52d94d9f5d421",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 49,
+          "dataset_id": 34,
+          "profile_id": 19,
+          "dataset_name": "Orders",
+          "semantic_key": "b174078c46517e772addd400510824d2b313bf0b9820a9346dd0ea7a3e7edd5e",
+          "state_version": 2,
+          "suggestion_id": 20,
+          "schema_version": 1,
+          "structural_key": "78ed910ae4d6b38cc0584a796c93bfe83961fce0c23fdf893d84f87905a82ff3",
+          "profile_version": 2,
+          "dataset_version_id": 36,
+          "suggestion_version": 3
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "customer_id",
+          "dataset_id": 34
+        }
+      ],
+      "required_datasets": [
+        34
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 108,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Distinct product_id count",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "cd1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "product_id",
+                "dataset_id": 35
+              },
+              "filters": []
+            },
+            {
+              "id": "cd1",
+              "op": "COUNT_DISTINCT",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Distinct count of product_id in OrderItems.",
+        "confidence": 0.9,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "OrderItem",
+        "description": "Distinct count of products in order items",
+        "metric_type": "COUNT_DISTINCT",
+        "time_bucket": null,
+        "base_dataset_id": 35,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "abb7c696d9754e74813a5bf0c83a69b295e6a9c4670a75bf15c3ac2db493a843",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 46,
+          "dataset_id": 35,
+          "profile_id": 16,
+          "dataset_name": "OrderItems",
+          "semantic_key": "fc19db6b6745f8b153ea4289e49cbf13e53f1e35b7f898cd280eeaa2ca3de33e",
+          "state_version": 1,
+          "suggestion_id": 14,
+          "schema_version": 1,
+          "structural_key": "c89f08d6222f263703126737d68cfa14ea79a9c94afdf5a898cea5bc8dd881af",
+          "profile_version": 1,
+          "dataset_version_id": 37,
+          "suggestion_version": 1
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "product_id",
+          "dataset_id": 35
+        }
+      ],
+      "required_datasets": [
+        35
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    },
+    {
+      "workspace_id": 18,
+      "candidate_id": 109,
+      "run_id": 7,
+      "errors": [],
+      "decision": "REVIEW_RECOMMENDED",
+      "definition": {
+        "name": "Distinct order_id count",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "cd1",
+          "nodes": [
+            {
+              "id": "col1",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "order_id",
+                "dataset_id": 36
+              },
+              "filters": []
+            },
+            {
+              "id": "cd1",
+              "op": "COUNT_DISTINCT",
+              "args": [
+                "col1"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Distinct count of order_id in Payments.",
+        "confidence": 0.9,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Payment",
+        "description": "Distinct count of orders with payments",
+        "metric_type": "COUNT_DISTINCT",
+        "time_bucket": null,
+        "base_dataset_id": 36,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "formula_key": "0589ae2e2df61896b4abb61863cc7372f0ca67d4274c83c84eb985e2082cd61d",
+      "dependencies": [
+        {
+          "kind": "DATASET",
+          "state_id": 47,
+          "dataset_id": 36,
+          "profile_id": 17,
+          "dataset_name": "Payments",
+          "semantic_key": "182ad1e400b7690534d22e37f88d498d2602e33ecff6a1f7237e404f826eddae",
+          "state_version": 1,
+          "suggestion_id": 18,
+          "schema_version": 1,
+          "structural_key": "2ce58a4fbaea332f671f312eadb65ade210427a39cc89f1cb512173573a11a5c",
+          "profile_version": 1,
+          "dataset_version_id": 38,
+          "suggestion_version": 1
+        },
+        {
+          "kind": "WORKSPACE",
+          "suggestion_id": 6
+        }
+      ],
+      "review_reasons": [],
+      "required_columns": [
+        {
+          "column": "order_id",
+          "dataset_id": 36
+        }
+      ],
+      "required_datasets": [
+        36
+      ],
+      "validation_status": "VALID",
+      "definition_freshness": "CURRENT",
+      "dependency_freshness": "CURRENT",
+      "data_freshness": "CURRENT",
+      "review_status": "UNREVIEWED",
+      "review_version": 0,
+      "reviewed_at": null,
+      "reviewer": null,
+      "metric_id": null,
+      "approval_kind": null,
+      "can_approve": true,
+      "can_reject": true,
+      "recommendation_usable": true,
+      "execution_available": false,
+      "preview_value": null
+    }
+  ],
+  "policy_version": 3,
+  "discovery_context": {
+    "run_id": 7,
+    "run_version": 3,
+    "algorithm_version": 3,
+    "policy_version": 3,
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "resolved_model": "gemini-3.5-flash-lite",
+    "workspace_suggestion_id": 6
+  }
+}

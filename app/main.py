@@ -16,13 +16,14 @@ from app.api.relationships import router as relationships_router
 from app.api.metrics import router as metrics_router
 from app.api.workspace_analytics import router as workspace_analytics_router
 from app.api.workspace_questions import router as workspace_questions_router
+from app.api.sql_analytics import router as sql_analytics_router
 app = FastAPI(
     title="AI Data Workspace",
     version="0.1.0"
 )
 if os.getenv("APP_ENV") == "development":
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-        allow_credentials=False, allow_methods=["GET", "POST", "PATCH", "OPTIONS"], allow_headers=["Content-Type"])
+        allow_credentials=False, allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"], allow_headers=["Content-Type"])
 
 @app.get("/me")
 def development_me(user: dict = Depends(get_current_user)):
@@ -40,6 +41,7 @@ app.include_router(relationships_router)
 app.include_router(metrics_router)
 app.include_router(workspace_analytics_router)
 app.include_router(workspace_questions_router)
+app.include_router(sql_analytics_router)
 
 @app.get("/health")
 def health_check():

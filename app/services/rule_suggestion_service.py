@@ -229,6 +229,7 @@ def generate_rule_suggestions(file_id: int) -> list[dict]:
                     ),
                     "options": [
                         "DATETIME",
+                        "DATE",
                         "NO",
                     ],
                 }

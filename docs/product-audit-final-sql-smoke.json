@@ -1,0 +1,417 @@
+[
+  {
+    "case": "trusted_select",
+    "expected": "SUCCEEDED",
+    "actual": "SUCCEEDED",
+    "passed": true,
+    "execution_id": 47,
+    "row_count": 3,
+    "truncated": false,
+    "diagnostics": [],
+    "freshness": "Current"
+  },
+  {
+    "case": "cte",
+    "expected": "SUCCEEDED",
+    "actual": "SUCCEEDED",
+    "passed": true,
+    "execution_id": 48,
+    "row_count": 1,
+    "truncated": false,
+    "diagnostics": [],
+    "freshness": "Current",
+    "columns": [
+      {
+        "name": "orders",
+        "type": "BIGINT"
+      }
+    ],
+    "rows": [
+      [
+        1050
+      ]
+    ]
+  },
+  {
+    "case": "baseline_aggregate",
+    "expected": "SUCCEEDED",
+    "actual": "SUCCEEDED",
+    "passed": true,
+    "execution_id": 49,
+    "row_count": 1,
+    "truncated": false,
+    "diagnostics": [],
+    "freshness": "Current",
+    "columns": [
+      {
+        "name": "orders",
+        "type": "BIGINT"
+      },
+      {
+        "name": "total_amount",
+        "type": "DOUBLE"
+      }
+    ],
+    "rows": [
+      [
+        1050,
+        54121293.78000001
+      ]
+    ]
+  },
+  {
+    "case": "baseline_status",
+    "expected": "SUCCEEDED",
+    "actual": "SUCCEEDED",
+    "passed": true,
+    "execution_id": 50,
+    "row_count": 4,
+    "truncated": false,
+    "diagnostics": [],
+    "freshness": "Current",
+    "columns": [
+      {
+        "name": "status",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "orders",
+        "type": "BIGINT"
+      }
+    ],
+    "rows": [
+      [
+        "Completed",
+        840
+      ],
+      [
+        "Processing",
+        100
+      ],
+      [
+        "Cancelled",
+        63
+      ],
+      [
+        "Returned",
+        47
+      ]
+    ]
+  },
+  {
+    "case": "baseline_channel",
+    "expected": "SUCCEEDED",
+    "actual": "SUCCEEDED",
+    "passed": true,
+    "execution_id": 51,
+    "row_count": 3,
+    "truncated": false,
+    "diagnostics": [],
+    "freshness": "Current",
+    "columns": [
+      {
+        "name": "channel",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "orders",
+        "type": "BIGINT"
+      }
+    ],
+    "rows": [
+      [
+        "Mobile App",
+        449
+      ],
+      [
+        "Web",
+        405
+      ],
+      [
+        "Marketplace",
+        196
+      ]
+    ]
+  },
+  {
+    "case": "paid_literal_sum",
+    "expected": "SUCCEEDED",
+    "actual": "SUCCEEDED",
+    "passed": true,
+    "execution_id": 52,
+    "row_count": 1,
+    "truncated": false,
+    "diagnostics": [],
+    "freshness": "Current",
+    "columns": [
+      {
+        "name": "paid_amount",
+        "type": "DOUBLE"
+      }
+    ],
+    "rows": [
+      [
+        43584403.880000055
+      ]
+    ]
+  },
+  {
+    "case": "confirmed_lookup",
+    "expected": "SUCCEEDED",
+    "actual": "SUCCEEDED",
+    "passed": true,
+    "execution_id": 53,
+    "row_count": 4,
+    "truncated": false,
+    "diagnostics": [],
+    "freshness": "Current",
+    "columns": [
+      {
+        "name": "region",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "orders",
+        "type": "BIGINT"
+      }
+    ],
+    "rows": [
+      [
+        "South",
+        295
+      ],
+      [
+        "West",
+        277
+      ],
+      [
+        "North",
+        274
+      ],
+      [
+        "East",
+        204
+      ]
+    ]
+  },
+  {
+    "case": "drop",
+    "expected": "BLOCKED",
+    "actual": "BLOCKED",
+    "passed": true,
+    "execution_id": 54,
+    "row_count": 0,
+    "truncated": false,
+    "diagnostics": [
+      {
+        "code": "READ_ONLY",
+        "message": "Only one read-only SELECT statement, optionally with CTEs, is supported.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "freshness": "Unavailable"
+  },
+  {
+    "case": "insert",
+    "expected": "BLOCKED",
+    "actual": "BLOCKED",
+    "passed": true,
+    "execution_id": 55,
+    "row_count": 0,
+    "truncated": false,
+    "diagnostics": [
+      {
+        "code": "READ_ONLY",
+        "message": "Only one read-only SELECT statement, optionally with CTEs, is supported.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "freshness": "Unavailable"
+  },
+  {
+    "case": "multiple_statements",
+    "expected": "BLOCKED",
+    "actual": "BLOCKED",
+    "passed": true,
+    "execution_id": 56,
+    "row_count": 0,
+    "truncated": false,
+    "diagnostics": [
+      {
+        "code": "READ_ONLY",
+        "message": "Only one read-only SELECT statement, optionally with CTEs, is supported.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "freshness": "Unavailable"
+  },
+  {
+    "case": "attach",
+    "expected": "BLOCKED",
+    "actual": "BLOCKED",
+    "passed": true,
+    "execution_id": 57,
+    "row_count": 0,
+    "truncated": false,
+    "diagnostics": [
+      {
+        "code": "READ_ONLY",
+        "message": "Only one read-only SELECT statement, optionally with CTEs, is supported.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "freshness": "Unavailable"
+  },
+  {
+    "case": "external_parquet",
+    "expected": "BLOCKED",
+    "actual": "BLOCKED",
+    "passed": true,
+    "execution_id": 58,
+    "row_count": 0,
+    "truncated": false,
+    "diagnostics": [
+      {
+        "code": "NAMESPACE",
+        "message": "Use only logical datasets in this workspace; external sources and catalogs are unavailable.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "freshness": "Unavailable"
+  },
+  {
+    "case": "external_csv",
+    "expected": "BLOCKED",
+    "actual": "BLOCKED",
+    "passed": true,
+    "execution_id": 59,
+    "row_count": 0,
+    "truncated": false,
+    "diagnostics": [
+      {
+        "code": "NAMESPACE",
+        "message": "Use only logical datasets in this workspace; external sources and catalogs are unavailable.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "freshness": "Unavailable"
+  },
+  {
+    "case": "external_network",
+    "expected": "BLOCKED",
+    "actual": "BLOCKED",
+    "passed": true,
+    "execution_id": 60,
+    "row_count": 0,
+    "truncated": false,
+    "diagnostics": [
+      {
+        "code": "NAMESPACE",
+        "message": "Use only logical datasets in this workspace; external sources and catalogs are unavailable.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "freshness": "Unavailable"
+  },
+  {
+    "case": "system_catalog",
+    "expected": "BLOCKED",
+    "actual": "BLOCKED",
+    "passed": true,
+    "execution_id": 61,
+    "row_count": 0,
+    "truncated": false,
+    "diagnostics": [
+      {
+        "code": "NAMESPACE",
+        "message": "Use only logical datasets in this workspace; external sources and catalogs are unavailable.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "freshness": "Unavailable"
+  },
+  {
+    "case": "control_plane",
+    "expected": "BLOCKED",
+    "actual": "BLOCKED",
+    "passed": true,
+    "execution_id": 62,
+    "row_count": 0,
+    "truncated": false,
+    "diagnostics": [
+      {
+        "code": "NAMESPACE",
+        "message": "Use only logical datasets in this workspace; external sources and catalogs are unavailable.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "freshness": "Unavailable"
+  },
+  {
+    "case": "other_workspace",
+    "expected": "BLOCKED",
+    "actual": "BLOCKED",
+    "passed": true,
+    "execution_id": 63,
+    "row_count": 0,
+    "truncated": false,
+    "diagnostics": [
+      {
+        "code": "DATASET",
+        "message": "Dataset \"customers_d31\" is not available in this workspace.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "freshness": "Unavailable"
+  },
+  {
+    "case": "unsafe_comments",
+    "expected": "BLOCKED",
+    "actual": "BLOCKED",
+    "passed": true,
+    "execution_id": 64,
+    "row_count": 0,
+    "truncated": false,
+    "diagnostics": [
+      {
+        "code": "READ_ONLY",
+        "message": "Only one read-only SELECT statement, optionally with CTEs, is supported.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "freshness": "Unavailable"
+  },
+  {
+    "case": "no_limit",
+    "expected": "SUCCEEDED",
+    "actual": "SUCCEEDED",
+    "passed": true,
+    "execution_id": 66,
+    "row_count": 500,
+    "truncated": true,
+    "diagnostics": [],
+    "freshness": "Current"
+  },
+  {
+    "case": "oversized_output",
+    "expected": "SUCCEEDED",
+    "actual": "SUCCEEDED",
+    "passed": true,
+    "execution_id": 67,
+    "row_count": 500,
+    "truncated": true,
+    "diagnostics": [],
+    "freshness": "Current"
+  }
+]

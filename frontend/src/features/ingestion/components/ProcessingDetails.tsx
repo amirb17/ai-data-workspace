@@ -15,13 +15,13 @@ export function ProcessingDetails({ context, createdAt, qualityHref }: { context
     <ProcessingStages context={context} />
     <ProcessingResult context={context} qualityHref={qualityHref} />
     {context.error_summary && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{context.error_summary}</p>}
-    <section aria-label="Delivery metadata" className="space-y-3">
-      <h4 className="font-semibold text-slate-950">Delivery metadata</h4>
+    <details aria-label="Delivery metadata" className="space-y-3">
+      <summary className="min-h-11 cursor-pointer py-2 font-medium text-indigo-700">Technical lineage and timestamps</summary>
       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {metadata.map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 break-words">{value ?? "—"}</dd></div>)}
         {dates.map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1">{value ? <time dateTime={value}>{new Date(value).toLocaleString()}</time> : "—"}</dd></div>)}
       </dl>
       {context.rule_state === "FINALIZED" && context.rule_version != null && <p className="text-slate-600">Approved Rule Version {context.rule_version}{context.rules_reused ? " reused" : " applied"}.</p>}
-    </section>
+    </details>
   </div>
 }

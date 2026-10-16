@@ -1,0 +1,57 @@
+page,action,expected,actual,status,notes
+Home,View Workspaces,Open workspace list,Workspace list opens,PASS,Actual browser interaction
+Workspaces,Create workspace,Persist dedicated fixture,Fixture created through UI,PASS,Actual browser interaction
+Datasets,Add Dataset,Create separate logical tables,Six datasets created through UI,PASS,Actual browser interaction
+Datasets,Search,Filter visible datasets,Orders filter shows only Orders,PASS,Actual browser interaction
+Datasets,Open Dataset,Open selected dataset,Customers detail shows 255 current rows,PASS,Actual browser interaction
+Files,Upload and inspect baseline,Inspect each source in its dataset,All six baseline files inspected,PASS,Actual browser interaction
+Files,Duplicate upload,Prevent physical duplicate publication,Exact Orders duplicate blocked,PASS,Actual browser interaction
+Files,Upload APPEND,Inspect compatible incremental delivery,50 rows; contract compatible,PASS,Actual browser interaction
+Files,Upload UPSERT,Inspect compatible incremental delivery,15 rows; contract compatible,PASS,Actual browser interaction
+Rules,Answer types and required keys,Persist explicit fixture choices,"DATE, text time, keys and sign policy retained",PASS,Actual browser interaction
+Rules,Finalize approved fixture rules,Version rules before processing,Version 1 used for initial and later deliveries,PASS,Actual browser interaction
+Contract,Save load policy,Use correct strategy and business key,Customers UPSERT; keyed APPEND for transactions,PASS,Actual browser interaction
+Processing,Process Pending,Process only selected dataset,Orders 50 insert; Customers 10 update and 5 insert,PASS,Actual browser interaction
+Processing,Expand delivery result,Show actual stages and outcomes,Counts and lineage visible,PASS,Actual browser interaction
+Dataset,More dataset tools,Disclose advanced navigation,"Processing, Analytics, Understanding, History links exposed",PASS,Actual browser interaction
+Profile,Refresh profile,Build current evidence,Orders 1050; Customers 255 unique IDs,PASS,Actual browser interaction
+Understanding,Analyze Dataset,Use redacted metadata only,Current interpretations produced; text times retained,PASS,Actual browser interaction
+Model,Analyze Workspace,Use current six dataset interpretations,Current workspace suggestion version 2,PASS,Actual browser interaction
+Relationships,Refresh evidence,Recompute current coverage,Six supplied pairs have 100% reference coverage,PASS,Actual browser interaction
+Relationships,Confirm six supplied pairs,Confirm only deterministically eligible supplied keys,Six current confirmed pairs,PASS,Actual browser interaction
+Metrics,Discover Metrics,Produce validated current definitions,Final generation 15 definitions; no metric approvals fabricated,PASS,Actual browser interaction
+Analytics,Refresh analytics,Calculate eligible metrics,14 fresh; 1 requires meaning review,PASS,Actual browser interaction
+Ask,Ask canonical count,Answer from current Gold,1000 baseline; 1050 after APPEND,PASS,Actual browser interaction
+Ask,Select suggestion then Ask,Populate question and compute literal metric,Record count returns Customers 255,PASS,Actual browser interaction
+Ask,Choose literal order amount,Bind explicit question choice only,54121293.78; choice applies only to that question,PASS,Actual browser interaction
+Ask,Follow up by channel,Retain Orders count context,Baseline channel counts match pack,PASS,Actual browser interaction
+Ask,Change topic to payments,Reset to new analysis intent,Payments status totals; no Orders source pin,PASS,Actual browser interaction
+Ask,Refresh historical answer,Publish current answer without rewriting history,New current 1050 answer; old baseline answer remains historical,PASS,Actual browser interaction
+Ask,New analysis,Clear current follow-up context,Blank input and reset context,PASS,Actual browser interaction
+Builder,From dataset select,Select current Orders,Orders selected with current 1050 source,PASS,Actual browser interaction
+Builder,Add/remove/reorder column,Update selections and preview,All exercised in baseline status Builder,PASS,Actual browser interaction
+Builder,Aggregation and alias,Produce requested aggregate projection,COUNT(*) order_count and SUM(order_amount) total_amount,PASS,Actual browser interaction
+Builder,Filter add/remove,Apply and remove literal filter,Completed baseline790; full four groups after removal,PASS,Actual browser interaction
+Builder,Group / Sort / Limit,Generate clauses from selections,status grouping; descending order_count; LIMIT100,PASS,Actual browser interaction
+Builder,Confirmed lookup,Use current child-to-parent metadata,Orders to Customers returns1050; source details identify lookup,PASS,Actual browser interaction
+Builder,Run Query,Execute generated query,Expected baseline status groups and current1050 count,PASS,Actual browser interaction
+Builder,Open in SQL Editor,Transfer generated SQL,Query transferred; mode changed,PASS,Actual browser interaction
+Editor,Type / autocomplete,Keep usable SQL document,Typing works; Orders alias completion inserted correctly,PASS,Actual browser interaction
+Editor,Format / Validate / Run,Format and authoritatively execute,Baseline and current saved status results match,PASS,Actual browser interaction
+Saved queries,Save / Open,Persist query and reopen without execution,Three saved queries survive reload and workspace switch,PASS,Actual browser interaction
+History,Open SQL,Show metadata with explicit rerun,No retained result rows; historical SQL can be rerun,PASS,Actual browser interaction
+Editor,Keep SQL Editor,Protect unsupported reverse conversion,Guard preserves current SQL,PASS,Actual browser interaction
+Results,Chart axes,Render compatible returned groups,Bar chart order_count by status renders,PASS,Actual browser interaction
+Navigation,Switch workspace and return,"Isolate catalog, answers and saved queries",Workspace17 has no Retail queries or answers; workspace18 restores three saved queries,PASS,Actual browser interaction
+Mobile,Navigation drawer keyboard,Contain focus and restore opener,Shift-Tab cycles to Settings; Escape closes and restores Open navigation,PASS,Actual browser interaction
+Mobile SQL,Catalog drawer,Show sources without three squeezed panels,"Drawer opens, focuses search and closes",PASS,Actual browser interaction
+Reload,SQL browser reload,Reload authoritative saved state,Saved queries remain; values require current execution,PASS,Actual browser interaction
+SQL unavailable,Builder/Add Column,Explain missing current inputs,SQL is not ready callout; preparation link; Builder disabled,BLOCKED,Correct safeguard; inspected browser state
+Relationships,Confirm false candidate,Reject incomplete references,Confirm disabled for 0% / incomplete coverage,BLOCKED,Correct safeguard; no false relationship confirmed
+Ask,Show revenue,Clarify undefined business measure,Explicit clarification choices; no assumed revenue definition,BLOCKED,Correct semantic ambiguity safeguard
+Saved queries,Rename and duplicate,Preserve interaction contract,Renamed synthetic query and restored original name; guarded duplicate opens draft and clears old result,PASS,"Actual browser plus focused integration tests; representative case, not exhaustive combinations"
+Saved queries,Delete confirmation/cancel,Preserve interaction contract,Irreversible-delete dialog opens; Cancel leaves all three saved queries intact; no deletion submitted,PASS,"Actual browser plus focused integration tests; representative case, not exhaustive combinations"
+Results,"Search, sort and copy",Preserve interaction contract,Representative live search hides unmatched row; header shows ascending arrow; copied cell reads1050,PASS,"Actual browser plus focused integration tests; representative case, not exhaustive combinations"
+Editor,Caret/undo across catalog reload,Preserve interaction contract,Representative live catalog reload preserves document and undo removes inserted comment; additional races covered by lifecycle test,PASS,"Actual browser plus focused integration tests; representative case, not exhaustive combinations"
+Settings,Open workspaces,Clear purpose and working next action,Capability limitation shown; link opens real owned workspace list,PASS,Actual browser interaction
+Activity,View workspace processing,Clear purpose and working next action,Retail Acceptance opens its own Processing page,PASS,Actual browser interaction

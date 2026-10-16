@@ -1,0 +1,28 @@
+{
+  "full_db": {
+    "tests": "589",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "5357.182"
+  },
+  "standard": {
+    "tests": "589",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "154",
+    "time": "11.183"
+  },
+  "frontend_scripts": 29,
+  "frontend_failures": 0,
+  "sql_smoke_passed": 20,
+  "sql_smoke_total": 20,
+  "action_matrix": {
+    "PASS": 53,
+    "BLOCKED": 3
+  },
+  "final_screenshot_count": 16,
+  "diff_check": "PASS",
+  "staged_files": 0,
+  "commit_performed": false
+}

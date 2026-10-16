@@ -1,0 +1,1701 @@
+{
+  "workspace_id": 18,
+  "status": "NEEDS_ATTENTION",
+  "metrics_total": 20,
+  "metrics_available": 17,
+  "metrics_fresh": 17,
+  "metrics_stale": 0,
+  "metrics_failed": 0,
+  "metrics_blocked": 3,
+  "last_refreshed": "2026-10-15T09:59:30.830863+05:30",
+  "can_refresh": true,
+  "metrics": [
+    {
+      "candidate_id": 55,
+      "definition_version": 5,
+      "definition": {
+        "name": "Record count",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_count",
+          "nodes": [
+            {
+              "id": "node_count",
+              "op": "COUNT",
+              "args": [],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Base record count for Customers dataset.",
+        "confidence": 1.0,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Customer",
+        "description": "Total count of customer records",
+        "metric_type": "COUNT",
+        "time_bucket": null,
+        "base_dataset_id": 32,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        32
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 32,
+          "dataset_name": "Customers"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 32,
+          "state_id": 43,
+          "gold_run_id": 8
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 1,
+      "computed_at": "2026-10-15T09:59:14.538274+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 250,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 250,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 56,
+      "definition_version": 5,
+      "definition": {
+        "name": "Total order_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_sum",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "order_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "node_sum",
+              "op": "SUM",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Sum of the order_amount column from the Orders dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Total sum of order amounts across all orders",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": [
+          "Order amount currency and standards must be uniform."
+        ]
+      },
+      "decision": "REVIEW_REQUIRED",
+      "required_datasets": [
+        34
+      ],
+      "status": "BLOCKED",
+      "source_names": [
+        {
+          "dataset_id": 34,
+          "dataset_name": "Orders"
+        }
+      ],
+      "source_versions": [],
+      "relationship_versions": [],
+      "execution_algorithm_version": null,
+      "reason": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Order amount currency and standards must be uniform."
+      ],
+      "result_id": null,
+      "computed_at": null,
+      "output": null,
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 57,
+      "definition_version": 5,
+      "definition": {
+        "name": "Average order_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_avg",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "order_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "node_avg",
+              "op": "AVG",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Average of the order_amount column from the Orders dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Average order amount per order record",
+        "metric_type": "AVG",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        34
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 34,
+          "dataset_name": "Orders"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 34,
+          "state_id": 45,
+          "gold_run_id": 10
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 2,
+      "computed_at": "2026-10-15T09:59:15.303070+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 52732.132900000004,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 1000,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 58,
+      "definition_version": 5,
+      "definition": {
+        "name": "Minimum order_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_min",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "order_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "node_min",
+              "op": "MIN",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Minimum of the order_amount column from the Orders dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Minimum order amount across all orders",
+        "metric_type": "MIN",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        34
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 34,
+          "dataset_name": "Orders"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 34,
+          "state_id": 45,
+          "gold_run_id": 10
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 3,
+      "computed_at": "2026-10-15T09:59:15.990866+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 308.26,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 1000,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 59,
+      "definition_version": 5,
+      "definition": {
+        "name": "Maximum order_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_max",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "order_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "node_max",
+              "op": "MAX",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Maximum of the order_amount column from the Orders dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Maximum order amount across all orders",
+        "metric_type": "MAX",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        34
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 34,
+          "dataset_name": "Orders"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 34,
+          "state_id": 45,
+          "gold_run_id": 10
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 4,
+      "computed_at": "2026-10-15T09:59:17.250148+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 365176.3,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 1000,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 60,
+      "definition_version": 5,
+      "definition": {
+        "name": "Distinct customer_id count",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_cd",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "customer_id",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "node_cd",
+              "op": "COUNT_DISTINCT",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Distinct count of customer_id values in the Orders dataset.",
+        "confidence": 0.9,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Count of distinct customers who placed orders",
+        "metric_type": "COUNT_DISTINCT",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        34
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 34,
+          "dataset_name": "Orders"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 34,
+          "state_id": 45,
+          "gold_run_id": 10
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 5,
+      "computed_at": "2026-10-15T09:59:18.303854+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 246,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 1000,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 61,
+      "definition_version": 5,
+      "definition": {
+        "name": "Total shipping_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_sum",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "shipping_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "node_sum",
+              "op": "SUM",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Sum of the shipping_amount column from the Orders dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Total sum of shipping costs across orders",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        34
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 34,
+          "dataset_name": "Orders"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 34,
+          "state_id": 45,
+          "gold_run_id": 10
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 6,
+      "computed_at": "2026-10-15T09:59:19.416655+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 4631.0,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 1000,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 62,
+      "definition_version": 5,
+      "definition": {
+        "name": "Total subtotal_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_sum",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "subtotal_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "node_sum",
+              "op": "SUM",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Sum of the subtotal_amount column from the Orders dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Total sum of subtotal amounts across orders",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        34
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 34,
+          "dataset_name": "Orders"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 34,
+          "state_id": 45,
+          "gold_run_id": 10
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 7,
+      "computed_at": "2026-10-15T09:59:20.555204+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 44684323.58,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 1000,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 63,
+      "definition_version": 5,
+      "definition": {
+        "name": "Total tax_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_sum",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "tax_amount",
+                "dataset_id": 34
+              },
+              "filters": []
+            },
+            {
+              "id": "node_sum",
+              "op": "SUM",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Sum of the tax_amount column from the Orders dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Order",
+        "description": "Total sum of tax amounts across orders",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 34,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        34
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 34,
+          "dataset_name": "Orders"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 34,
+          "state_id": 45,
+          "gold_run_id": 10
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 8,
+      "computed_at": "2026-10-15T09:59:22.239802+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 8043178.32,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 1000,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 64,
+      "definition_version": 5,
+      "definition": {
+        "name": "Total line_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_sum",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "line_amount",
+                "dataset_id": 35
+              },
+              "filters": []
+            },
+            {
+              "id": "node_sum",
+              "op": "SUM",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Sum of the line_amount column from the OrderItems dataset.",
+        "confidence": 0.9,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "OrderItem",
+        "description": "Total sum of line item amounts across order items",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 35,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        35
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 35,
+          "dataset_name": "OrderItems"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 35,
+          "state_id": 46,
+          "gold_run_id": 11
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 9,
+      "computed_at": "2026-10-15T09:59:23.558915+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 44684323.58,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 3081,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 65,
+      "definition_version": 5,
+      "definition": {
+        "name": "Average line_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_avg",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "line_amount",
+                "dataset_id": 35
+              },
+              "filters": []
+            },
+            {
+              "id": "node_avg",
+              "op": "AVG",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Average of the line_amount column from the OrderItems dataset.",
+        "confidence": 0.9,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "OrderItem",
+        "description": "Average line amount per order item record",
+        "metric_type": "AVG",
+        "time_bucket": null,
+        "base_dataset_id": 35,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        35
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 35,
+          "dataset_name": "OrderItems"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 35,
+          "state_id": 46,
+          "gold_run_id": 11
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 10,
+      "computed_at": "2026-10-15T09:59:24.359995+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 14503.188438818564,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 3081,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 66,
+      "definition_version": 5,
+      "definition": {
+        "name": "Total quantity",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_sum",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "quantity",
+                "dataset_id": 35
+              },
+              "filters": []
+            },
+            {
+              "id": "node_sum",
+              "op": "SUM",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Sum of the quantity column from the OrderItems dataset.",
+        "confidence": 0.9,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "OrderItem",
+        "description": "Total sum of ordered quantities across order items",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 35,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        35
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 35,
+          "dataset_name": "OrderItems"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 35,
+          "state_id": 46,
+          "gold_run_id": 11
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 11,
+      "computed_at": "2026-10-15T09:59:25.185840+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 7702,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 3081,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 67,
+      "definition_version": 5,
+      "definition": {
+        "name": "Average quantity",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_avg",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "quantity",
+                "dataset_id": 35
+              },
+              "filters": []
+            },
+            {
+              "id": "node_avg",
+              "op": "AVG",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Average of the quantity column from the OrderItems dataset.",
+        "confidence": 0.9,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "OrderItem",
+        "description": "Average quantity per order item record",
+        "metric_type": "AVG",
+        "time_bucket": null,
+        "base_dataset_id": 35,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        35
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 35,
+          "dataset_name": "OrderItems"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 35,
+          "state_id": 46,
+          "gold_run_id": 11
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 12,
+      "computed_at": "2026-10-15T09:59:26.156348+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 2.4998377150275886,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 3081,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 68,
+      "definition_version": 5,
+      "definition": {
+        "name": "Total payment_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_sum",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "payment_amount",
+                "dataset_id": 36
+              },
+              "filters": []
+            },
+            {
+              "id": "node_sum",
+              "op": "SUM",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Sum of the payment_amount column from the Payments dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Payment",
+        "description": "Total sum of payment amounts across payment events",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 36,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        36
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 36,
+          "dataset_name": "Payments"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 36,
+          "state_id": 47,
+          "gold_run_id": 12
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 13,
+      "computed_at": "2026-10-15T09:59:27.456751+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 51841026.56,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 1078,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 69,
+      "definition_version": 5,
+      "definition": {
+        "name": "Average payment_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_avg",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "payment_amount",
+                "dataset_id": 36
+              },
+              "filters": []
+            },
+            {
+              "id": "node_avg",
+              "op": "AVG",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Average of the payment_amount column from the Payments dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Payment",
+        "description": "Average payment amount per payment record",
+        "metric_type": "AVG",
+        "time_bucket": null,
+        "base_dataset_id": 36,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        36
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 36,
+          "dataset_name": "Payments"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 36,
+          "state_id": 47,
+          "gold_run_id": 12
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 14,
+      "computed_at": "2026-10-15T09:59:28.186287+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 48090.00608534323,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 1078,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 70,
+      "definition_version": 5,
+      "definition": {
+        "name": "Total refund_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_sum",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "refund_amount",
+                "dataset_id": 37
+              },
+              "filters": []
+            },
+            {
+              "id": "node_sum",
+              "op": "SUM",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Sum of the refund_amount column from the Returns dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Return",
+        "description": "Total sum of refund amounts across return records",
+        "metric_type": "SUM",
+        "time_bucket": null,
+        "base_dataset_id": 37,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_REQUIRED",
+      "required_datasets": [
+        37
+      ],
+      "status": "BLOCKED",
+      "source_names": [
+        {
+          "dataset_id": 37,
+          "dataset_name": "Returns"
+        }
+      ],
+      "source_versions": [],
+      "relationship_versions": [],
+      "execution_algorithm_version": null,
+      "reason": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Column meaning has unresolved warnings."
+      ],
+      "result_id": null,
+      "computed_at": null,
+      "output": null,
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 71,
+      "definition_version": 5,
+      "definition": {
+        "name": "Average refund_amount",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_avg",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "refund_amount",
+                "dataset_id": 37
+              },
+              "filters": []
+            },
+            {
+              "id": "node_avg",
+              "op": "AVG",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Average of the refund_amount column from the Returns dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Return",
+        "description": "Average refund amount per return record",
+        "metric_type": "AVG",
+        "time_bucket": null,
+        "base_dataset_id": 37,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_REQUIRED",
+      "required_datasets": [
+        37
+      ],
+      "status": "BLOCKED",
+      "source_names": [
+        {
+          "dataset_id": 37,
+          "dataset_name": "Returns"
+        }
+      ],
+      "source_versions": [],
+      "relationship_versions": [],
+      "execution_algorithm_version": null,
+      "reason": "DEFINITION_REQUIRED",
+      "review_reasons": [
+        "Column meaning has unresolved warnings."
+      ],
+      "result_id": null,
+      "computed_at": null,
+      "output": null,
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 72,
+      "definition_version": 5,
+      "definition": {
+        "name": "Average unit_price",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_avg",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "unit_price",
+                "dataset_id": 33
+              },
+              "filters": []
+            },
+            {
+              "id": "node_avg",
+              "op": "AVG",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Average of the unit_price column from the Products dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Product",
+        "description": "Average unit price across product catalog records",
+        "metric_type": "AVG",
+        "time_bucket": null,
+        "base_dataset_id": 33,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        33
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 33,
+          "dataset_name": "Products"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 33,
+          "state_id": 44,
+          "gold_run_id": 9
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 15,
+      "computed_at": "2026-10-15T09:59:28.991701+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 5895.3085,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 80,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 73,
+      "definition_version": 5,
+      "definition": {
+        "name": "Minimum unit_price",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_min",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "unit_price",
+                "dataset_id": 33
+              },
+              "filters": []
+            },
+            {
+              "id": "node_min",
+              "op": "MIN",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Minimum of the unit_price column from the Products dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Product",
+        "description": "Minimum unit price across product catalog records",
+        "metric_type": "MIN",
+        "time_bucket": null,
+        "base_dataset_id": 33,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        33
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 33,
+          "dataset_name": "Products"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 33,
+          "state_id": 44,
+          "gold_run_id": 9
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 16,
+      "computed_at": "2026-10-15T09:59:29.913783+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 129.24,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 80,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    },
+    {
+      "candidate_id": 74,
+      "definition_version": 5,
+      "definition": {
+        "name": "Maximum unit_price",
+        "unit": "NUMBER",
+        "grain": "RECORD",
+        "formula": {
+          "root": "node_max",
+          "nodes": [
+            {
+              "id": "node_col",
+              "op": "COLUMN",
+              "args": [],
+              "column": {
+                "column": "unit_price",
+                "dataset_id": 33
+              },
+              "filters": []
+            },
+            {
+              "id": "node_max",
+              "op": "MAX",
+              "args": [
+                "node_col"
+              ],
+              "column": null,
+              "filters": []
+            }
+          ],
+          "scale": 1,
+          "zero_denominator": "NULL"
+        },
+        "rationale": "Maximum of the unit_price column from the Products dataset.",
+        "confidence": 0.95,
+        "dimensions": [],
+        "grain_keys": [],
+        "time_field": null,
+        "base_entity": "Product",
+        "description": "Maximum unit price across product catalog records",
+        "metric_type": "MAX",
+        "time_bucket": null,
+        "base_dataset_id": 33,
+        "default_filters": [],
+        "relationship_ids": [],
+        "unresolved_assumptions": []
+      },
+      "decision": "REVIEW_RECOMMENDED",
+      "required_datasets": [
+        33
+      ],
+      "status": "FRESH",
+      "source_names": [
+        {
+          "dataset_id": 33,
+          "dataset_name": "Products"
+        }
+      ],
+      "source_versions": [
+        {
+          "dataset_id": 33,
+          "state_id": 44,
+          "gold_run_id": 9
+        }
+      ],
+      "relationship_versions": [],
+      "execution_algorithm_version": 1,
+      "reason": null,
+      "review_reasons": [],
+      "result_id": 17,
+      "computed_at": "2026-10-15T09:59:30.830863+05:30",
+      "output": {
+        "kind": "scalar",
+        "value": 60932.92,
+        "groups": [],
+        "truncated": false,
+        "input_rows": 80,
+        "display_hint": "scalar",
+        "total_groups": 0
+      },
+      "failure_code": null,
+      "can_retry": false
+    }
+  ],
+  "workspace_name": "Retail Acceptance",
+  "readiness": "PARTIAL",
+  "summary": {
+    "trusted_datasets": 6,
+    "available_metrics": 17,
+    "current_metrics": 17,
+    "needs_attention": 3,
+    "confirmed_relationships": 6
+  },
+  "relationships": [
+    {
+      "relationship_id": 12,
+      "version": 1,
+      "parent_name": "Customers",
+      "child_name": "Orders"
+    },
+    {
+      "relationship_id": 13,
+      "version": 1,
+      "parent_name": "Orders",
+      "child_name": "Payments"
+    },
+    {
+      "relationship_id": 16,
+      "version": 1,
+      "parent_name": "Orders",
+      "child_name": "OrderItems"
+    },
+    {
+      "relationship_id": 17,
+      "version": 1,
+      "parent_name": "Products",
+      "child_name": "Returns"
+    },
+    {
+      "relationship_id": 18,
+      "version": 1,
+      "parent_name": "Orders",
+      "child_name": "Returns"
+    },
+    {
+      "relationship_id": 19,
+      "version": 1,
+      "parent_name": "Products",
+      "child_name": "OrderItems"
+    }
+  ],
+  "recent_updates": [
+    {
+      "dataset_id": 37,
+      "dataset_name": "Returns",
+      "published_at": "2026-10-15T09:47:01.245684+05:30",
+      "inserted_rows": 47,
+      "updated_rows": null,
+      "file_name": "returns.csv"
+    },
+    {
+      "dataset_id": 36,
+      "dataset_name": "Payments",
+      "published_at": "2026-10-14T21:35:19.450070+05:30",
+      "inserted_rows": 1078,
+      "updated_rows": null,
+      "file_name": "payments.csv"
+    },
+    {
+      "dataset_id": 35,
+      "dataset_name": "OrderItems",
+      "published_at": "2026-10-14T21:28:24.295763+05:30",
+      "inserted_rows": 3081,
+      "updated_rows": null,
+      "file_name": "order_items.csv"
+    }
+  ]
+}

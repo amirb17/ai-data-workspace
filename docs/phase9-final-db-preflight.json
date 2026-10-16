@@ -1,0 +1,329 @@
+{
+  "database": "ai_data_workspace",
+  "schema": "public",
+  "migration_0025_healthy": true,
+  "verified_objects": {
+    "saved_sql_queries": {
+      "columns": [
+        [
+          "query_id",
+          "bigint",
+          "NO",
+          "nextval('saved_sql_queries_query_id_seq'::regclass)"
+        ],
+        [
+          "workspace_id",
+          "bigint",
+          "NO",
+          null
+        ],
+        [
+          "owner_key",
+          "text",
+          "NO",
+          null
+        ],
+        [
+          "name",
+          "text",
+          "NO",
+          null
+        ],
+        [
+          "description",
+          "text",
+          "NO",
+          "''::text"
+        ],
+        [
+          "sql_text",
+          "text",
+          "NO",
+          null
+        ],
+        [
+          "version",
+          "integer",
+          "NO",
+          "1"
+        ],
+        [
+          "created_at",
+          "timestamp with time zone",
+          "NO",
+          "now()"
+        ],
+        [
+          "updated_at",
+          "timestamp with time zone",
+          "NO",
+          "now()"
+        ]
+      ],
+      "constraints": [
+        [
+          "saved_sql_queries_created_at_not_null",
+          "n",
+          "NOT NULL created_at"
+        ],
+        [
+          "saved_sql_queries_description_check",
+          "c",
+          "CHECK ((length(description) <= 1000))"
+        ],
+        [
+          "saved_sql_queries_description_not_null",
+          "n",
+          "NOT NULL description"
+        ],
+        [
+          "saved_sql_queries_name_check",
+          "c",
+          "CHECK (((length(name) >= 1) AND (length(name) <= 120)))"
+        ],
+        [
+          "saved_sql_queries_name_not_null",
+          "n",
+          "NOT NULL name"
+        ],
+        [
+          "saved_sql_queries_owner_key_fkey",
+          "f",
+          "FOREIGN KEY (owner_key) REFERENCES users(owner_key)"
+        ],
+        [
+          "saved_sql_queries_owner_key_not_null",
+          "n",
+          "NOT NULL owner_key"
+        ],
+        [
+          "saved_sql_queries_pkey",
+          "p",
+          "PRIMARY KEY (query_id)"
+        ],
+        [
+          "saved_sql_queries_query_id_not_null",
+          "n",
+          "NOT NULL query_id"
+        ],
+        [
+          "saved_sql_queries_sql_text_check",
+          "c",
+          "CHECK (((length(sql_text) >= 1) AND (length(sql_text) <= 20000)))"
+        ],
+        [
+          "saved_sql_queries_sql_text_not_null",
+          "n",
+          "NOT NULL sql_text"
+        ],
+        [
+          "saved_sql_queries_updated_at_not_null",
+          "n",
+          "NOT NULL updated_at"
+        ],
+        [
+          "saved_sql_queries_version_check",
+          "c",
+          "CHECK ((version > 0))"
+        ],
+        [
+          "saved_sql_queries_version_not_null",
+          "n",
+          "NOT NULL version"
+        ],
+        [
+          "saved_sql_queries_workspace_id_fkey",
+          "f",
+          "FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id)"
+        ],
+        [
+          "saved_sql_queries_workspace_id_not_null",
+          "n",
+          "NOT NULL workspace_id"
+        ],
+        [
+          "saved_sql_queries_workspace_id_owner_key_query_id_key",
+          "u",
+          "UNIQUE (workspace_id, owner_key, query_id)"
+        ]
+      ],
+      "indexes": [
+        [
+          "saved_sql_queries_pkey",
+          "CREATE UNIQUE INDEX saved_sql_queries_pkey ON public.saved_sql_queries USING btree (query_id)"
+        ],
+        [
+          "saved_sql_queries_workspace_id_owner_key_query_id_key",
+          "CREATE UNIQUE INDEX saved_sql_queries_workspace_id_owner_key_query_id_key ON public.saved_sql_queries USING btree (workspace_id, owner_key, query_id)"
+        ],
+        [
+          "saved_sql_workspace",
+          "CREATE INDEX saved_sql_workspace ON public.saved_sql_queries USING btree (workspace_id, owner_key, updated_at DESC)"
+        ]
+      ],
+      "triggers": [
+        [
+          "saved_sql_owner",
+          "O",
+          "CREATE TRIGGER saved_sql_owner BEFORE INSERT OR UPDATE ON public.saved_sql_queries FOR EACH ROW EXECUTE FUNCTION validate_sql_metadata_owner()"
+        ]
+      ]
+    },
+    "sql_query_executions": {
+      "columns": [
+        [
+          "execution_id",
+          "bigint",
+          "NO",
+          "nextval('sql_query_executions_execution_id_seq'::regclass)"
+        ],
+        [
+          "workspace_id",
+          "bigint",
+          "NO",
+          null
+        ],
+        [
+          "owner_key",
+          "text",
+          "NO",
+          null
+        ],
+        [
+          "saved_query_id",
+          "bigint",
+          "YES",
+          null
+        ],
+        [
+          "sql_text",
+          "text",
+          "NO",
+          null
+        ],
+        [
+          "query_hash",
+          "text",
+          "NO",
+          null
+        ],
+        [
+          "payload",
+          "jsonb",
+          "NO",
+          null
+        ],
+        [
+          "created_at",
+          "timestamp with time zone",
+          "NO",
+          "now()"
+        ]
+      ],
+      "constraints": [
+        [
+          "sql_query_executions_created_at_not_null",
+          "n",
+          "NOT NULL created_at"
+        ],
+        [
+          "sql_query_executions_execution_id_not_null",
+          "n",
+          "NOT NULL execution_id"
+        ],
+        [
+          "sql_query_executions_owner_key_fkey",
+          "f",
+          "FOREIGN KEY (owner_key) REFERENCES users(owner_key)"
+        ],
+        [
+          "sql_query_executions_owner_key_not_null",
+          "n",
+          "NOT NULL owner_key"
+        ],
+        [
+          "sql_query_executions_payload_check",
+          "c",
+          "CHECK ((jsonb_typeof(payload) = 'object'::text))"
+        ],
+        [
+          "sql_query_executions_payload_check1",
+          "c",
+          "CHECK ((((payload ->> 'status'::text) IS NOT NULL) AND ((payload ->> 'status'::text) = ANY (ARRAY['SUCCEEDED'::text, 'BLOCKED'::text, 'FAILED'::text, 'TIMED_OUT'::text]))))"
+        ],
+        [
+          "sql_query_executions_payload_not_null",
+          "n",
+          "NOT NULL payload"
+        ],
+        [
+          "sql_query_executions_pkey",
+          "p",
+          "PRIMARY KEY (execution_id)"
+        ],
+        [
+          "sql_query_executions_query_hash_check",
+          "c",
+          "CHECK ((length(query_hash) = 64))"
+        ],
+        [
+          "sql_query_executions_query_hash_not_null",
+          "n",
+          "NOT NULL query_hash"
+        ],
+        [
+          "sql_query_executions_sql_text_check",
+          "c",
+          "CHECK (((length(sql_text) >= 1) AND (length(sql_text) <= 20000)))"
+        ],
+        [
+          "sql_query_executions_sql_text_not_null",
+          "n",
+          "NOT NULL sql_text"
+        ],
+        [
+          "sql_query_executions_workspace_id_fkey",
+          "f",
+          "FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id)"
+        ],
+        [
+          "sql_query_executions_workspace_id_not_null",
+          "n",
+          "NOT NULL workspace_id"
+        ]
+      ],
+      "indexes": [
+        [
+          "sql_execution_history",
+          "CREATE INDEX sql_execution_history ON public.sql_query_executions USING btree (workspace_id, owner_key, execution_id DESC)"
+        ],
+        [
+          "sql_query_executions_pkey",
+          "CREATE UNIQUE INDEX sql_query_executions_pkey ON public.sql_query_executions USING btree (execution_id)"
+        ]
+      ],
+      "triggers": [
+        [
+          "sql_execution_immutable",
+          "O",
+          "CREATE TRIGGER sql_execution_immutable BEFORE UPDATE ON public.sql_query_executions FOR EACH ROW EXECUTE FUNCTION protect_sql_execution()"
+        ],
+        [
+          "sql_execution_owner",
+          "O",
+          "CREATE TRIGGER sql_execution_owner BEFORE INSERT ON public.sql_query_executions FOR EACH ROW EXECUTE FUNCTION validate_sql_metadata_owner()"
+        ]
+      ]
+    },
+    "functions": [
+      [
+        "protect_sql_execution",
+        "CREATE OR REPLACE FUNCTION public.protect_sql_execution()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN RAISE EXCEPTION 'SQL execution metadata is immutable'; END $function$\n"
+      ],
+      [
+        "validate_sql_metadata_owner",
+        "CREATE OR REPLACE FUNCTION public.validate_sql_metadata_owner()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n IF NOT EXISTS(SELECT 1 FROM workspaces WHERE workspace_id=NEW.workspace_id AND owner=NEW.owner_key) THEN\n  RAISE EXCEPTION 'SQL metadata must belong to workspace owner';\n END IF;\n IF TG_OP='UPDATE' AND (NEW.workspace_id<>OLD.workspace_id OR NEW.owner_key<>OLD.owner_key) THEN\n  RAISE EXCEPTION 'SQL metadata ownership is immutable';\n END IF;\n IF TG_TABLE_NAME='sql_query_executions' THEN\n  IF NEW.saved_query_id IS NOT NULL THEN\n   IF NOT EXISTS(SELECT 1 FROM saved_sql_queries WHERE query_id=NEW.saved_query_id AND workspace_id=NEW.workspace_id AND owner_key=NEW.owner_key) THEN\n    RAISE EXCEPTION 'Saved query must belong to execution workspace owner';\n   END IF;\n  END IF;\n END IF;\n RETURN NEW;\nEND $function$\n"
+      ]
+    ]
+  }
+}

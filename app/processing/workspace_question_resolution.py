@@ -45,6 +45,12 @@ def grounded(intent, source, resolved, question, chosen):
     if intent.context_mode == 'FOLLOW_UP' and re.search(r'\b(this|that|it|last|previous|same)\b', question, re.I):
         return
     asked = words(question)
+    if intent.context_mode == 'FOLLOW_UP' and intent.dimensions and re.match(r'^\s*what\s+about\s+by\b', question, re.I):
+        dimensions = set().union(*(words(d.column) for d in intent.dimensions))
+        if asked - {'what', 'about', 'by', 'and'} == dimensions:
+            # This narrowly scoped elliptical follow-up names only its breakdown.
+            # The service requires owned previous context; all references are still validated.
+            return
     if intent.metric_candidate_id:
         metric = next((i for i in resolved if i['row']['candidate_id'] == intent.metric_candidate_id), None)
         name = words(metric['row']['evidence']['definition']['name']) if metric else set()
@@ -67,8 +73,11 @@ def grounded(intent, source, resolved, question, chosen):
     references = words(item['pin']['dataset_name']) | words(item['suggestion']['reasoning']['entity']['primary']['label'] or '')
     if intent.measure and intent.aggregation != 'COUNT':
         keys = item['profile']['summary']['business_key']
-        if intent.question_type == 'COUNT' and intent.aggregation == 'COUNT_DISTINCT' and keys == [intent.measure.column] and asked & references:
-            return
+        if intent.aggregation == 'COUNT_DISTINCT' and keys == [intent.measure.column] and asked & references:
+            # A breakdown changes the output shape, not the meaning of a proven entity
+            # count. Users need not spell the physical key when naming that entity.
+            if intent.question_type == 'COUNT' or item['suggestion']['reasoning']['entity']['primary']['confidence'] >= .9:
+                return
         if not words(intent.measure.column) <= asked:
             raise QuestionBlocked('CLARIFICATION_REQUIRED', 'Which confirmed business measure should this question use?')
     else:
@@ -214,5 +223,8 @@ def resolve(workspace, intent, source, resolved, question='', chosen=False):
             or source['members'].get(i, {}).get('gold_status') != 'SUCCESS'
             or source['members'].get(i, {}).get('gold_state_id') != source['members'].get(i, {}).get('current_state_id')
             for i in checked['required_datasets'])
-        raise QuestionBlocked('REFRESH_REQUIRED' if stale else 'UNSUPPORTED',
-                              'Current trusted inputs are unavailable or this calculation is unsupported.') from None
+        if stale:
+            raise QuestionBlocked('REFRESH_REQUIRED',
+                                  'Required cumulative dataset analytics are missing or stale. Refresh analytics for the source datasets, then refresh this answer.') from None
+        raise QuestionBlocked('UNSUPPORTED',
+                              'This calculation cannot form a supported validated execution plan. Use a supported measure and at most one confirmed direct lookup.') from None

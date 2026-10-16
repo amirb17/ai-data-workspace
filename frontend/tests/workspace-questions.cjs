@@ -14,7 +14,7 @@ assert.ok(render({ status: 'CLARIFICATION_REQUIRED', choices: [{ choice_id: 0, l
 assert.ok(render({ result_kind: 'grouped', dimensions: ['segment'], groups: [{ dimensions: ['SMB'], value: 30 }, { dimensions: ['Enterprise'], value: 20 }] }).includes('exact values in the table below'))
 assert.ok(render({ result_kind: 'grouped', dimensions: ['event'], caveats: ['Time display groups by month.'], groups: [{ dimensions: ['2026-01-01'], value: 30 }, { dimensions: ['2026-02-01'], value: 20 }] }).includes('Line chart'))
 const empty = renderToStaticMarkup(React.createElement(WorkspaceAsk, { workspaceId: '1' }))
-for (const text of ['Your question', 'New analysis', 'Ask workspace', 'maxLength="1000"']) assert.ok(empty.includes(text), text)
+for (const text of ['Your question', 'New analysis', '>Ask<', 'maxLength="1000"']) assert.ok(empty.includes(text), text)
 const code = fs.readFileSync(require('node:path').join(__dirname, '../src/features/workspaces/ask/WorkspaceAsk.tsx'), 'utf8')
 for (const text of ['scope.abort()', 'active.current', 'startedRevision === revision.current', 'clearInterval(timer)', 'previous_answer_id', 'min-h-11']) assert.ok(code.includes(text), text)
 async function main() {

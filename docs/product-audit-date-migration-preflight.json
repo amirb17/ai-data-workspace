@@ -1,0 +1,22 @@
+{
+  "before": {
+    "database": "ai_data_workspace",
+    "schema": "public",
+    "date_allowed": false,
+    "row_counts": {
+      "datasets": 28,
+      "dataset_state_versions": 42,
+      "dataset_gold_runs": 7,
+      "business_rule_answers": 107,
+      "business_rules": 107,
+      "approved_rule_policies": 26,
+      "semantic_profiles": 12,
+      "semantic_suggestions": 10,
+      "relationship_reviews": 2,
+      "metric_candidates": 54,
+      "workspace_metric_results": 0,
+      "workspace_answers": 42
+    }
+  },
+  "applied": false
+}

@@ -25,7 +25,8 @@ export function IngestionBatchCard({ batch, context, children, qualityHref }: { 
       <Badge variant={status.variant}>{status.label}</Badge>
     </header>
     {children}
-    {context && <ProcessingStages context={context} compact />}
+    {context && /PROCESSING/.test(context.status) && <ProcessingStages context={context} compact />}
+    {(context?.incremental_rejected_rows ?? 0) > 0 && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{countLabel(context?.incremental_rejected_rows)} rows were rejected at dataset update. Silver validation success does not mean these rows entered trusted data.</p>}
     <dl className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 text-sm sm:grid-cols-4">{metrics.map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 font-semibold text-slate-950">{countLabel(value)}</dd></div>)}</dl>
     {context && <details className="group">
       <summary className="flex min-h-11 cursor-pointer list-item items-center rounded-lg px-2 text-sm font-medium text-indigo-700 focus-visible:outline focus-visible:outline-2">View delivery details</summary>

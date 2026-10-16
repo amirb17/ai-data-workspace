@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "boto3>=1.43.77",
+    "duckdb>=1.4,<2",
     "fastapi>=0.141.1",
     "google-genai>=2.26.0",
     "pandas>=3.0.5",
@@ -16,6 +17,8 @@ dependencies = [
     "pyarrow>=25.0.1",
     "python-dotenv>=1.2.2",
     "python-multipart>=0.0.32",
+    "pytz>=2026.5",
+    "sqlglot>=28,<31",
     "uvicorn[standard]>=0.52.1",
 ]
 

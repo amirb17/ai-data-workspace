@@ -1,3 +1,4 @@
+import {lazy,Suspense} from 'react'
 import {
   Navigate,
   Route,
@@ -36,6 +37,7 @@ import { DatasetUnderstandingPage } from "./pages/Dataset/Understanding/DatasetU
 
 import { IdentityBootstrap } from "./components/layout/IdentityBootstrap"
 import { NotFoundPage } from "./components/ui/NotFoundPage"
+const SqlPage=lazy(()=>import('./features/workspaces/sql/SqlPage').then(module=>({default:module.SqlPage})))
 
 function AppLayout() {
   return (
@@ -125,6 +127,7 @@ function AppLayout() {
         <Route path="understanding" element={<WorkspaceUnderstandingPage />} />
         <Route path="data-model" element={<RelationshipsPage />} />
         <Route path="metrics" element={<MetricsPage />} />
+        <Route path="sql" element={<Suspense fallback={<p role="status">Loading SQL editor…</p>}><SqlPage/></Suspense>} />
 
         <Route
           path="datasets"

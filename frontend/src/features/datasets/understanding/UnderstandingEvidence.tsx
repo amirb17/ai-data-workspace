@@ -27,7 +27,7 @@ export function UnderstandingEvidence({data, busy=false, error='', generate}: {d
       {error && <p role="alert" className="text-sm text-amber-800">{error}</p>}
     </section>
     {suggestion && reasoning && <>
-      <p className="text-sm text-slate-600">Suggestion {suggestion.suggestion_version} · Profile {suggestion.source_profile_id} · Dataset state {suggestion.source_state_version} · {suggestion.provider} / {suggestion.resolved_model || suggestion.model} · {new Date(suggestion.completed_at).toLocaleString()}</p>
+      <details className="text-sm text-slate-500"><summary className="min-h-11 cursor-pointer py-2">Analysis details</summary><p>Suggestion {suggestion.suggestion_version} · Profile {suggestion.source_profile_id} · Dataset state {suggestion.source_state_version} · {suggestion.provider} / {suggestion.resolved_model || suggestion.model} · {new Date(suggestion.completed_at).toLocaleString()}</p></details>
       <p className="text-sm">Overall confidence: {confidenceBand(reasoning.overall_confidence)}. Confidence is an uncalibrated AI assessment.</p>
       {suggestion.compact_mode && <p className="text-sm text-amber-800">Wide dataset: context was reduced deterministically. Every column name and type was included.</p>}
       <div className="grid gap-3 md:grid-cols-3"><ClassificationCard title="Suggested domain" value={reasoning.domain}/><ClassificationCard title="Suggested subdomain" value={reasoning.subdomain}/><ClassificationCard title="Likely dataset type" value={reasoning.entity}/></div>

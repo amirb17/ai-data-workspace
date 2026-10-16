@@ -1,0 +1,6 @@
+{
+  "tests": "PASSED",
+  "lint": "PASSED",
+  "lightweight_scripts": 24,
+  "build": "PASSED"
+}

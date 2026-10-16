@@ -1,0 +1,10 @@
+import {useState} from 'react'
+import {createPortal} from 'react-dom'
+import {useDialogFocus} from '../../../components/ui/useDialogFocus'
+import type {SavedSql} from '../../../services/api/sqlAnalytics'
+
+export function SqlQueryDialog({query,deleting=false,busy,close,submit}: {query?:SavedSql;deleting?:boolean;busy:boolean;close:()=>void;submit:(name:string,description:string)=>void}) {
+  const [name,setName]=useState(query?.name||''),[description,setDescription]=useState(query?.description||'')
+  const ref=useDialogFocus(true,close,busy)
+  return createPortal(<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" onClick={e=>{if(e.target===e.currentTarget&&!busy)close()}}><div role="dialog" aria-modal="true" aria-labelledby="sql-dialog-title" ref={ref} className="max-h-[90dvh] w-full max-w-md overflow-auto rounded-xl bg-white p-5 shadow-xl"><h2 id="sql-dialog-title" className="text-lg font-semibold">{deleting?'Delete saved query?':query?'Save / rename query':'Save SQL query'}</h2>{deleting?<p className="mt-3 break-words text-sm text-slate-600">Delete “{name}”? Execution history is preserved. This cannot be undone.</p>:<div className="mt-3 space-y-3"><label className="block text-sm">Query name<input autoComplete="off" maxLength={120} value={name} onChange={e=>setName(e.target.value)} className="mt-1 min-h-11 w-full rounded border px-3"/></label><label className="block text-sm">Description (optional)<textarea maxLength={1000} value={description} onChange={e=>setDescription(e.target.value)} className="mt-1 w-full rounded border p-3"/></label><p className="text-xs text-slate-500">Saves SQL text only. Running it always validates current sources.</p></div>}<div className="mt-5 flex justify-end gap-2"><button disabled={busy} className="min-h-11 rounded border px-4 text-sm" onClick={close}>Cancel</button><button disabled={busy||!name.trim()} className={`min-h-11 rounded px-4 text-sm text-white disabled:opacity-50 ${deleting?'bg-red-700':'bg-indigo-600'}`} onClick={()=>submit(name.trim(),description)}>{busy?'Working…':deleting?'Delete query':'Save query'}</button></div></div></div>,document.body)
+}

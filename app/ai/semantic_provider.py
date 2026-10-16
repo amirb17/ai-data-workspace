@@ -15,6 +15,11 @@ Confidence is an uncalibrated assessment, not statistical certainty. UNKNOWN is 
 Configured business keys must have IDENTIFIER primary role; configured event time TIME_DIMENSION.
 If a configured key is also event time, use IDENTIFIER primary and TIME_DIMENSION secondary hint.
 Numeric IDs, postal/status codes and years are not automatically measures. Strings are not automatically dimensions.
+Primary and secondary roles must respect deterministic type eligibility, regardless of column names.
+TIME_DIMENSION is allowed only when datetime_candidate is true. A date-like name or timestamp-like
+text does not make a TEXT field a time dimension; use TEXT_ATTRIBUTE or UNKNOWN and state uncertainty.
+MEASURE requires canonical_type INTEGER or DECIMAL, identifier_candidate false, and no id/code/year/postal/zip token.
+BOOLEAN_FLAG requires canonical_type BOOLEAN. Never infer a timezone or convert retained text.
 No relationships to other datasets, no target tables, joins, foreign-key proposals, KPIs, calculations or business facts.
 ENTITY_REFERENCE means possible reference-like meaning only, no relationship target.
 No key/policy changes, approval, definitive PII classification or raw examples. Potential sensitivity requires review.
@@ -64,11 +69,14 @@ def reasoning_schema(model=SemanticReasoning):
 class GeminiSemanticProvider:
     provider = 'gemini'
     model = GEMINI_MODEL
-    strategy = 'interactions-json-v1-timeout60-no-auto-retry'
+    strategy = 'interactions-json-v2-type-evidence-timeout60-no-auto-retry'
     system_prompt = SYSTEM_PROMPT
     response_model = SemanticReasoning
     input_label = 'UNTRUSTED_DATASET_EVIDENCE_JSON'
     max_output_tokens = 16000
+
+    def response_schema(self):
+        return reasoning_schema(self.response_model)
 
     def generate(self, evidence_json):
         try:
@@ -77,7 +85,7 @@ class GeminiSemanticProvider:
                     input=self.input_label + '\n' + evidence_json,
                     system_instruction=self.system_prompt,
                     response_format={'type':'text','mime_type':'application/json',
-                        'schema':reasoning_schema(self.response_model)},
+                        'schema':self.response_schema()},
                     generation_config={'max_output_tokens':self.max_output_tokens,'temperature':0},
                     store=False, timeout=60)
             if not response.output_text:

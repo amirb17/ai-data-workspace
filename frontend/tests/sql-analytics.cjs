@@ -1,0 +1,43 @@
+const assert=require('node:assert/strict'),React=require('react'),fs=require('node:fs'),ts=require('typescript'),path=require('node:path')
+for(const ext of ['.ts','.tsx'])require.extensions[ext]=(module,file)=>module._compile(ts.transpileModule(fs.readFileSync(file,'utf8').replaceAll('import.meta.env','({VITE_API_BASE_URL:"http://localhost:8000"})'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText,file)
+const {renderToStaticMarkup}=require('react-dom/server')
+const {cellText,compareCells}=require('../src/features/workspaces/sql/sqlPresentation.ts')
+const {SqlResults}=require('../src/features/workspaces/sql/SqlResults.tsx')
+const {SqlChart}=require('../src/features/workspaces/sql/SqlChart.tsx')
+const api=require('../src/services/api/sqlAnalytics.ts')
+assert.equal(cellText(null),'NULL');assert.equal(cellText(false),'false');assert.equal(cellText(''),'')
+assert.equal(compareCells('9007199254740993','9007199254740992','BIGINT'),1)
+assert.equal(compareCells('1.000000000000000001','1.000000000000000002','DECIMAL'),-1)
+assert.equal(compareCells('-0.01','0.0001','DECIMAL'),-1)
+assert.equal(compareCells(null,0,'INTEGER'),1)
+const result={workspace_id:1,execution_id:1,status:'SUCCEEDED',diagnostics:[],columns:[{name:'id',type:'BIGINT'},{name:'amount',type:'DECIMAL'}],rows:[['9007199254740993',null]],row_count:1,truncated:true,duration_ms:12,freshness:'Current',sources:[],relationships:[],executed_at:'2026-10-11T00:00:00Z',trust_label:'Ad hoc SQL result'}
+const html=renderToStaticMarkup(React.createElement(SqlResults,{result}))
+assert.ok(html.includes('9007199254740993')&&html.includes('NULL')&&html.includes('bounded preview')&&html.includes('overflow-auto'))
+const old=renderToStaticMarkup(React.createElement(SqlResults,{result:{...result,rows:[],historical:true,freshness:'Data changed'}}))
+assert.ok(old.includes('Rows are not retained')&&old.includes('Data has changed'))
+const chart=renderToStaticMarkup(React.createElement(SqlChart,{result,x:'0',y:'1',kind:'line'}))
+assert.ok(chart.includes('Line charts require'))
+const {chartXOptions,chartCompatible}=require('../src/features/workspaces/sql/sqlChartModel.ts')
+const shape={...result,columns:[{name:'category',type:'VARCHAR'},{name:'count',type:'BIGINT'}],rows:[['a',1],['a',2]]}
+assert.ok(chartXOptions(shape,'bar')[0].disabled)
+assert.equal(chartCompatible(shape,'0','1','bar'),false)
+assert.equal(chartCompatible({...shape,rows:[['a',1],['b',2]]},'0','1','bar'),true)
+assert.ok(chartXOptions({...shape,rows:Array.from({length:101},(_,i)=>[String(i),i])},'bar')[0].reason.includes('100'))
+assert.ok(chartXOptions({...shape,rows:[[null,1]]},'bar')[0].disabled)
+const page=fs.readFileSync(path.join(__dirname,'../src/features/workspaces/sql/SqlPage.tsx'),'utf8')
+assert.ok(page.includes('key={workspaceId}')&&page.includes('sessionStorage')&&!page.includes('localStorage'))
+const select=fs.readFileSync(path.join(__dirname,'../src/components/ui/SearchSelect.tsx'),'utf8')
+for(const token of ['createPortal','aria-activedescendant','ArrowDown','Escape','pointerdown','window.innerWidth'])assert.ok(select.includes(token))
+async function main(){
+ let call;global.fetch=async(url,options)=>{call={url,options};return {ok:true,json:async()=>result}}
+ await api.executeSql('1','SELECT 1');assert.ok(call.url.endsWith('/workspaces/1/sql/execute'));assert.deepEqual(JSON.parse(call.options.body),{sql_text:'SELECT 1'})
+ await api.deleteSql('1',2,3);assert.equal(call.options.method,'DELETE');assert.deepEqual(JSON.parse(call.options.body),{confirmed:true,expected_version:3})
+ global.fetch=async()=>({ok:true,json:async()=>({...result,workspace_id:2})})
+ await assert.rejects(api.executeSql('1','SELECT 1'),/another workspace/)
+ for(const [status,message] of [[409,/Saved query changed/],[429,/execution is busy/],[422,/SQL request fields/]]){
+  global.fetch=async()=>({ok:false,status,json:async()=>({detail:'private_internal_detail'})})
+  await assert.rejects(api.executeSql('1','SELECT 1'),message)
+ }
+ console.log('SQL exact values, nulls, bounded/history rendering, chart compatibility and API isolation passed')
+}
+main().catch(e=>{console.error(e);process.exitCode=1})

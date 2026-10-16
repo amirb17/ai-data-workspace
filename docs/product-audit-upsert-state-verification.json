@@ -1,0 +1,13 @@
+{
+  "dataset_id": 32,
+  "state_id": 50,
+  "state_version": 2,
+  "application_id": 50,
+  "rows": 255,
+  "distinct_keys": 255,
+  "duplicate_keys": 0,
+  "expected_updates": 10,
+  "expected_inserts": 5,
+  "delivery_rows_matching_all_eight_fields": 15,
+  "all_fields_match": true
+}

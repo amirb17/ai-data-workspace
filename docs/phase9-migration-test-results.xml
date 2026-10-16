@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="43.132" timestamp="2026-10-11T23:29:55.031536+05:30" hostname="LAPTOP-TBCB0OLH"><testcase classname="tests.test_sql_queries" name="test_current_gold_execution_saved_history_and_isolation" time="38.168" /></testsuite></testsuites>

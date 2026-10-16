@@ -1,0 +1,228 @@
+[
+  {
+    "name": "Record count",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 32,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Total order_amount",
+    "decision": "REVIEW_REQUIRED",
+    "validation": "REVIEW_REQUIRED",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [
+      "Order amount currency and standards must be uniform."
+    ],
+    "base_dataset_id": 34,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Average order_amount",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 34,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Minimum order_amount",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 34,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Maximum order_amount",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 34,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Distinct customer_id count",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 34,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Total shipping_amount",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 34,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Total subtotal_amount",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 34,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Total tax_amount",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 34,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Total line_amount",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 35,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Average line_amount",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 35,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Total quantity",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 35,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Average quantity",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 35,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Total payment_amount",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 36,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Average payment_amount",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 36,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Total refund_amount",
+    "decision": "REVIEW_REQUIRED",
+    "validation": "REVIEW_REQUIRED",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [
+      "Column meaning has unresolved warnings."
+    ],
+    "base_dataset_id": 37,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Average refund_amount",
+    "decision": "REVIEW_REQUIRED",
+    "validation": "REVIEW_REQUIRED",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [
+      "Column meaning has unresolved warnings."
+    ],
+    "base_dataset_id": 37,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Average unit_price",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 33,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Minimum unit_price",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 33,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  },
+  {
+    "name": "Maximum unit_price",
+    "decision": "REVIEW_RECOMMENDED",
+    "validation": "VALID",
+    "review_status": "UNREVIEWED",
+    "errors": [],
+    "review_reasons": [],
+    "base_dataset_id": 33,
+    "definition_freshness": "CURRENT",
+    "data_freshness": "CURRENT"
+  }
+]

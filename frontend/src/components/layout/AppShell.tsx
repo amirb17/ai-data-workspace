@@ -4,15 +4,14 @@ import {
   NavLink,
 } from "react-router-dom"
 import {
-  BarChart3,
   Home,
   Menu,
   Settings,
-  ShieldCheck,
   Workflow,
   LayoutGrid,
 } from "lucide-react"
 import { useState } from "react"
+import { useDialogFocus } from "../ui/useDialogFocus"
 
 const navItems = [
   {
@@ -26,19 +25,9 @@ const navItems = [
     to: "/app/workspaces",
   },
   {
-    label: "Processing",
+    label: "Activity",
     icon: Workflow,
     to: "/app/processing",
-  },
-  {
-    label: "Analytics",
-    icon: BarChart3,
-    to: "/app/analytics",
-  },
-  {
-    label: "Data Quality",
-    icon: ShieldCheck,
-    to: "/app/data-quality",
   },
 ]
 
@@ -52,11 +41,12 @@ export function AppShell({
   const user = useCurrentUser()
   const initials = user.displayName.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "U"
   const [mobileOpen, setMobileOpen] = useState(false)
+  const drawer = useDialogFocus(mobileOpen, () => setMobileOpen(false))
 
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-800/80 bg-[#050B18] lg:flex lg:flex-col">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-800/80 bg-slate-950 lg:flex lg:flex-col">
         {/* Brand */}
         <div className="flex h-20 items-center border-b border-slate-800/80 px-5">
             <img
@@ -69,7 +59,7 @@ export function AppShell({
         {/* Navigation */}
         <div className="flex-1 px-3 py-6">
             <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Workspace
+            Your workspace
             </p>
 
             <nav className="space-y-1.5">
@@ -93,14 +83,14 @@ export function AppShell({
                     {({ isActive }) => (
                     <>
                         {isActive && (
-                        <span className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-amber-400" />
+                        <span className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-indigo-400" />
                         )}
 
                         <Icon
                         size={19}
                         className={
                             isActive
-                            ? "text-amber-400"
+                            ? "text-indigo-300"
                             : "text-slate-400 transition group-hover:text-slate-200"
                         }
                         />
@@ -132,14 +122,14 @@ export function AppShell({
             {({ isActive }) => (
                 <>
                 {isActive && (
-                    <span className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-amber-400" />
+                    <span className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-indigo-400" />
                 )}
 
                 <Settings
                     size={19}
                     className={
                     isActive
-                        ? "text-amber-400"
+                        ? "text-indigo-300"
                         : "text-slate-400 group-hover:text-slate-200"
                     }
                 />
@@ -178,7 +168,7 @@ export function AppShell({
             aria-label="Close navigation"
           />
 
-          <aside className="relative h-full w-72 overflow-y-auto bg-slate-950 p-4 shadow-xl">
+          <div ref={drawer} role="dialog" aria-modal="true" aria-label="Navigation" className="relative h-full w-72 max-w-full overflow-y-auto bg-slate-950 p-4 shadow-xl">
             <div className="mb-8 flex items-center justify-between">
               <div>
                 <div className="flex items-center">
@@ -242,22 +232,19 @@ export function AppShell({
                 Settings
             </NavLink>
             </nav>
-          </aside>
+          </div>
         </div>
       )}
 
       {/* Main area */}
       <div className="lg:pl-64">
         {/* Desktop topbar */}
-        <header className="hidden h-16 items-center justify-between border-b border-slate-200 bg-white px-8 lg:flex">
+        <header className="hidden h-14 items-center justify-between border-b border-slate-200 bg-white px-8 lg:flex">
           <div>
                 <p className="text-sm font-semibold text-slate-900">
                     DataRise AI
                 </p>
 
-                <p className="text-xs text-slate-500">
-                    AI Data Workspace
-                </p>
             </div>
 
           <div className="flex items-center gap-3">
@@ -266,9 +253,6 @@ export function AppShell({
                 {user.displayName}
               </p>
 
-              <p className="text-xs text-slate-500">
-                Development session
-              </p>
             </div>
 
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
@@ -277,7 +261,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
           {children}
         </main>
       </div>

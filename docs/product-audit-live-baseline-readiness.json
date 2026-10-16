@@ -1,0 +1,62 @@
+[
+  {
+    "dataset_id": 32,
+    "freshness": "FRESH",
+    "analytics_ready": true,
+    "trusted_rows": 250,
+    "analytics_rows": 250,
+    "current_state_id": 43,
+    "built_from_state_id": 43,
+    "gold_run_id": 8
+  },
+  {
+    "dataset_id": 33,
+    "freshness": "FRESH",
+    "analytics_ready": true,
+    "trusted_rows": 80,
+    "analytics_rows": 80,
+    "current_state_id": 44,
+    "built_from_state_id": 44,
+    "gold_run_id": 9
+  },
+  {
+    "dataset_id": 34,
+    "freshness": "FRESH",
+    "analytics_ready": true,
+    "trusted_rows": 1000,
+    "analytics_rows": 1000,
+    "current_state_id": 45,
+    "built_from_state_id": 45,
+    "gold_run_id": 10
+  },
+  {
+    "dataset_id": 35,
+    "freshness": "FRESH",
+    "analytics_ready": true,
+    "trusted_rows": 3081,
+    "analytics_rows": 3081,
+    "current_state_id": 46,
+    "built_from_state_id": 46,
+    "gold_run_id": 11
+  },
+  {
+    "dataset_id": 36,
+    "freshness": "FRESH",
+    "analytics_ready": true,
+    "trusted_rows": 1078,
+    "analytics_rows": 1078,
+    "current_state_id": 47,
+    "built_from_state_id": 47,
+    "gold_run_id": 12
+  },
+  {
+    "dataset_id": 37,
+    "freshness": "FRESH",
+    "analytics_ready": true,
+    "trusted_rows": 47,
+    "analytics_rows": 47,
+    "current_state_id": 48,
+    "built_from_state_id": 48,
+    "gold_run_id": 13
+  }
+]

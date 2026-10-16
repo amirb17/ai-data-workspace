@@ -81,7 +81,7 @@ def convert_answer_to_rule_config(
         if answer == "NO":
             return None
 
-        if answer in {"DECIMAL", "DATETIME"}:
+        if answer in {"DECIMAL", "DATETIME", "DATE"}:
             return {
                 "type": answer
             }

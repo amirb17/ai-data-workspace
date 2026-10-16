@@ -112,6 +112,7 @@ def ask(workspace, user, request, refresh_id=None):
         source, resolved = snapshot(workspace, user)
         previous = None
         chosen = False
+        replaying_stored_intent = False
         with repository_transaction() as conn:
             if refresh_id:
                 original = owned(conn, workspace, refresh_id)
@@ -119,6 +120,7 @@ def ask(workspace, user, request, refresh_id=None):
                 request = WorkspaceQuestionRequest(question=original['payload']['question'],
                     previous_answer_id=refresh_id, timezone=stored.get('timezone'))
                 chosen = stored.get('chosen', False)
+                replaying_stored_intent = bool(original['payload']['intent'])
                 planned = WorkspaceQuestionPlan(status='ANSWERABLE', intent=QuestionIntent.model_validate(original['payload']['intent'])) if original['payload']['intent'] else None
             elif request.clarification_answer_id:
                 original = owned(conn, workspace, request.clarification_answer_id)
@@ -160,7 +162,7 @@ def ask(workspace, user, request, refresh_id=None):
                     'input_bytes': len(encoded.encode()), 'output_bytes': len(response.text.encode()),
                     'duration_seconds': round(time.monotonic() - provider_started, 3)}
             intent = inherit(planned.intent, previous)
-            if intent.context_mode == 'FOLLOW_UP' and not previous:
+            if intent.context_mode == 'FOLLOW_UP' and not previous and not replaying_stored_intent:
                 intent = intent.model_copy(update={'context_mode': 'NEW'})
             payload['intent'] = intent.model_dump(mode='json')
             if planned.status in ('UNSUPPORTED', 'NOT_RELEVANT'):

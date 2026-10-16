@@ -7,7 +7,7 @@ const { MemoryRouter, Routes, Route, Outlet } = require('react-router-dom')
 for (const extension of ['.ts','.tsx']) require.extensions[extension] = (module, filename) => module._compile(ts.transpileModule(fs.readFileSync(filename,'utf8').replaceAll('import.meta.env','({ VITE_API_BASE_URL:"http://localhost:8000" })'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText,filename)
 const resource = require('../src/services/api/useApiResource.ts')
 let result = {}
-resource.useApiResource = (key) => key.startsWith('incremental:') ? {data:{policies:[],applications:[],schema_versions:[],current_state:null},retry:()=>{},loading:false} : ({ ...result,retry:()=>{},loading:!result.data })
+resource.useApiResource = (key) => key.startsWith('preparation:') ? {data:result.preparation,error:result.error,retry:()=>{},loading:!result.preparation} : key.startsWith('dataset-readiness:') ? {data:result.data?{processing:result.data,analytics:{trusted_rows:null,freshness:'NOT_READY'}}:undefined,error:result.error,retry:()=>{},loading:!result.data} : key.startsWith('incremental:') ? {data:{policies:[],applications:[],schema_versions:[],current_state:null},retry:()=>{},loading:false} : ({ ...result,retry:()=>{},loading:!result.data })
 const storage = new Map()
 global.localStorage = {getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)}
 global.window = {dispatchEvent:()=>{}}
@@ -45,7 +45,7 @@ const pending = {...empty,deliveries:[delivery],summary:{...empty.summary,total:
 const dataset = {id:20,name:'Customers',description:'Customer records',status:'ACTIVE',updatedAt:'Unavailable'}
 const render = (Component,props={},url='/app/workspaces/10/datasets/20/files',outlet=dataset) => renderToStaticMarkup(React.createElement(IdentityContext.Provider,{value:{userId:1,displayName:'Test'}},React.createElement(MemoryRouter,{initialEntries:[url]},React.createElement(Routes,null,React.createElement(Route,{path:'/app/workspaces/:workspaceId',element:React.createElement(Outlet,{context:outlet})},React.createElement(Route,{path:'datasets/:datasetId/*',element:React.createElement(Component,props)}))))))
 // Use the same renderer for standalone pages while supplying real router identities.
-for (const [status,label] of [['ACTIVE','Active'],['AWAITING_RULES','Rules need review'],['SUCCESS','Completed'],['FAILED','Needs attention'],['READY_FOR_SILVER','Ready to continue']]) {
+for (const [status,label] of [['ACTIVE','Active'],['AWAITING_RULES','Rules need review'],['SUCCESS','Completed'],['FAILED','Couldn’t complete'],['READY_FOR_SILVER','Ready to continue']]) {
   const html=render(StatusBadge,{status}); assert.ok(html.includes(label)); assert.ok(html.includes('aria-hidden="true"')); assert.ok(!html.includes('>'+status+'<'))
 }
 result={data:[]}
@@ -58,8 +58,9 @@ result={error:'Could not load workspaces.'}
 assert.ok(render(WorkspacesPage).includes('role="alert"') && render(WorkspacesPage).includes('Retry'))
 result={data:[{id:10,name:'Sales',description:'Sales records',status:'ACTIVE',updatedAt:'Unavailable'}]}
 assert.ok(render(HomePage).includes('Sales') && !render(HomePage).includes('Processing Pipeline'))
+result.preparation={rows:[{dataset,processing:empty,analytics:{trusted_rows:null,current_state_id:null,freshness:'NOT_READY',analytics_ready:false},profile:null,understanding:null}],analytics:{summary:{confirmed_relationships:0},metrics_fresh:0}}
 const workspace=render(WorkspaceOverviewPage,{},undefined,{datasets:[dataset]})
-assert.ok(workspace.includes('Add Dataset') && workspace.includes('Customers') && !workspace.includes('dataset-version'))
+assert.ok(workspace.includes('Add delivery') && workspace.includes('Workspace progress') && workspace.includes('Customers') && !workspace.includes('dataset-version'))
 assert.ok(render(DatasetList,{datasets:[],workspaceId:'10'}).includes('No datasets yet'))
 assert.ok(render(DatasetList,{datasets:[],workspaceId:'10',filtered:true}).includes('Change the search'))
 assert.ok(render(CreateDatasetDialog,{open:true,onClose:()=>{},onCreate:async()=>{}}).includes('Monthly files for the same entity belong in the same dataset'))
@@ -103,8 +104,10 @@ assert.ok(render(DatasetAnalyticsPage).includes('Dataset Analytics'))
 assert.ok(!render(DatasetAnalyticsPage).includes('Delivery processing output is available'))
 const rejected={...success,status:'SUCCESS_WITH_WARNINGS',valid_rows:0,rejected_rows:2,output_rows:0,stages:{...success.stages,gold:'SKIPPED'}}
 result={data:{...done,deliveries:[{...delivery,context:rejected}]}}
-assert.ok(render(DatasetDataQualityPage).includes('2 quarantined rows') && render(DatasetDataQualityPage).includes('coming in the next stage'))
+assert.ok(render(DatasetDataQualityPage).includes('2 quarantined rows') && render(DatasetDataQualityPage).includes('Row correction and replay are not available yet'))
 assert.ok(!render(DatasetAnalyticsPage).includes('after successful processing produces valid output'))
+result={data:{...done,deliveries:[{...delivery,context:{...success,load_strategy:'UPSERT',incremental_rejected_rows:2}}]}}
+const identityQuality=render(DatasetDataQualityPage);assert.ok(identityQuality.includes('2 rejected at dataset update'));assert.ok(!identityQuality.includes('No data-quality issues detected'))
 result={data:pending}
 assert.ok(!render(DatasetDataQualityPage).includes('No data-quality issues detected'))
 assert.ok(render(RuleSituation,{context:success,reviewing:false,reviewHref:'rules'}).includes('Approved Rule Version 1 reused'))
@@ -119,7 +122,9 @@ for(const label of ['Delivery steps','Choose File','Inspect','Check Compatibilit
 assert.ok(render(NotFoundPage).includes('Page not found') && render(NotFoundPage).includes('Back to Workspaces'))
 result={error:'Missing dataset'}
 const invalid=render(DatasetDetailPage,{},undefined,{workspace:{name:'Sales'}})
-assert.ok(invalid.includes('Dataset not found or unavailable') && invalid.includes('Back to Workspace') && !invalid.includes('customers.csv'))
+assert.ok(invalid.includes('Missing dataset') && invalid.includes('Back to Workspace') && !invalid.includes('customers.csv'))
+result={error:'Backend unavailable. Check API connection and retry.'}
+const unavailable=render(DatasetDetailPage,{},undefined,{workspace:{name:'Sales'}});assert.ok(unavailable.includes('Backend unavailable'));assert.ok(!unavailable.includes('may not belong'));
 const { getDataset }=require('../src/services/api/datasets.ts')
 global.fetch=async()=>new Response(JSON.stringify({dataset_id:20,workspace_id:99,dataset_name:'Wrong scope',status:'ACTIVE'}))
 getDataset('10','20').then(()=>{throw new Error('scope mismatch accepted')}).catch(error=>{assert.match(error.message,/another workspace/);console.log('Phase 5C statuses, workspace states, overview guidance, authoritative Files, contract setup/summary/edit, Rules reuse/review, upload steps, duplicates, quality/readiness, unavailable archival and scope checks passed.')})

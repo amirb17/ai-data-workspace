@@ -1,0 +1,50 @@
+[
+  {
+    "dataset_id": 32,
+    "name": "Customers",
+    "understanding": "STALE",
+    "failure_code": null,
+    "profile": "READY",
+    "state": 43
+  },
+  {
+    "dataset_id": 33,
+    "name": "Products",
+    "understanding": "STALE",
+    "failure_code": null,
+    "profile": "READY",
+    "state": 44
+  },
+  {
+    "dataset_id": 34,
+    "name": "Orders",
+    "understanding": "STALE",
+    "failure_code": null,
+    "profile": "READY",
+    "state": 45
+  },
+  {
+    "dataset_id": 35,
+    "name": "OrderItems",
+    "understanding": "READY",
+    "failure_code": null,
+    "profile": "READY",
+    "state": 46
+  },
+  {
+    "dataset_id": 36,
+    "name": "Payments",
+    "understanding": "NOT_GENERATED",
+    "failure_code": null,
+    "profile": "STALE",
+    "state": 47
+  },
+  {
+    "dataset_id": 37,
+    "name": "Returns",
+    "understanding": "NOT_GENERATED",
+    "failure_code": null,
+    "profile": "NOT_PROFILED",
+    "state": null
+  }
+]

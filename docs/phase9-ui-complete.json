@@ -1,0 +1,5 @@
+{
+  "status": "COMPLETE",
+  "public_modified": false,
+  "verification": "Real disposable schema/API/DuckDB/production UI; preview, count, confirmed lookup, read-only/namespace/external IO rejection, no-LIMIT, saved reload/rerun, stale display/gating, mobile390, workspace isolation; refreshed rerun covered by DB test"
+}

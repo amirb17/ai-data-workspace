@@ -1,0 +1,111 @@
+// Exercise actual React state and portal events in a synthetic DOM.
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const ts = require('typescript')
+async function main() {
+  const {Window} = await import('happy-dom')
+  const window = new Window({width:390,height:844})
+  for (const name of ['window','document','HTMLElement','Element','Node','Event','MouseEvent','KeyboardEvent','PointerEvent','CSS','navigator']) {
+    Object.defineProperty(global,name,{value:name==='window'?window:window[name],configurable:true})
+  }
+  global.requestAnimationFrame = window.requestAnimationFrame.bind(window)
+  global.cancelAnimationFrame = window.cancelAnimationFrame.bind(window)
+  global.IS_REACT_ACT_ENVIRONMENT = true
+  window.HTMLElement.prototype.scrollIntoView = function() {}
+  for (const ext of ['.ts','.tsx']) require.extensions[ext]=(module,file)=>module._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText,file)
+  const React = require('react'), {act} = React, {createRoot} = require('react-dom/client')
+  const {SearchSelect} = require('../src/components/ui/SearchSelect.tsx')
+  const options = [{value:'orders',label:'Orders',detail:'Current · 3 columns'}, {value:'old',label:'Old delivery',disabled:true,reason:'Refresh required'}, {value:'customers',label:'Customers',detail:'Current · 2 columns'}]
+  const host=document.createElement('div');document.body.append(host)
+  const root=createRoot(host)
+  let selected=[]
+  function Harness(props) {const [value,setValue]=React.useState([]);return React.createElement(SearchSelect,{label:'Dataset',options,value,onChange:v=>{selected=v;setValue(v)},...props})}
+  const tick=()=>new Promise(resolve=>window.requestAnimationFrame(resolve))
+  const action=async fn=>act(async()=>{fn();await tick()})
+  const click=el=>el.dispatchEvent(new window.MouseEvent('click',{bubbles:true}))
+  const key=(el,value)=>el.dispatchEvent(new window.KeyboardEvent('keydown',{key:value,bubbles:true,cancelable:true}))
+  const search=()=>document.querySelector('input[aria-label="Search dataset"]')
+  await act(async()=>root.render(React.createElement(Harness)))
+  const trigger=host.querySelector('button[role="combobox"]')
+  trigger.getBoundingClientRect=()=>({left:350,top:700,bottom:744,width:200,height:44,right:550})
+  await action(()=>click(trigger))
+  assert.equal(trigger.getAttribute('aria-expanded'),'true')
+  assert.equal(document.activeElement,search())
+  assert.equal(document.querySelector('[role="listbox"]').closest('.fixed').parentElement,document.body)
+  const popup=document.querySelector('[role="listbox"]').closest('.fixed')
+  assert.ok(parseFloat(popup.style.left)+parseFloat(popup.style.width)<=390)
+  assert.ok(parseFloat(popup.style.top)<700)
+  const stale=document.querySelector('[aria-disabled="true"]')
+  await action(()=>click(stale));assert.deepEqual(selected,[]);assert.ok(search())
+  await action(()=>key(search(),'Escape'));assert.equal(document.activeElement,trigger);assert.equal(search(),null)
+  // Trigger type-ahead searches and Enter selects, without choosing a disabled item.
+  await action(()=>key(trigger,'c'));assert.equal(search().value,'c')
+  assert.equal(document.querySelectorAll('[role="option"]').length,2) // current metadata also matches
+  await action(()=>key(search(),'ArrowDown'))
+  await action(()=>key(search(),'Enter'));assert.deepEqual(selected,['customers']);assert.equal(search(),null)
+  await action(()=>click(trigger))
+  await action(()=>document.body.dispatchEvent(new window.PointerEvent('pointerdown',{bubbles:true})))
+  assert.equal(search(),null)
+  await act(async()=>root.render(React.createElement(Harness,{multiple:true})))
+  await action(()=>click(trigger))
+  await action(()=>click(document.querySelectorAll('[role="option"]')[0]))
+  assert.deepEqual(selected,['customers','orders']);assert.ok(search())
+  assert.equal(document.querySelectorAll('[aria-selected="true"]').length,2)
+  await action(()=>key(search(),'Escape'))
+  await action(()=>click(document.querySelector('[aria-label="Remove Orders"]')))
+  assert.deepEqual(selected,['customers'])
+  await act(async()=>root.render(React.createElement(Harness,{options:[]})))
+  await action(()=>click(trigger));assert.ok(document.querySelector('[role="status"]').textContent.includes('No dataset'))
+  await action(()=>key(search(),'Escape'))
+  await act(async()=>root.render(React.createElement(Harness,{loading:true})))
+  assert.equal(trigger.disabled,true);assert.ok(trigger.textContent.includes('Loading'))
+  await act(async()=>root.unmount())
+  const {SqlBuilder}=require('../src/features/workspaces/sql/SqlBuilder.tsx')
+  const builderRoot=createRoot(host)
+  let current
+  const column=(name,type)=>({name,type,role:type==='DECIMAL'?'MEASURE':'UNKNOWN',queryable:true})
+  const catalog={datasets:[{dataset_id:1,name:'Orders',alias:'orders_d1',queryable:true,freshness:'Current',columns:[column('amount','DECIMAL'),column('status','TEXT'),column('day','DATE')]},{dataset_id:2,name:'Customers',alias:'customers_d2',queryable:true,freshness:'Current',columns:[column('id','INTEGER')]},{dataset_id:3,name:'Stale fixture',alias:'old',queryable:false,reason:'Refresh required',columns:[]}],relationships:[{relationship_id:3,child:{dataset_id:1,columns:['id']},parent:{dataset_id:2,columns:['id']},cardinality:'ONE_TO_ONE'}],capabilities:{limits:{output_rows:500}}}
+  const {emptyBuilder}=require('../src/features/workspaces/sql/sqlBuilderModel.ts')
+  function BuilderHarness(){const [input,setInput]=React.useState(emptyBuilder());current=input;return React.createElement(SqlBuilder,{catalog,input,onChange:setInput,busy:false})}
+  await act(async()=>builderRoot.render(React.createElement(BuilderHarness)))
+  const combo=label=>[...host.querySelectorAll('button[role="combobox"]')].find(el=>document.getElementById(el.getAttribute('aria-labelledby'))?.textContent===label)
+  const choose=async(label,text)=>{assert.ok(combo(label),label);await action(()=>click(combo(label)));const option=[...document.querySelectorAll('[role="option"]')].find(el=>el.textContent.includes(text));assert.ok(option,text);await action(()=>click(option));if(document.querySelector('input[role="combobox"]'))await action(()=>key(document.querySelector('input[role="combobox"]'),'Escape'))}
+  const change=async(label,value)=>{await action(()=>click(combo(label)));assert.equal(document.activeElement.getAttribute('role'),'listbox');const option=[...document.querySelectorAll('[role="option"]')].find(el=>el.textContent.trim()===(value==='custom'?'Custom':value==='SUM'?'SUM':value==='DESC'?'Descending':value==='BETWEEN'?'Between':value));assert.ok(option,value);await action(()=>click(option))}
+  const optionValues=async label=>{await action(()=>click(combo(label)));const text=[...document.querySelectorAll('[role="option"]')].map(el=>el.textContent);await action(()=>key(document.activeElement,'Escape'));return text}
+  const press=async text=>action(()=>{const el=[...host.querySelectorAll('button')].find(el=>el.textContent.trim()===text);assert.ok(el,text);click(el)})
+  const clause=async text=>action(()=>click([...host.querySelectorAll('nav button')].find(el=>el.textContent.endsWith(({SELECT:'Select',FROM:'From',JOIN:'Join',WHERE:'Filter','GROUP BY':'Group','ORDER BY':'Sort',LIMIT:'Limit'})[text]||text))))
+  assert.equal(host.querySelector('[aria-current="step"]').textContent,'1Select')
+  assert.equal(host.querySelectorAll('nav button').length,7)
+  await clause('FROM');await choose('From dataset','Orders')
+  await action(()=>click(combo('From dataset')));assert.ok(document.querySelector('[aria-disabled="true"]').textContent.includes('Refresh required'));await action(()=>key(document.querySelector('input[role="combobox"]'),'Escape'))
+  await clause('SELECT');await press('Add Column');await choose('Selection 1 column','status')
+  assert.ok(!(await optionValues('Selection 1 aggregation')).some(o=>o==='SUM'))
+  await choose('Selection 1 column','amount');assert.ok((await optionValues('Selection 1 aggregation')).some(o=>o==='SUM'))
+  await change('Selection 1 aggregation','SUM');assert.equal(current.selections[0].aggregation,'SUM')
+  await choose('Selection 1 column','status');assert.equal(current.selections[0].aggregation,undefined)
+  await press('Add Column');await choose('Selection 2 column','All rows');assert.equal(current.selections[1].aggregation,'COUNT')
+  await press('Add Column');await choose('Selection 3 column','amount');await change('Selection 3 aggregation','SUM')
+  assert.equal(current.selections.length,3)
+  await clause('GROUP BY');assert.ok(host.textContent.includes('need grouping: status'));await press('Add suggested groups');assert.deepEqual(current.grouping,['status'])
+  await clause('ORDER BY');await choose('Sort field','count_rows');await change('Sort direction','DESC');assert.equal(current.descending,true)
+  await clause('WHERE');await press('+ Add Filter');await choose('Filter 1 column','status');assert.ok((await optionValues('Filter 1 operator')).some(o=>o==='Contains'))
+  assert.ok(host.textContent.includes('not enumerated'));await choose('Filter 1 column','amount');assert.ok(!(await optionValues('Filter 1 operator')).some(o=>o==='Contains'));assert.equal(host.querySelector('[aria-label="Filter 1 value"]').type,'number')
+  await choose('Filter 1 column','day');assert.equal(host.querySelector('[aria-label="Filter 1 value"]').type,'date');await change('Filter 1 operator','BETWEEN');assert.equal(host.querySelector('[aria-label="Filter 1 upper bound"]').type,'date')
+  assert.ok(![...host.querySelectorAll('nav button')].some(el=>el.textContent.includes('HAVING')), 'unsupported aggregate filtering is not an active-looking Builder step')
+  await clause('LIMIT');await change('Row limit','250');assert.equal(current.limit,250);await change('Row limit','custom');assert.equal(host.querySelector('[aria-label="Custom row limit"]').max,'500')
+  await clause('JOIN');await choose('Confirmed lookup','Orders → Customers');assert.equal(current.relationship_id,3)
+  await clause('FROM');await choose('From dataset','Customers');assert.equal(current.relationship_id,undefined);assert.deepEqual(current.selections,[]);assert.deepEqual(current.filters,[]);assert.deepEqual(current.grouping,[]);assert.equal(current.sort_by,undefined)
+  await clause('JOIN');assert.ok(host.textContent.includes('No confirmed relationships'))
+  await clause('SELECT');await press('Add Column');await action(()=>click(host.querySelector('[aria-label="Remove selection 1"]')));assert.equal(current.selections.length,0)
+  const {reconcileBuilder}=require('../src/features/workspaces/sql/sqlBuilderModel.ts')
+  const configured={...emptyBuilder('orders_d1'),selections:[{column:'amount',aggregation:'SUM'},{column:'status'}],filters:[{column:'amount',operator:'GT',value:'5'}],sort_by:'sum_amount',grouping:['status'],relationship_id:3}
+  const changed={...catalog,datasets:catalog.datasets.map(d=>d.dataset_id===1?{...d,columns:d.columns.map(c=>c.name==='amount'?{...c,type:'TEXT'}:c)}:d)}
+  const reconciled=reconcileBuilder(configured,changed)
+  assert.equal(reconciled.selections[0].aggregation,undefined);assert.deepEqual(reconciled.filters,[]);assert.equal(reconciled.sort_by,undefined)
+  const staleCatalog={...catalog,datasets:catalog.datasets.map(d=>({...d,queryable:false}))}
+  assert.deepEqual(reconcileBuilder(configured,staleCatalog),emptyBuilder())
+  await act(async()=>builderRoot.unmount());await window.happyDOM.close()
+  console.log('SQL select: portal, viewport placement, focus, disabled reasons, keyboard, outside close, multi-select, empty and loading passed')
+  console.log('SQL Builder: numeric aggregation, typed filter operators/inputs, confirmed lookup and dataset dependency resets passed')
+}
+main().catch(error=>{console.error(error);process.exitCode=1})

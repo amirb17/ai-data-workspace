@@ -1,0 +1,790 @@
+{
+  "workspace_id": 18,
+  "workspace_name": "Retail Acceptance",
+  "datasets": [
+    {
+      "dataset_id": 32,
+      "name": "Customers",
+      "alias": "customers_d32",
+      "queryable": true,
+      "freshness": "Current",
+      "reason": "",
+      "row_count": 255,
+      "updated_at": "2026-10-15T21:19:08.216743+05:30",
+      "columns": [
+        {
+          "name": "active",
+          "type": "BOOLEAN",
+          "physical_type": "bool",
+          "role": "BOOLEAN_FLAG",
+          "description": "Indicates whether the customer account is active",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "city",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "DIMENSION",
+          "description": "City where the customer is located",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "customer_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "IDENTIFIER",
+          "description": "Unique identifier for each customer",
+          "key": true,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "customer_name",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "TEXT_ATTRIBUTE",
+          "description": "Name of the customer",
+          "key": false,
+          "time": false,
+          "sensitive": true,
+          "queryable": false
+        },
+        {
+          "name": "region",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "DIMENSION",
+          "description": "Geographic region of the customer",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "segment",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "CATEGORY",
+          "description": "Customer segment classification",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "signup_date",
+          "type": "DATETIME",
+          "physical_type": "object",
+          "role": "TIME_DIMENSION",
+          "description": "Date when the customer signed up",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "state",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "DIMENSION",
+          "description": "State or province where the customer is located",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        }
+      ],
+      "state_id": 50,
+      "gold_run_id": 15,
+      "profile_id": 20
+    },
+    {
+      "dataset_id": 33,
+      "name": "Products",
+      "alias": "products_d33",
+      "queryable": true,
+      "freshness": "Current",
+      "reason": "",
+      "row_count": 80,
+      "updated_at": "2026-10-14T21:17:16.177963+05:30",
+      "columns": [
+        {
+          "name": "active",
+          "type": "BOOLEAN",
+          "physical_type": "bool",
+          "role": "BOOLEAN_FLAG",
+          "description": "Indicates whether the product is active.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "brand",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "DIMENSION",
+          "description": "The brand associated with the product.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "category",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "CATEGORY",
+          "description": "Product category classification.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "product_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "IDENTIFIER",
+          "description": "Unique identifier for the product.",
+          "key": true,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "product_name",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "TEXT_ATTRIBUTE",
+          "description": "The descriptive name of the product.",
+          "key": false,
+          "time": false,
+          "sensitive": true,
+          "queryable": false
+        },
+        {
+          "name": "unit_price",
+          "type": "DECIMAL",
+          "physical_type": "float64",
+          "role": "MEASURE",
+          "description": "The price per unit of the product.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        }
+      ],
+      "state_id": 44,
+      "gold_run_id": 9,
+      "profile_id": 14
+    },
+    {
+      "dataset_id": 34,
+      "name": "Orders",
+      "alias": "orders_d34",
+      "queryable": true,
+      "freshness": "Current",
+      "reason": "",
+      "row_count": 1050,
+      "updated_at": "2026-10-15T21:15:39.765401+05:30",
+      "columns": [
+        {
+          "name": "channel",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "DIMENSION",
+          "description": "Sales channel through which the order was placed",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "currency",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "TEXT_ATTRIBUTE",
+          "description": "Currency code for monetary amounts",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "customer_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "ENTITY_REFERENCE",
+          "description": "Reference identifier for the customer placing the order",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "order_amount",
+          "type": "DECIMAL",
+          "physical_type": "float64",
+          "role": "MEASURE",
+          "description": "Total monetary amount for the order",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "order_date",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "TEXT_ATTRIBUTE",
+          "description": "Date when the order was placed",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "order_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "IDENTIFIER",
+          "description": "Unique business key for the order",
+          "key": true,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "shipping_amount",
+          "type": "DECIMAL",
+          "physical_type": "float64",
+          "role": "MEASURE",
+          "description": "Monetary cost for shipping the order",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "STATUS",
+          "description": "Current processing status of the order",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "subtotal_amount",
+          "type": "DECIMAL",
+          "physical_type": "float64",
+          "role": "MEASURE",
+          "description": "Subtotal monetary amount before tax and shipping",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "tax_amount",
+          "type": "DECIMAL",
+          "physical_type": "float64",
+          "role": "MEASURE",
+          "description": "Monetary tax amount applied to the order",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        }
+      ],
+      "state_id": 49,
+      "gold_run_id": 14,
+      "profile_id": 19
+    },
+    {
+      "dataset_id": 35,
+      "name": "OrderItems",
+      "alias": "orderitems_d35",
+      "queryable": true,
+      "freshness": "Current",
+      "reason": "",
+      "row_count": 3081,
+      "updated_at": "2026-10-14T21:32:45.341123+05:30",
+      "columns": [
+        {
+          "name": "discount_amount",
+          "type": "DECIMAL",
+          "physical_type": "float64",
+          "role": "MEASURE",
+          "description": "Monetary discount applied to the order item.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "line_amount",
+          "type": "DECIMAL",
+          "physical_type": "float64",
+          "role": "MEASURE",
+          "description": "Total monetary amount for the order line item.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "order_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "ENTITY_REFERENCE",
+          "description": "Reference to the parent order identifier.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "order_item_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "IDENTIFIER",
+          "description": "Unique identifier for the order item.",
+          "key": true,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "product_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "ENTITY_REFERENCE",
+          "description": "Reference to the associated product identifier.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "quantity",
+          "type": "INTEGER",
+          "physical_type": "int64",
+          "role": "MEASURE",
+          "description": "Count of units ordered for the item.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "unit_price",
+          "type": "DECIMAL",
+          "physical_type": "float64",
+          "role": "MEASURE",
+          "description": "Price per single unit of the product.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        }
+      ],
+      "state_id": 46,
+      "gold_run_id": 11,
+      "profile_id": 16
+    },
+    {
+      "dataset_id": 36,
+      "name": "Payments",
+      "alias": "payments_d36",
+      "queryable": true,
+      "freshness": "Current",
+      "reason": "",
+      "row_count": 1078,
+      "updated_at": "2026-10-15T09:44:41.676785+05:30",
+      "columns": [
+        {
+          "name": "currency",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "CODE",
+          "description": "Currency code for the payment amount.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "order_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "ENTITY_REFERENCE",
+          "description": "Reference to the associated order.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "payment_amount",
+          "type": "DECIMAL",
+          "physical_type": "float64",
+          "role": "MEASURE",
+          "description": "Monetary value of the payment.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "payment_date",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "TEXT_ATTRIBUTE",
+          "description": "Date when the payment occurred.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "payment_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "IDENTIFIER",
+          "description": "Unique identifier for the payment record.",
+          "key": true,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "payment_method",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "CATEGORY",
+          "description": "Method used to execute the payment.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "payment_status",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "STATUS",
+          "description": "Current state or status of the payment.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        }
+      ],
+      "state_id": 47,
+      "gold_run_id": 12,
+      "profile_id": 17
+    },
+    {
+      "dataset_id": 37,
+      "name": "Returns",
+      "alias": "returns_d37",
+      "queryable": true,
+      "freshness": "Current",
+      "reason": "",
+      "row_count": 47,
+      "updated_at": "2026-10-15T09:48:21.910409+05:30",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "IDENTIFIER",
+          "description": "Unique identifier referencing the original order.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "product_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "ENTITY_REFERENCE",
+          "description": "Identifier referencing the specific product being returned.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "reason",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "CATEGORY",
+          "description": "Category or description of why the product was returned.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "refund_amount",
+          "type": "DECIMAL",
+          "physical_type": "float64",
+          "role": "MEASURE",
+          "description": "Monetary value refunded for the return.",
+          "key": false,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        },
+        {
+          "name": "return_date",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "TEXT_ATTRIBUTE",
+          "description": "Date or timestamp associated with the return.",
+          "key": false,
+          "time": false,
+          "sensitive": true,
+          "queryable": false
+        },
+        {
+          "name": "return_id",
+          "type": "TEXT",
+          "physical_type": "str",
+          "role": "IDENTIFIER",
+          "description": "Unique business key for the return record.",
+          "key": true,
+          "time": false,
+          "sensitive": false,
+          "queryable": true
+        }
+      ],
+      "state_id": 48,
+      "gold_run_id": 13,
+      "profile_id": 18
+    }
+  ],
+  "relationships": [
+    {
+      "relationship_id": 23,
+      "version": 2,
+      "parent": {
+        "columns": [
+          "customer_id"
+        ],
+        "dataset_id": 32,
+        "dataset_name": "Customers",
+        "normalized_columns": [
+          "customer_id"
+        ]
+      },
+      "child": {
+        "columns": [
+          "customer_id"
+        ],
+        "dataset_id": 34,
+        "dataset_name": "Orders",
+        "normalized_columns": [
+          "customer_id"
+        ]
+      },
+      "cardinality": "ONE_TO_MANY"
+    },
+    {
+      "relationship_id": 24,
+      "version": 2,
+      "parent": {
+        "columns": [
+          "order_id"
+        ],
+        "dataset_id": 34,
+        "dataset_name": "Orders",
+        "normalized_columns": [
+          "order_id"
+        ]
+      },
+      "child": {
+        "columns": [
+          "order_id"
+        ],
+        "dataset_id": 36,
+        "dataset_name": "Payments",
+        "normalized_columns": [
+          "order_id"
+        ]
+      },
+      "cardinality": "ONE_TO_MANY"
+    },
+    {
+      "relationship_id": 27,
+      "version": 2,
+      "parent": {
+        "columns": [
+          "order_id"
+        ],
+        "dataset_id": 34,
+        "dataset_name": "Orders",
+        "normalized_columns": [
+          "order_id"
+        ]
+      },
+      "child": {
+        "columns": [
+          "order_id"
+        ],
+        "dataset_id": 35,
+        "dataset_name": "OrderItems",
+        "normalized_columns": [
+          "order_id"
+        ]
+      },
+      "cardinality": "ONE_TO_MANY"
+    },
+    {
+      "relationship_id": 17,
+      "version": 1,
+      "parent": {
+        "columns": [
+          "product_id"
+        ],
+        "dataset_id": 33,
+        "dataset_name": "Products",
+        "normalized_columns": [
+          "product_id"
+        ]
+      },
+      "child": {
+        "columns": [
+          "product_id"
+        ],
+        "dataset_id": 37,
+        "dataset_name": "Returns",
+        "normalized_columns": [
+          "product_id"
+        ]
+      },
+      "cardinality": "ONE_TO_MANY"
+    },
+    {
+      "relationship_id": 40,
+      "version": 2,
+      "parent": {
+        "columns": [
+          "order_id"
+        ],
+        "dataset_id": 34,
+        "dataset_name": "Orders",
+        "normalized_columns": [
+          "order_id"
+        ]
+      },
+      "child": {
+        "columns": [
+          "order_id"
+        ],
+        "dataset_id": 37,
+        "dataset_name": "Returns",
+        "normalized_columns": [
+          "order_id"
+        ]
+      },
+      "cardinality": "ONE_TO_ONE"
+    },
+    {
+      "relationship_id": 19,
+      "version": 1,
+      "parent": {
+        "columns": [
+          "product_id"
+        ],
+        "dataset_id": 33,
+        "dataset_name": "Products",
+        "normalized_columns": [
+          "product_id"
+        ]
+      },
+      "child": {
+        "columns": [
+          "product_id"
+        ],
+        "dataset_id": 35,
+        "dataset_name": "OrderItems",
+        "normalized_columns": [
+          "product_id"
+        ]
+      },
+      "cardinality": "ONE_TO_MANY"
+    }
+  ],
+  "capabilities": {
+    "dialect": "DuckDB",
+    "functions": [
+      "COUNT",
+      "SUM",
+      "AVG",
+      "MIN",
+      "MAX",
+      "ABS",
+      "ROUND",
+      "CEIL",
+      "FLOOR",
+      "LOWER",
+      "UPPER",
+      "LENGTH",
+      "TRIM",
+      "COALESCE",
+      "NULLIF",
+      "CONCAT",
+      "SUBSTRING",
+      "REPLACE",
+      "CAST",
+      "TRY_CAST",
+      "EXTRACT",
+      "DATE_TRUNC",
+      "ROW_NUMBER",
+      "RANK",
+      "DENSE_RANK",
+      "LAG",
+      "LEAD",
+      "FIRST_VALUE",
+      "LAST_VALUE"
+    ],
+    "limits": {
+      "output_rows": 500,
+      "output_bytes": 1000000,
+      "input_rows": 250000,
+      "total_rows": 500000,
+      "input_bytes": 128000000,
+      "artifact_bytes": 67108864,
+      "footer_bytes": 1000000,
+      "input_columns": 128,
+      "row_groups": 512,
+      "input_seconds": 30,
+      "seconds": 30,
+      "text_length": 20000,
+      "ast_nodes": 1500,
+      "depth": 12,
+      "datasets": 2,
+      "history": 100,
+      "saved_queries": 100,
+      "memory_mb": 256,
+      "concurrency": 2
+    },
+    "join_policy": "One direct current confirmed relationship; child-to-parent lookup only.",
+    "sensitivity_policy": "Fields with current sensitivity hints are unavailable in SQL.",
+    "result_policy": "Ad hoc SQL result; bounded authorized rows, not a trusted metric."
+  }
+}

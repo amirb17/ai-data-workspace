@@ -1,3 +1,6 @@
+from datetime import date, datetime
+import re
+
 import pandas as pd
 
 
@@ -94,6 +97,24 @@ def convert_to_datetime(
 
     return converted, invalid_mask
 
+def convert_to_date(series: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """Explicit calendar dates: no timestamp truncation or timezone inference."""
+    def parse(value):
+        if pd.isna(value):
+            return None
+        if isinstance(value, date) and not isinstance(value, datetime):
+            return value
+        if isinstance(value, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                pass
+        return None
+
+    converted = pd.Series([parse(value) for value in series], index=series.index, dtype=object)
+    return converted, series.notna() & converted.isna()
+
+
 def apply_transformations(
     df: pd.DataFrame,
     rules: list,
@@ -143,6 +164,11 @@ def apply_transformations(
                 transformation_errors[
                     f"{column_name}:INVALID_NUMERIC"
                 ] = invalid_mask
+
+            elif target_type == "DATE":
+                converted, invalid_mask = convert_to_date(df[column_name])
+                df[column_name] = converted
+                transformation_errors[f"{column_name}:INVALID_DATETIME"] = invalid_mask
 
             elif target_type == "DATETIME":
                 converted, invalid_mask = convert_to_datetime(

@@ -1,0 +1,127 @@
+[
+  {
+    "script": "tests\\analytics-experience.cjs",
+    "exit_code": 0,
+    "output": "Phase 8C readiness, KPI selection, formatting, stale/zero/no-data, charts, gaps, density and isolation passed"
+  },
+  {
+    "script": "tests\\backend-integration.cjs",
+    "exit_code": 0,
+    "output": "Backend identity/API mapping, MIME, states, gated uploads, retries, canonical reuse, batch lineage, storage recovery, aborts and all scopes passed."
+  },
+  {
+    "script": "tests\\contracts.cjs",
+    "exit_code": 0,
+    "output": "Contract defaults, validation, ownership, legacy compatibility, schema policies, change events, and Phase 1.1 persistence checks passed."
+  },
+  {
+    "script": "tests\\cumulative-analytics.cjs",
+    "exit_code": 0,
+    "output": "Cumulative analytics freshness, counts, timestamps, retry, active semantics and scoped API checks passed\nIncremental policy ownership, explicit backend bridge, readiness and null metrics checks passed"
+  },
+  {
+    "script": "tests\\delivery-archive.cjs",
+    "exit_code": 0,
+    "output": "Delivery removal/archival policy, confirmation, running-state guard, responsive structure and scoped API checks passed."
+  },
+  {
+    "script": "tests\\file-content-duplicates.cjs",
+    "exit_code": 0,
+    "output": "SHA-256, filename independence, content changes, scoped dedupe, legacy reads, repeated clicks, storage guard and batch-retry checks passed."
+  },
+  {
+    "script": "tests\\incremental.cjs",
+    "exit_code": 0,
+    "output": "Incremental policy ownership, explicit backend bridge, readiness and null metrics checks passed"
+  },
+  {
+    "script": "tests\\ingestion-batches.cjs",
+    "exit_code": 0,
+    "output": "Batch persistence, ownership isolation, idempotency, blocked schemas, file linkage, unavailable outcomes, and failed-write recovery checks passed."
+  },
+  {
+    "script": "tests\\metrics.cjs",
+    "exit_code": 0,
+    "output": "Metric decision classes, exact definitions, freshness, scoped API and navigation guards passed"
+  },
+  {
+    "script": "tests\\phase8a-fixture-display.cjs",
+    "exit_code": 0,
+    "output": "Real PostgreSQL API → production frontend: both numeric values 2, fresh, automatic/optional labels, no approval dialog"
+  },
+  {
+    "script": "tests\\phase8b-fixture-display.cjs",
+    "exit_code": 0,
+    "output": "Phase 8B browser fixture replay prepared from verified API answers"
+  },
+  {
+    "script": "tests\\phase8c-fixture-display.cjs",
+    "exit_code": 0,
+    "output": "Phase 8C real HTTP fixture preview prepared; cross/partial modes are clearly labeled saved-response replay"
+  },
+  {
+    "script": "tests\\processing.cjs",
+    "exit_code": 0,
+    "output": "Named breadcrumbs, real headers, delivery terminology, primary actions, stages, result variants, truthful rates, rules/retries, empty/ready views, responsive structure, private metadata filtering, scope isolation and refresh checks passed."
+  },
+  {
+    "script": "tests\\relationships.cjs",
+    "exit_code": 0,
+    "output": "Relationship lifecycle, evidence, reviews, freshness, API scope and responsive structure passed"
+  },
+  {
+    "script": "tests\\rule-approval.cjs",
+    "exit_code": 0,
+    "output": "Explicit answers, approval gating, version guards, scoped APIs, refresh reads, safe errors and truthful batch state passed."
+  },
+  {
+    "script": "tests\\semantic-profile.cjs",
+    "exit_code": 0,
+    "output": "Semantic profile freshness, factual wording, redaction, context isolation and responsive structure passed\nIncremental policy ownership, explicit backend bridge, readiness and null metrics checks passed"
+  },
+  {
+    "script": "tests\\snapshot.cjs",
+    "exit_code": 0,
+    "output": "SNAPSHOT policy, declarations, partial/stale notices, lifecycle metrics and policy lock SSR checks passed\nIncremental policy ownership, explicit backend bridge, readiness and null metrics checks passed"
+  },
+  {
+    "script": "tests\\sql-analytics.cjs",
+    "exit_code": 0,
+    "output": "SQL exact values, nulls, bounded/history rendering, chart compatibility and API isolation passed"
+  },
+  {
+    "script": "tests\\sql-select-interaction.cjs",
+    "exit_code": 0,
+    "output": "SQL select: portal, viewport placement, focus, disabled reasons, keyboard, outside close, multi-select, empty and loading passed\nSQL Builder: numeric aggregation, typed filter operators/inputs, confirmed lookup and dataset dependency resets passed"
+  },
+  {
+    "script": "tests\\sql-workspace-interaction.cjs",
+    "exit_code": 0,
+    "output": "SQL workspace integration passed: default modes, previews/no execution, copy, typed fields, run/results/search/details, validation/format, transitions, guards, drawers/search/rename/history/delete cancel, async race, workspace reset"
+  },
+  {
+    "script": "tests\\understanding.cjs",
+    "exit_code": 0,
+    "output": "AI Understanding lifecycle, suggestions, uncertainty, evidence distinction, redaction, scoped API and responsive structure passed"
+  },
+  {
+    "script": "tests\\ux-consistency.cjs",
+    "exit_code": 0,
+    "output": "Phase 5C statuses, workspace states, overview guidance, authoritative Files, contract setup/summary/edit, Rules reuse/review, upload steps, duplicates, quality/readiness, unavailable archival and scope checks passed."
+  },
+  {
+    "script": "tests\\workspace-analytics.cjs",
+    "exit_code": 0,
+    "output": "Workspace analytics lifecycle, real-value gating, optional review, responsive structure and ownership passed"
+  },
+  {
+    "script": "tests\\workspace-questions.cjs",
+    "exit_code": 0,
+    "output": "Workspace question states, scalar/table/charts, provenance, clarification, scoping and API passed"
+  },
+  {
+    "script": "tests\\workspace-understanding.cjs",
+    "exit_code": 0,
+    "output": "Workspace lifecycle, coverage, domain, entities, processes, roles, uncertainty, scoping and responsive structure passed"
+  }
+]

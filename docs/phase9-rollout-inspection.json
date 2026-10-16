@@ -1,0 +1,30 @@
+{
+  "database": "ai_data_workspace",
+  "schema": "public",
+  "migration": "migrations\\0025_sql_analytics.sql",
+  "sha256": "06c6ffc8a3e29ffc4ef210f4597f0933116d02aff14167fe8947915c8ec11d3f",
+  "additive_review": "CREATE only: two metadata tables, two explicit indexes, two functions, three triggers, implicit keys/sequences; no business DML or existing-table alterations",
+  "tables_absent": {
+    "saved_sql_queries": true,
+    "sql_query_executions": true
+  },
+  "objects_absent": {
+    "saved_sql_queries_query_id_seq": true,
+    "sql_query_executions_execution_id_seq": true,
+    "saved_sql_workspace": true,
+    "sql_execution_history": true,
+    "protect_sql_execution": true,
+    "validate_sql_metadata_owner": true
+  },
+  "core_counts_before": {
+    "datasets": 26,
+    "dataset_state_versions": 41,
+    "dataset_gold_runs": 7,
+    "metric_candidates": 54,
+    "metric_reviews": 0,
+    "approved_metric_definitions": 0,
+    "workspace_metric_results": 0,
+    "workspace_answers": 39
+  },
+  "applied": false
+}

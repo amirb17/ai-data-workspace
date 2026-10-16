@@ -16,6 +16,7 @@ class BusinessRuleAnswer(BaseModel):
         "QUARANTINE",
         "DECIMAL",
         "DATETIME",
+        "DATE",
     ]
 
 
@@ -36,4 +37,5 @@ class BusinessRuleUpdate(BaseModel):
         "QUARANTINE",
         "DECIMAL",
         "DATETIME",
+        "DATE",
     ]

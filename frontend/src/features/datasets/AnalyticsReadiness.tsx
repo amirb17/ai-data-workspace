@@ -3,7 +3,7 @@ import { useApiResource } from '../../services/api/useApiResource'
 import { getDatasetAnalytics, getAnalyticsReadiness, refreshDatasetAnalytics, type DatasetAnalytics } from '../../services/api/analytics'
 import { ApiFeedback } from '../../components/ui/ApiFeedback'
 
-const labels = { FRESH: 'Fresh', STALE: 'Refresh required', REFRESHING: 'Refreshing', FAILED: 'Needs attention', NOT_READY: 'Not ready' }
+const labels = { FRESH: 'Current', STALE: 'Refresh needed', REFRESHING: 'Refreshing', FAILED: 'Couldn’t complete', NOT_READY: 'Not prepared' }
 const time = (value: string | null) => value ? new Date(value).toLocaleString() : '—'
 export function AnalyticsStatus({data, busy = false, error = '', refresh}: {data: DatasetAnalytics; busy?: boolean; error?: string; refresh: () => void}) {
   return <section className="min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-4 sm:p-5" aria-label="Dataset analytics readiness">

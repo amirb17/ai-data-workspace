@@ -23,7 +23,7 @@ def build_handoff(profile):
             raise ValueError('WIDTH_LIMIT')
         compact = {key: column[key] for key in ('original_name','normalized_name','tokens','canonical_type',
             'null_ratio','distinct_ratio','identifier_candidate','authoritative_business_key',
-            'business_key_position','authoritative_event_time','approved_required','sensitivity_hints')}
+            'business_key_position','authoritative_event_time','datetime_candidate','approved_required','sensitivity_hints')}
         # Preserve names/types for every column; rich context prioritized deterministically.
         important = column['authoritative_business_key'] or column['authoritative_event_time'] or bool(column['sensitivity_hints'])
         if not bundle['compact_mode'] or important:

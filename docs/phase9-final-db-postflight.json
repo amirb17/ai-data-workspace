@@ -1,0 +1,16 @@
+{
+  "database": "ai_data_workspace",
+  "schema": "public",
+  "migration_0025_healthy": true,
+  "core_counts_unchanged": true,
+  "core_counts": {
+    "datasets": 26,
+    "dataset_state_versions": 41,
+    "dataset_gold_runs": 7,
+    "metric_candidates": 54,
+    "metric_reviews": 0,
+    "approved_metric_definitions": 0,
+    "workspace_metric_results": 0,
+    "workspace_answers": 39
+  }
+}

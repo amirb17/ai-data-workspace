@@ -1,0 +1,96 @@
+{
+  "disposable_schema": true,
+  "public_data_unchanged": true,
+  "cases": [
+    {
+      "case": "current SELECT",
+      "status": "SUCCEEDED",
+      "row_count": 2,
+      "bounded": true
+    },
+    {
+      "case": "CTE",
+      "status": "SUCCEEDED",
+      "row_count": 1,
+      "bounded": true
+    },
+    {
+      "case": "aggregate",
+      "status": "SUCCEEDED",
+      "row_count": 1,
+      "bounded": true
+    },
+    {
+      "case": "confirmed lookup",
+      "status": "SUCCEEDED",
+      "row_count": 1,
+      "bounded": true
+    },
+    {
+      "case": "without LIMIT",
+      "status": "SUCCEEDED",
+      "row_count": 2,
+      "bounded": true
+    },
+    {
+      "case": "oversized output",
+      "status": "BLOCKED",
+      "code": "OUTPUT_LIMIT"
+    },
+    {
+      "case": "DROP",
+      "status": "BLOCKED",
+      "code": "READ_ONLY"
+    },
+    {
+      "case": "INSERT",
+      "status": "BLOCKED",
+      "code": "READ_ONLY"
+    },
+    {
+      "case": "multiple statements",
+      "status": "BLOCKED",
+      "code": "READ_ONLY"
+    },
+    {
+      "case": "ATTACH",
+      "status": "BLOCKED",
+      "code": "READ_ONLY"
+    },
+    {
+      "case": "read_parquet",
+      "status": "BLOCKED",
+      "code": "NAMESPACE"
+    },
+    {
+      "case": "read_csv",
+      "status": "BLOCKED",
+      "code": "NAMESPACE"
+    },
+    {
+      "case": "external HTTP",
+      "status": "BLOCKED",
+      "code": "NAMESPACE"
+    },
+    {
+      "case": "system catalog",
+      "status": "BLOCKED",
+      "code": "NAMESPACE"
+    },
+    {
+      "case": "engine catalog",
+      "status": "BLOCKED",
+      "code": "NAMESPACE"
+    },
+    {
+      "case": "another workspace",
+      "status": "BLOCKED",
+      "code": "DATASET"
+    },
+    {
+      "case": "comments around unsafe syntax",
+      "status": "BLOCKED",
+      "code": "READ_ONLY"
+    }
+  ]
+}

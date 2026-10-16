@@ -1,0 +1,28 @@
+{
+  "status": "COMPLETE",
+  "timestamp": "2026-10-12T16:20:02.852885+00:00",
+  "single_dataset_rows": [
+    [
+      "open",
+      2,
+      30
+    ]
+  ],
+  "confirmed_lookup_count": 2,
+  "desktop_verified": true,
+  "mobile_width": 390,
+  "mobile_page_width": 375,
+  "mobile_run_bounds": [
+    784,
+    828
+  ],
+  "mobile_popup_bounds": [
+    32.67,
+    450,
+    342,
+    732.33
+  ],
+  "tablet_width": 768,
+  "tablet_page_width": 753,
+  "public_business_data_unchanged": true
+}

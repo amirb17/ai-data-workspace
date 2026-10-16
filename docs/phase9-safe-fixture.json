@@ -1,0 +1,291 @@
+{
+  "fixture": "Disposable PostgreSQL schema, real cumulative Gold Parquet in in-memory S3, real DuckDB worker and FastAPI",
+  "public_database_unchanged": true,
+  "catalog": {
+    "workspace_id": 1,
+    "workspace_name": "Test",
+    "datasets": [
+      {
+        "dataset_id": 1,
+        "name": "Orders",
+        "alias": "orders_d1",
+        "queryable": true,
+        "freshness": "Current",
+        "reason": "",
+        "row_count": 2,
+        "updated_at": "2026-10-12 21:19:19.279812+05:30",
+        "columns": [
+          {
+            "name": "amount",
+            "type": "INTEGER",
+            "physical_type": "int64",
+            "role": "MEASURE",
+            "description": "Literal synthetic field",
+            "key": false,
+            "time": false,
+            "sensitive": false,
+            "queryable": true
+          },
+          {
+            "name": "id",
+            "type": "DECIMAL",
+            "physical_type": "float64",
+            "role": "UNKNOWN",
+            "description": "Literal synthetic field",
+            "key": false,
+            "time": false,
+            "sensitive": false,
+            "queryable": true
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "physical_type": "str",
+            "role": "STATUS",
+            "description": "Literal synthetic field",
+            "key": false,
+            "time": false,
+            "sensitive": false,
+            "queryable": true
+          }
+        ],
+        "state_id": 1,
+        "gold_run_id": 2,
+        "profile_id": 1
+      },
+      {
+        "dataset_id": 2,
+        "name": "Customers",
+        "alias": "customers_d2",
+        "queryable": true,
+        "freshness": "Current",
+        "reason": "",
+        "row_count": 2,
+        "updated_at": "2026-10-12 21:19:17.890407+05:30",
+        "columns": [
+          {
+            "name": "amount",
+            "type": "INTEGER",
+            "physical_type": "int64",
+            "role": "MEASURE",
+            "description": "Literal synthetic field",
+            "key": false,
+            "time": false,
+            "sensitive": false,
+            "queryable": true
+          },
+          {
+            "name": "id",
+            "type": "DECIMAL",
+            "physical_type": "float64",
+            "role": "UNKNOWN",
+            "description": "Literal synthetic field",
+            "key": false,
+            "time": false,
+            "sensitive": false,
+            "queryable": true
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "physical_type": "str",
+            "role": "STATUS",
+            "description": "Literal synthetic field",
+            "key": false,
+            "time": false,
+            "sensitive": false,
+            "queryable": true
+          }
+        ],
+        "state_id": 2,
+        "gold_run_id": 1,
+        "profile_id": 2
+      }
+    ],
+    "relationships": [
+      {
+        "relationship_id": 1,
+        "version": 1,
+        "parent": {
+          "columns": [
+            "id"
+          ],
+          "dataset_id": 1,
+          "dataset_name": "Orders",
+          "normalized_columns": [
+            "id"
+          ]
+        },
+        "child": {
+          "columns": [
+            "id"
+          ],
+          "dataset_id": 2,
+          "dataset_name": "Customers",
+          "normalized_columns": [
+            "id"
+          ]
+        },
+        "cardinality": "ONE_TO_ONE"
+      }
+    ],
+    "capabilities": {
+      "dialect": "DuckDB",
+      "functions": [
+        "COUNT",
+        "SUM",
+        "AVG",
+        "MIN",
+        "MAX",
+        "ABS",
+        "ROUND",
+        "CEIL",
+        "FLOOR",
+        "LOWER",
+        "UPPER",
+        "LENGTH",
+        "TRIM",
+        "COALESCE",
+        "NULLIF",
+        "CONCAT",
+        "SUBSTRING",
+        "REPLACE",
+        "CAST",
+        "TRY_CAST",
+        "EXTRACT",
+        "DATE_TRUNC",
+        "ROW_NUMBER",
+        "RANK",
+        "DENSE_RANK",
+        "LAG",
+        "LEAD",
+        "FIRST_VALUE",
+        "LAST_VALUE"
+      ],
+      "limits": {
+        "output_rows": 500,
+        "output_bytes": 1000000,
+        "input_rows": 250000,
+        "total_rows": 500000,
+        "input_bytes": 128000000,
+        "artifact_bytes": 67108864,
+        "footer_bytes": 1000000,
+        "input_columns": 128,
+        "row_groups": 512,
+        "input_seconds": 30,
+        "seconds": 30,
+        "text_length": 20000,
+        "ast_nodes": 1500,
+        "depth": 12,
+        "datasets": 2,
+        "history": 100,
+        "saved_queries": 100,
+        "memory_mb": 256,
+        "concurrency": 2
+      },
+      "join_policy": "One direct current confirmed relationship; child-to-parent lookup only.",
+      "sensitivity_policy": "Fields with current sensitivity hints are unavailable in SQL.",
+      "result_policy": "Ad hoc SQL result; bounded authorized rows, not a trusted metric."
+    }
+  },
+  "cross_query": "SELECT p.status, COUNT(*) AS records FROM \"customers_d2\" c LEFT JOIN \"orders_d1\" p ON c.\"id\"=p.\"id\" GROUP BY p.status",
+  "cross_result": {
+    "workspace_id": 1,
+    "execution_id": 1,
+    "executed_at": "2026-10-12 21:19:24.589257+05:30",
+    "status": "SUCCEEDED",
+    "duration_ms": 1728,
+    "diagnostics": [],
+    "sources": [
+      {
+        "dataset_id": 1,
+        "name": "Orders",
+        "alias": "orders_d1",
+        "state_id": 1,
+        "gold_run_id": 2,
+        "profile_id": 1
+      },
+      {
+        "dataset_id": 2,
+        "name": "Customers",
+        "alias": "customers_d2",
+        "state_id": 2,
+        "gold_run_id": 1,
+        "profile_id": 2
+      }
+    ],
+    "relationships": [
+      {
+        "relationship_id": 1,
+        "version": 1,
+        "parent": {
+          "columns": [
+            "id"
+          ],
+          "dataset_id": 1,
+          "dataset_name": "Orders",
+          "normalized_columns": [
+            "id"
+          ]
+        },
+        "child": {
+          "columns": [
+            "id"
+          ],
+          "dataset_id": 2,
+          "dataset_name": "Customers",
+          "normalized_columns": [
+            "id"
+          ]
+        },
+        "cardinality": "ONE_TO_ONE"
+      }
+    ],
+    "source_signature": "0dd62e8ac7972b7936f6169fb9085c6a93fc600f69ee9f106109ba3fac545d3a",
+    "normalized_sql": "SELECT \"p\".\"status\" AS \"status\", COUNT(*) AS \"records\" FROM \"customers_d2\" AS \"c\" LEFT JOIN \"orders_d1\" AS \"p\" ON \"c\".\"id\" = \"p\".\"id\" GROUP BY \"p\".\"status\"",
+    "configuration": {
+      "output_rows": 500,
+      "output_bytes": 1000000,
+      "input_rows": 250000,
+      "total_rows": 500000,
+      "input_bytes": 128000000,
+      "artifact_bytes": 67108864,
+      "footer_bytes": 1000000,
+      "input_columns": 128,
+      "row_groups": 512,
+      "input_seconds": 30,
+      "seconds": 30,
+      "text_length": 20000,
+      "ast_nodes": 1500,
+      "depth": 12,
+      "datasets": 2,
+      "history": 100,
+      "saved_queries": 100,
+      "memory_mb": 256,
+      "concurrency": 2
+    },
+    "trust_label": "Ad hoc SQL result",
+    "columns": [
+      {
+        "name": "status",
+        "type": "VARCHAR"
+      },
+      {
+        "name": "records",
+        "type": "BIGINT"
+      }
+    ],
+    "row_count": 1,
+    "truncated": false,
+    "engine": "DuckDB",
+    "engine_version": "1.5.6",
+    "rows": [
+      [
+        "open",
+        2
+      ]
+    ],
+    "freshness": "Current"
+  },
+  "other_workspace_id": 2
+}

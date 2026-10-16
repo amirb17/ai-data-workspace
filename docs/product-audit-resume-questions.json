@@ -1,0 +1,738 @@
+{
+  "workspace_id": 18,
+  "answers": [
+    {
+      "answer_id": 56,
+      "workspace_id": 18,
+      "question": "Show revenue.",
+      "intent": {
+        "question_type": "SCALAR",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": null,
+        "aggregation": null,
+        "measure": null,
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "BUSINESS_AMBIGUOUS"
+      },
+      "status": "CLARIFICATION_REQUIRED",
+      "freshness": "UNAVAILABLE",
+      "computed_at": "2026-10-15T21:18:17.103085+05:30",
+      "primary_answer": "Which confirmed business measure should this question use?",
+      "result_kind": null,
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": null,
+      "dimensions": [],
+      "provenance": [],
+      "relationship_versions": [],
+      "interpretation": "",
+      "explanation": "",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [
+        {
+          "label": "Total unit price in Products",
+          "choice_id": 0
+        },
+        {
+          "label": "Total order amount in Orders",
+          "choice_id": 1
+        },
+        {
+          "label": "Total shipping amount in Orders",
+          "choice_id": 2
+        },
+        {
+          "label": "Total subtotal amount in Orders",
+          "choice_id": 3
+        },
+        {
+          "label": "Total tax amount in Orders",
+          "choice_id": 4
+        },
+        {
+          "label": "Total discount amount in OrderItems",
+          "choice_id": 5
+        },
+        {
+          "label": "Total line amount in OrderItems",
+          "choice_id": 6
+        },
+        {
+          "label": "Total quantity in OrderItems",
+          "choice_id": 7
+        },
+        {
+          "label": "Total unit price in OrderItems",
+          "choice_id": 8
+        },
+        {
+          "label": "Total payment amount in Payments",
+          "choice_id": 9
+        }
+      ],
+      "reused": false
+    },
+    {
+      "answer_id": 55,
+      "workspace_id": 18,
+      "question": "How many orders are there?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": 34,
+        "aggregation": "COUNT_DISTINCT",
+        "measure": {
+          "dataset_id": 34,
+          "column": "order_id"
+        },
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "ANSWERED",
+      "freshness": "FRESH",
+      "computed_at": "2026-10-15T21:17:55.871525+05:30",
+      "primary_answer": "1,050",
+      "result_kind": "scalar",
+      "value": 1050,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": {
+        "name": "COUNT_DISTINCT(order_id)",
+        "temporary": true
+      },
+      "dimensions": [],
+      "provenance": [
+        {
+          "state_id": 49,
+          "dataset_id": 34,
+          "gold_run_id": 14,
+          "dataset_name": "Orders"
+        }
+      ],
+      "relationship_versions": [],
+      "interpretation": "COUNT_DISTINCT(order_id)",
+      "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+      "caveats": [],
+      "follow_ups": [
+        "Break this down by channel",
+        "Break this down by status"
+      ],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 54,
+      "workspace_id": 18,
+      "question": "How many orders are there?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": 34,
+        "aggregation": "COUNT_DISTINCT",
+        "measure": {
+          "dataset_id": 34,
+          "column": "order_id"
+        },
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "REFRESH_REQUIRED",
+      "freshness": "UNAVAILABLE",
+      "computed_at": "2026-10-15T21:13:17.246799+05:30",
+      "primary_answer": "Refresh the dataset profile and understanding before asking about it.",
+      "result_kind": null,
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": null,
+      "dimensions": [],
+      "provenance": [],
+      "relationship_versions": [],
+      "interpretation": "",
+      "explanation": "",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 53,
+      "workspace_id": 18,
+      "question": "Now show payment amount by payment status.",
+      "intent": {
+        "question_type": "BREAKDOWN",
+        "context_mode": "NEW",
+        "metric_candidate_id": 68,
+        "base_dataset_id": 36,
+        "aggregation": "SUM",
+        "measure": {
+          "dataset_id": 36,
+          "column": "payment_amount"
+        },
+        "dimensions": [
+          {
+            "dataset_id": 36,
+            "column": "payment_status"
+          }
+        ],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "ANSWERED",
+      "freshness": "FRESH",
+      "computed_at": "2026-10-15T21:12:09.631129+05:30",
+      "primary_answer": "4 groups calculated.",
+      "result_kind": "grouped",
+      "value": null,
+      "groups": [
+        {
+          "dimensions": [
+            "Failed"
+          ],
+          "value": 0.0
+        },
+        {
+          "dimensions": [
+            "Paid"
+          ],
+          "value": 43584403.879999995
+        },
+        {
+          "dimensions": [
+            "Pending"
+          ],
+          "value": 3255482.7500000005
+        },
+        {
+          "dimensions": [
+            "Refunded"
+          ],
+          "value": 5001139.93
+        }
+      ],
+      "comparison": null,
+      "metric_reference": {
+        "name": "Total payment_amount",
+        "temporary": true
+      },
+      "dimensions": [
+        "payment_status"
+      ],
+      "provenance": [
+        {
+          "state_id": 47,
+          "dataset_id": 36,
+          "gold_run_id": 12,
+          "dataset_name": "Payments"
+        }
+      ],
+      "relationship_versions": [],
+      "interpretation": "Total payment_amount",
+      "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+      "caveats": [],
+      "follow_ups": [
+        "Break this down by currency",
+        "Break this down by payment_method",
+        "Break this down by payment_status"
+      ],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 52,
+      "workspace_id": 18,
+      "question": "What about by channel?",
+      "intent": {
+        "question_type": "BREAKDOWN",
+        "context_mode": "FOLLOW_UP",
+        "metric_candidate_id": null,
+        "base_dataset_id": 34,
+        "aggregation": "COUNT_DISTINCT",
+        "measure": {
+          "dataset_id": 34,
+          "column": "order_id"
+        },
+        "dimensions": [
+          {
+            "dataset_id": 34,
+            "column": "channel"
+          }
+        ],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "ANSWERED",
+      "freshness": "STALE",
+      "computed_at": "2026-10-15T15:01:50.453737+05:30",
+      "primary_answer": "This historical answer needs a refresh before it can show current values.",
+      "result_kind": "grouped",
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": {
+        "name": "COUNT_DISTINCT(order_id)",
+        "temporary": true
+      },
+      "dimensions": [
+        "channel"
+      ],
+      "provenance": [
+        {
+          "state_id": 45,
+          "dataset_id": 34,
+          "gold_run_id": 10,
+          "dataset_name": "Orders"
+        }
+      ],
+      "relationship_versions": [],
+      "interpretation": "COUNT_DISTINCT(order_id)",
+      "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+      "caveats": [],
+      "follow_ups": [
+        "Break this down by channel",
+        "Break this down by status"
+      ],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 51,
+      "workspace_id": 18,
+      "question": "What about by channel?",
+      "intent": {
+        "question_type": "BREAKDOWN",
+        "context_mode": "FOLLOW_UP",
+        "metric_candidate_id": null,
+        "base_dataset_id": 34,
+        "aggregation": "COUNT_DISTINCT",
+        "measure": {
+          "dataset_id": 34,
+          "column": "order_id"
+        },
+        "dimensions": [
+          {
+            "dataset_id": 34,
+            "column": "channel"
+          }
+        ],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "CLARIFICATION_REQUIRED",
+      "freshness": "UNAVAILABLE",
+      "computed_at": "2026-10-15T14:57:17.675864+05:30",
+      "primary_answer": "Which confirmed business measure should this question use?",
+      "result_kind": null,
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": null,
+      "dimensions": [],
+      "provenance": [],
+      "relationship_versions": [],
+      "interpretation": "",
+      "explanation": "",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 50,
+      "workspace_id": 18,
+      "question": "Show orders by status.",
+      "intent": {
+        "question_type": "BREAKDOWN",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": 34,
+        "aggregation": "COUNT_DISTINCT",
+        "measure": {
+          "dataset_id": 34,
+          "column": "order_id"
+        },
+        "dimensions": [
+          {
+            "dataset_id": 34,
+            "column": "status"
+          }
+        ],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "ANSWERED",
+      "freshness": "STALE",
+      "computed_at": "2026-10-15T14:56:51.120251+05:30",
+      "primary_answer": "This historical answer needs a refresh before it can show current values.",
+      "result_kind": "grouped",
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": {
+        "name": "COUNT_DISTINCT(order_id)",
+        "temporary": true
+      },
+      "dimensions": [
+        "status"
+      ],
+      "provenance": [
+        {
+          "state_id": 45,
+          "dataset_id": 34,
+          "gold_run_id": 10,
+          "dataset_name": "Orders"
+        }
+      ],
+      "relationship_versions": [],
+      "interpretation": "COUNT_DISTINCT(order_id)",
+      "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+      "caveats": [],
+      "follow_ups": [
+        "Break this down by channel",
+        "Break this down by status"
+      ],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 49,
+      "workspace_id": 18,
+      "question": "Show orders by status.",
+      "intent": {
+        "question_type": "BREAKDOWN",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": 34,
+        "aggregation": "COUNT_DISTINCT",
+        "measure": {
+          "dataset_id": 34,
+          "column": "order_id"
+        },
+        "dimensions": [
+          {
+            "dataset_id": 34,
+            "column": "status"
+          }
+        ],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "CLARIFICATION_REQUIRED",
+      "freshness": "UNAVAILABLE",
+      "computed_at": "2026-10-15T14:52:04.137432+05:30",
+      "primary_answer": "Which confirmed business measure should this question use?",
+      "result_kind": null,
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": null,
+      "dimensions": [],
+      "provenance": [],
+      "relationship_versions": [],
+      "interpretation": "",
+      "explanation": "",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 48,
+      "workspace_id": 18,
+      "question": "How many orders are there?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": 34,
+        "aggregation": "COUNT_DISTINCT",
+        "measure": {
+          "dataset_id": 34,
+          "column": "order_id"
+        },
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "ANSWERED",
+      "freshness": "STALE",
+      "computed_at": "2026-10-15T14:50:10.784298+05:30",
+      "primary_answer": "This historical answer needs a refresh before it can show current values.",
+      "result_kind": "scalar",
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": {
+        "name": "COUNT_DISTINCT(order_id)",
+        "temporary": true
+      },
+      "dimensions": [],
+      "provenance": [
+        {
+          "state_id": 45,
+          "dataset_id": 34,
+          "gold_run_id": 10,
+          "dataset_name": "Orders"
+        }
+      ],
+      "relationship_versions": [],
+      "interpretation": "COUNT_DISTINCT(order_id)",
+      "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+      "caveats": [],
+      "follow_ups": [
+        "Break this down by channel",
+        "Break this down by status"
+      ],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 47,
+      "workspace_id": 18,
+      "question": "How many orders are there?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": null,
+        "aggregation": null,
+        "measure": null,
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "UNSUPPORTED",
+      "freshness": "UNAVAILABLE",
+      "computed_at": "2026-10-15T14:47:18.798884+05:30",
+      "primary_answer": "An entity count requires a supported count measure.",
+      "result_kind": null,
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": null,
+      "dimensions": [],
+      "provenance": [],
+      "relationship_versions": [],
+      "interpretation": "",
+      "explanation": "",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 46,
+      "workspace_id": 18,
+      "question": "How many orders are there?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": null,
+        "aggregation": null,
+        "measure": null,
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "UNSUPPORTED",
+      "freshness": "UNAVAILABLE",
+      "computed_at": "2026-10-15T14:46:25.679260+05:30",
+      "primary_answer": "An entity count requires a supported count measure.",
+      "result_kind": null,
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": null,
+      "dimensions": [],
+      "provenance": [],
+      "relationship_versions": [],
+      "interpretation": "",
+      "explanation": "",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 45,
+      "workspace_id": 18,
+      "question": "How many orders are there?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": null,
+        "aggregation": null,
+        "measure": null,
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "UNSUPPORTED",
+      "freshness": "UNAVAILABLE",
+      "computed_at": "2026-10-15T14:44:53.294260+05:30",
+      "primary_answer": "An entity count requires a supported count measure.",
+      "result_kind": null,
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": null,
+      "dimensions": [],
+      "provenance": [],
+      "relationship_versions": [],
+      "interpretation": "",
+      "explanation": "",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 44,
+      "workspace_id": 18,
+      "question": "How many orders are there?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": null,
+        "aggregation": null,
+        "measure": null,
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "UNSUPPORTED",
+      "freshness": "UNAVAILABLE",
+      "computed_at": "2026-10-15T14:42:16.235350+05:30",
+      "primary_answer": "An entity count requires a supported count measure.",
+      "result_kind": null,
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": null,
+      "dimensions": [],
+      "provenance": [],
+      "relationship_versions": [],
+      "interpretation": "",
+      "explanation": "",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [],
+      "reused": false
+    },
+    {
+      "answer_id": 43,
+      "workspace_id": 18,
+      "question": "How many orders are there?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": null,
+        "aggregation": null,
+        "measure": null,
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "UNSUPPORTED",
+      "freshness": "UNAVAILABLE",
+      "computed_at": "2026-10-15T09:59:27.807221+05:30",
+      "primary_answer": "An entity count requires a supported count measure.",
+      "result_kind": null,
+      "value": null,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": null,
+      "dimensions": [],
+      "provenance": [],
+      "relationship_versions": [],
+      "interpretation": "",
+      "explanation": "",
+      "caveats": [],
+      "follow_ups": [],
+      "choices": [],
+      "reused": false
+    }
+  ]
+}

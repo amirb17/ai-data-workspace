@@ -1,4 +1,5 @@
 import type { Candidate, RelationshipEvidence } from '../../../services/api/relationships'
+import { statusLabel } from '../../../utils/statusLabels'
 const ratio = (value: number | null) => value === null ? 'Unavailable' : `${(value*100).toFixed(2)}%`
 export function RelationshipEvidenceCard({evidence: e}: {evidence: RelationshipEvidence}) {
   const s = e.signals, o = s.overlap
@@ -13,16 +14,18 @@ export function RelationshipEvidenceCard({evidence: e}: {evidence: RelationshipE
       <div><dt className="text-gray-500">Non-null child distinct-key coverage</dt><dd>{ratio(o.child_to_parent_coverage)} · {o.matched_distinct_keys} matched / {o.child_non_null_distinct_keys} distinct · {o.missing_distinct_keys} missing</dd></div>
       <div><dt className="text-gray-500">Parent keys referenced</dt><dd>{ratio(o.parent_referenced_ratio)} · {o.method.replaceAll('_',' ')}</dd></div>
     </dl>
-    <p className="mt-3 text-sm">Deterministic evidence score: {e.deterministic_score}/100 · not a probability</p>
+    <details className="mt-3 text-sm"><summary className="min-h-11 cursor-pointer py-2">Verification details</summary>
+    <p>Deterministic evidence score: {e.deterministic_score}/100 · not a probability</p>
     <ul className="mt-2 space-y-1 text-sm text-gray-600">{e.score_components.map(c=><li key={c.name}>{c.name}: {c.points} points — {c.explanation}</li>)}</ul>
     <p className="mt-3 text-sm">Semantic roles at verification: {s.parent_semantic_role ?? 'Unavailable'} / {s.child_semantic_role ?? 'Unavailable'}</p>
-    <ul className="mt-2 space-y-1 text-sm text-amber-800">{e.warnings.map(w=><li key={w}>{w}</li>)}</ul>
     <p className="mt-3 text-xs text-gray-500">{e.source_pins.map(p=>`Dataset ${p.dataset_id}: state ${p.state_version}, profile ${p.profile_version}`).join(' · ')}</p>
+    </details>
+    <ul className="mt-2 space-y-1 text-sm text-amber-800">{e.warnings.map(w=><li key={w}>{w}</li>)}</ul>
   </>
 }
 export function CandidateCard({candidate,busy,review}: {candidate: Candidate; busy: boolean; review: (candidate: Candidate, action: 'confirm' | 'reject') => void}) {
   return <article className="min-w-0 rounded-xl border border-gray-200 bg-white p-5">
-    <p className="mb-3 text-sm font-semibold">Suggested relationship · {candidate.review_status.replaceAll('_',' ')}</p>
+    <p className="mb-3 text-sm font-semibold">Suggested relationship · {statusLabel(candidate.review_status)}</p>
     <RelationshipEvidenceCard evidence={candidate.evidence}/>
     <div className="mt-4 flex flex-wrap gap-3">
       <button className="min-h-11 rounded-lg bg-indigo-600 px-4 py-2 text-white disabled:opacity-50" disabled={busy || !candidate.evidence.can_confirm || candidate.review_status==='CONFIRMED'} onClick={()=>review(candidate,'confirm')}>Confirm</button>

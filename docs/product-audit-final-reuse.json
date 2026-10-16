@@ -1,0 +1,267 @@
+{
+  "processing_32": {
+    "before": {
+      "total": 2,
+      "pending": 0,
+      "processing": 0,
+      "awaiting_rules": 0,
+      "successful": 2,
+      "failed": 0,
+      "needs_attention": 0
+    },
+    "after": {
+      "total": 2,
+      "pending": 0,
+      "processing": 0,
+      "awaiting_rules": 0,
+      "successful": 2,
+      "failed": 0,
+      "needs_attention": 0
+    },
+    "operation": {
+      "processed": 0,
+      "successful": 0,
+      "needs_attention": 0,
+      "outcomes": []
+    },
+    "same_deliveries": true
+  },
+  "profile_32": {
+    "before_id": 20,
+    "after_id": 20,
+    "same_id": true
+  },
+  "semantic-understanding_32": {
+    "before_id": 21,
+    "after_id": 21,
+    "same_id": true
+  },
+  "processing_34": {
+    "before": {
+      "total": 2,
+      "pending": 0,
+      "processing": 0,
+      "awaiting_rules": 0,
+      "successful": 2,
+      "failed": 0,
+      "needs_attention": 0
+    },
+    "after": {
+      "total": 2,
+      "pending": 0,
+      "processing": 0,
+      "awaiting_rules": 0,
+      "successful": 2,
+      "failed": 0,
+      "needs_attention": 0
+    },
+    "operation": {
+      "processed": 0,
+      "successful": 0,
+      "needs_attention": 0,
+      "outcomes": []
+    },
+    "same_deliveries": true
+  },
+  "profile_34": {
+    "before_id": 19,
+    "after_id": 19,
+    "same_id": true
+  },
+  "semantic-understanding_34": {
+    "before_id": 20,
+    "after_id": 20,
+    "same_id": true
+  },
+  "relationships": {
+    "before_run": null,
+    "after_run": 5,
+    "same_run": false
+  },
+  "metrics": {
+    "before_run": 6,
+    "after_run": 6,
+    "same_run": true
+  },
+  "ask_repeat": {
+    "first": {
+      "answer_id": 59,
+      "workspace_id": 18,
+      "question": "How many orders are there?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": 34,
+        "aggregation": "COUNT_DISTINCT",
+        "measure": {
+          "dataset_id": 34,
+          "column": "order_id"
+        },
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "ANSWERED",
+      "freshness": "FRESH",
+      "computed_at": "2026-10-16T09:59:26.919979+05:30",
+      "primary_answer": "1,050",
+      "result_kind": "scalar",
+      "value": 1050,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": {
+        "name": "COUNT_DISTINCT(order_id)",
+        "temporary": true
+      },
+      "dimensions": [],
+      "provenance": [
+        {
+          "state_id": 49,
+          "dataset_id": 34,
+          "gold_run_id": 14,
+          "dataset_name": "Orders"
+        }
+      ],
+      "relationship_versions": [],
+      "interpretation": "COUNT_DISTINCT(order_id)",
+      "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+      "caveats": [],
+      "follow_ups": [
+        "Break this down by channel",
+        "Break this down by status"
+      ],
+      "choices": [],
+      "reused": false
+    },
+    "second": {
+      "answer_id": 59,
+      "workspace_id": 18,
+      "question": "How many orders are there?",
+      "intent": {
+        "question_type": "COUNT",
+        "context_mode": "NEW",
+        "metric_candidate_id": null,
+        "base_dataset_id": 34,
+        "aggregation": "COUNT_DISTINCT",
+        "measure": {
+          "dataset_id": 34,
+          "column": "order_id"
+        },
+        "dimensions": [],
+        "time_field": null,
+        "time_grain": null,
+        "periods": [],
+        "relationship_ids": [],
+        "top_n": 10,
+        "direction": "DESC",
+        "meaning": "LITERAL"
+      },
+      "status": "ANSWERED",
+      "freshness": "FRESH",
+      "computed_at": "2026-10-16T09:59:26.919979+05:30",
+      "primary_answer": "1,050",
+      "result_kind": "scalar",
+      "value": 1050,
+      "groups": [],
+      "comparison": null,
+      "metric_reference": {
+        "name": "COUNT_DISTINCT(order_id)",
+        "temporary": true
+      },
+      "dimensions": [],
+      "provenance": [
+        {
+          "state_id": 49,
+          "dataset_id": 34,
+          "gold_run_id": 14,
+          "dataset_name": "Orders"
+        }
+      ],
+      "relationship_versions": [],
+      "interpretation": "COUNT_DISTINCT(order_id)",
+      "explanation": "Calculated by the backend from current cumulative Gold using the validated metric definition.",
+      "caveats": [],
+      "follow_ups": [
+        "Break this down by channel",
+        "Break this down by status"
+      ],
+      "choices": [],
+      "reused": true
+    },
+    "same_answer": true
+  },
+  "upsert_public_aggregate": {
+    "status": "BLOCKED",
+    "diagnostics": [
+      {
+        "code": "COMPLEXITY",
+        "message": "This query exceeds the supported expression complexity.",
+        "line": null,
+        "column": null
+      }
+    ],
+    "columns": null,
+    "rows": [],
+    "freshness": "Unavailable",
+    "sources": [],
+    "execution_id": 28
+  },
+  "sql_repeat_1": {
+    "status": "SUCCEEDED",
+    "columns": [
+      {
+        "name": "orders",
+        "type": "BIGINT"
+      }
+    ],
+    "rows": [
+      [
+        1050
+      ]
+    ],
+    "freshness": "Current",
+    "sources": [
+      {
+        "dataset_id": 34,
+        "name": "Orders",
+        "alias": "orders_d34",
+        "state_id": 49,
+        "gold_run_id": 14,
+        "profile_id": 19
+      }
+    ],
+    "execution_id": 29
+  },
+  "sql_repeat_2": {
+    "status": "SUCCEEDED",
+    "columns": [
+      {
+        "name": "orders",
+        "type": "BIGINT"
+      }
+    ],
+    "rows": [
+      [
+        1050
+      ]
+    ],
+    "freshness": "Current",
+    "sources": [
+      {
+        "dataset_id": 34,
+        "name": "Orders",
+        "alias": "orders_d34",
+        "state_id": 49,
+        "gold_run_id": 14,
+        "profile_id": 19
+      }
+    ],
+    "execution_id": 30
+  }
+}
