@@ -9,6 +9,7 @@ from app.db import relationship_repository as repository
 from app.services.workspace_understanding_service import validate_workspace
 from app.services import workspace_understanding_service as workspace_semantics
 from app.db import workspace_semantic_repository
+from app.db.ownership_identity import source_membership
 from app.services.dataset_profile_service import read_profile
 from app.services.dataset_understanding_service import read_understanding
 from app.services.dataset_analytics_service import load_pinned_state
@@ -35,9 +36,8 @@ def gather(conn, workspace, user, lock=False):
     if not w: raise HTTPException(404,'Workspace not found')
     if w['owner'] != user['owner_key']: raise HTTPException(403,'Workspace access denied')
     rows = c.execute('SELECT * FROM datasets WHERE workspace_id=%s ORDER BY dataset_id'+(' FOR UPDATE' if lock else ''),(workspace,)).fetchall()
-    eligible = []; excluded = []; membership = []
+    eligible = []; excluded = []; membership = source_membership(conn,workspace,rows)
     for row in rows:
-        membership.append({k:row[k] for k in ('dataset_id','dataset_name','owner','status','current_state_id','current_profile_id','profile_status')})
         reason = ('OWNERSHIP_MISMATCH' if row['owner']!=user['owner_key'] else
                   'ARCHIVED' if row['status']=='ARCHIVED' else 'NO_TRUSTED_STATE' if not row['current_state_id'] else None)
         if not reason:

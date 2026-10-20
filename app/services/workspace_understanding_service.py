@@ -9,6 +9,7 @@ from psycopg.types.json import Jsonb
 from app.db.database import repository_transaction
 from app.db import workspace_semantic_repository as repository
 from app.db.workspace_repository import get_workspace_by_id
+from app.db.ownership_identity import source_membership
 from app.services.dataset_profile_service import read_profile
 from app.services.dataset_understanding_service import read_understanding
 from app.ai.workspace_semantics import WorkspaceProvider, ALGORITHM_VERSION, build_handoff, validate_output
@@ -41,9 +42,9 @@ def gather(conn,workspace,user,lock=False):
     if not w:raise HTTPException(404,'Workspace not found')
     if w['owner']!=user['owner_key']:raise HTTPException(403,'Workspace access denied')
     rows=c.execute('SELECT * FROM datasets WHERE workspace_id=%s ORDER BY dataset_id'+(' FOR UPDATE' if lock else ''),(workspace,)).fetchall()
-    eligible,excluded,membership=[],[],[]
+    eligible,excluded=[],[]
+    membership=source_membership(conn,workspace,rows)
     for row in rows:
-        membership.append({k:row[k] for k in ('dataset_id','dataset_name','owner','status','current_state_id','current_profile_id','profile_status')})
         reason=None
         if row['status']=='ARCHIVED':reason='ARCHIVED'
         elif row['owner']!=user['owner_key']:reason='OWNERSHIP_MISMATCH'

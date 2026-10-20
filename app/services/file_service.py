@@ -6,6 +6,7 @@ from app.db.file_repository import (
     create_uploaded_physical_file,
 )
 from app.db.user_repository import get_user_by_id
+from app.services.ownership_errors import OwnershipError
 from app.db.workspace_repository import get_workspace_by_id
 from app.db.dataset_repository import get_dataset_by_workspace
 from app.storage.s3_service import (
@@ -53,8 +54,8 @@ def validate_upload_context(
 
     user = get_user_by_id(user_id)
     workspace = get_workspace_by_id(workspace_id)
-    if user is None or workspace is None or workspace[3] != user["owner_key"]:
-        raise ValueError("Workspace access denied")
+    if user is None or workspace is None or workspace[3] != user["owner_key"] or dataset[3] != user['owner_key']:
+        raise OwnershipError("Workspace access denied")
 
 
 def _staging_prefix(user_id: int) -> str:

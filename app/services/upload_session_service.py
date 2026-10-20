@@ -31,8 +31,10 @@ def complete_upload_session(upload_id: int, user_id: int) -> dict:
     with locked_upload_session(upload_id) as (conn, session):
         if not session or session['staging_object_key'] is None:
             raise ValueError("Upload session not found")
-        if session['user_id'] != user_id:
-            raise PermissionError("Upload session access denied")
+        # Current resource ownership authorizes completion; uploader is immutable provenance.
+        # Unattached historical sessions have no adoptable resource boundary.
+        if session['workspace_id'] is None and session['dataset_id'] is None and session['user_id'] != user_id:
+            raise PermissionError('Upload session access denied')
         validate_upload_context(user_id, session['workspace_id'], session['dataset_id'])
         if session['completed_at'] is not None:
             return session['completion_result']
@@ -55,7 +57,7 @@ def complete_upload_session(upload_id: int, user_id: int) -> dict:
             result = {"message": "Existing physical file reused" if duplicate else "Upload finalized successfully",
                 "is_duplicate": duplicate, "upload_request_id": upload_id, "session_status": "COMPLETED",
                 "file": dict(zip(('file_id','file_name','file_size','file_hash','storage_path','status'), physical[:6])),
-                "upload_request": {"upload_id": upload_id, "user_id": user_id, "file_id": physical[0],
+                "upload_request": {"upload_id": upload_id, "user_id": session['user_id'], "file_id": physical[0],
                     "workspace_id": session['workspace_id'], "dataset_id": session['dataset_id'],
                     "status": "UPLOADED", "created_at": created_at}}
             complete_session(conn, upload_id, physical[0], result)

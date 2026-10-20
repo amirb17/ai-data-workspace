@@ -72,6 +72,7 @@ def test_wrong_context_rejected_on_all_rule_routes(scope, query):
 
 def test_upload_wrong_user_is_rejected(scope, monkeypatch):
     monkeypatch.setattr(context, "get_upload_request_by_id", lambda _: (40, 2, 30, 10, 20, "UPLOADED", None))
+    monkeypatch.setattr(context, "get_dataset_by_workspace", lambda *args: (20, "Orders", None, "dev:other"))
     assert scope.get("/files/uploads/40/processing-context").status_code == 403
 
 

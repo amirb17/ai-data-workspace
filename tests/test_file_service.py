@@ -38,7 +38,7 @@ def test_validate_upload_context_accepts_matching_dataset(monkeypatch):
     monkeypatch.setattr(
         file_service,
         "get_dataset_by_workspace",
-        lambda **kwargs: (1, "name", None, None, "ACTIVE", None, None, 1),
+        lambda **kwargs: (1, "name", None, "dev:test", "ACTIVE", None, None, 1),
     )
 
     # Should not raise.

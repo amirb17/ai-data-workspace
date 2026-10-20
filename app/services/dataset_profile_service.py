@@ -4,7 +4,7 @@ import time
 from psycopg.rows import dict_row
 from app.db.database import repository_transaction
 from app.db import semantic_profile_repository as repository
-from app.services.processing_context_service import validate_scope
+from app.services.processing_context_service import validate_scope, lock_scope
 from app.services.dataset_analytics_service import load_pinned_state
 from app.storage.incremental_artifacts import IncrementalArtifacts
 from app.processing.semantic_evidence import ALGORITHM_VERSION,build_evidence
@@ -46,6 +46,7 @@ def refresh_profile(workspace,dataset,user):
     started=time.monotonic()
     with repository.profile_lock(workspace,dataset):
         with repository_transaction() as conn:
+            lock_scope(conn,user,workspace,dataset)
             c=conn.cursor(row_factory=dict_row)
             head=c.execute('SELECT current_state_id FROM datasets WHERE dataset_id=%s FOR UPDATE',(dataset,)).fetchone()
             if not head['current_state_id']: raise ValueError('Trusted dataset update required before profiling')
@@ -74,7 +75,9 @@ def refresh_profile(workspace,dataset,user):
             required=[r['column_name'] for r in rules['rules'] if r['rule_type']=='NOT_NULL' and r['rule_config'].get('required') is True] if rules else []
             summary,evidence=build_evidence(frame,policy,required)
             summary.update(rule_version=application['applied_rule_version'],snapshot_effective_at=application['snapshot_effective_at'].isoformat() if application.get('snapshot_effective_at') else None)
-            with repository_transaction() as conn: repository.publish(conn,dataset,run,summary,evidence)
+            with repository_transaction() as conn:
+                lock_scope(conn,user,workspace,dataset)
+                repository.publish(conn,dataset,run,summary,evidence)
         except Exception:
             with repository_transaction() as conn:
                 c=conn.cursor(row_factory=dict_row)

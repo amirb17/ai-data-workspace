@@ -137,6 +137,8 @@ async def upload_file(
                 "created_at": upload[6],
             },
         }
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail="Workspace access denied") from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
@@ -153,6 +155,8 @@ def initiate_upload(request: FileInitiateRequest, user: dict = Depends(get_curre
     try:
         return initiate_upload_session(user_id=user["user_id"], workspace_id=request.workspace_id,
             dataset_id=request.dataset_id, file_name=request.file_name, file_size=request.file_size, content_type=request.content_type)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail="Workspace access denied") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -208,9 +212,9 @@ def continue_file(upload_id: int, user: dict = Depends(get_current_user), worksp
 def _continue_owned_association(association_id, user, workspace_id, dataset_id, stage):
     context = owned_rule_context(association_id, user, workspace_id, dataset_id)
     with get_connection() as conn:
-        upload = conn.execute("""SELECT upload_id FROM upload_requests WHERE user_id=%s AND workspace_id=%s
+        upload = conn.execute("""SELECT upload_id FROM upload_requests WHERE workspace_id=%s
             AND dataset_id=%s AND file_id=%s AND status='UPLOADED' AND archived_at IS NULL ORDER BY upload_id DESC LIMIT 1""",
-            (user["user_id"], context[6], context[5], context[2])).fetchone()
+            (context[6], context[5], context[2])).fetchone()
     if not upload:
         raise PermissionError("Completed owned delivery required")
     resolved = get_upload_processing_association(context[5], context[2])

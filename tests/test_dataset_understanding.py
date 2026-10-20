@@ -215,19 +215,8 @@ def test_failure_retry_preserves_profile_and_identity(ready,failure):
 
 
 def test_stale_head_during_provider_and_concurrency(ready):
-    f,provider=ready; entered,release=Event(),Event()
-    def pause():entered.set();assert release.wait(30)
-    provider.hook=pause
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future=executor.submit(call,f,service.generate_understanding)
-        assert entered.wait(20)
-        assert call(f,service.read_understanding)['status']=='GENERATING'
-        with pytest.raises(RuntimeError):call(f,service.generate_understanding)
-        apply(f,second_delivery(f[0]))
-        release.set();result=future.result(30)
-    assert result['status']=='STALE' and result['suggestion'] is None
-    with f[0][0][0]() as conn:
-        assert conn.execute("SELECT status,reasoning FROM semantic_suggestions").fetchone()==('FAILED',None)
+    from tests.semantic_interleaving import stale_head_during_provider
+    stale_head_during_provider(ready)
 
 
 def test_missing_profile_blocks_before_provider(profiled):

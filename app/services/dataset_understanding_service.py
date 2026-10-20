@@ -12,6 +12,7 @@ from app.ai.semantic_handoff import build_handoff, SEMANTIC_VERSION
 from app.ai.semantic_provider import GeminiSemanticProvider, ProviderFailure
 from app.ai.semantic_validator import validate_output
 from app.schemas.semantic_suggestion import SuggestionRecord
+from app.services.processing_context_service import lock_scope
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,7 @@ def generate_understanding(workspace,dataset,user):
             return read_understanding(workspace,dataset,user)
         bundle,encoded = build_handoff(profile)
         with repository_transaction() as conn:
+            lock_scope(conn,user,workspace,dataset)
             c = conn.cursor(row_factory=dict_row)
             head = c.execute('SELECT current_profile_id,current_state_id,profile_status FROM datasets WHERE dataset_id=%s FOR UPDATE',(dataset,)).fetchone()
             if head['current_profile_id'] != profile['profile_id'] or head['current_state_id'] != profile['current_state_id'] or head['profile_status'] != 'READY':
@@ -92,6 +94,7 @@ def generate_understanding(workspace,dataset,user):
                 raise ProviderFailure('INVALID_OUTPUT') from None
             # A model response is accepted only if its pinned evidence is still current.
             with repository_transaction() as conn:
+                lock_scope(conn,user,workspace,dataset)
                 head = conn.cursor(row_factory=dict_row).execute('SELECT current_profile_id,current_state_id,profile_status FROM datasets WHERE dataset_id=%s FOR UPDATE',(dataset,)).fetchone()
                 if head['current_profile_id'] != profile['profile_id'] or head['current_state_id'] != profile['current_state_id'] or head['profile_status'] != 'READY':
                     raise ProviderFailure('GENERATION_FAILED')
@@ -99,6 +102,8 @@ def generate_understanding(workspace,dataset,user):
                     (Jsonb(reasoning.model_dump()),output.resolved_model,run['suggestion_id']))
         except Exception as exc:
             failure = exc.code if isinstance(exc,ProviderFailure) else 'GENERATION_FAILED'
+            logger.warning('Dataset understanding failed workspace=%s dataset=%s suggestion=%s exception_type=%s category=%s',
+                           workspace,dataset,run['suggestion_id'],type(exc).__name__,failure)
             with repository_transaction() as conn:
                 conn.execute("UPDATE semantic_suggestions SET status='FAILED',failure_code=%s,completed_at=NOW() WHERE suggestion_id=%s AND status<>'READY'",(failure,run['suggestion_id']))
         logger.info('Understanding workspace=%s dataset=%s profile=%s suggestion=%s provider=%s model=%s algorithm=%s columns=%s compact=%s input_bytes=%s duration=%.3f status=%s validation=%s',

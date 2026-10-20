@@ -8,10 +8,14 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "argon2-cffi>=25.1,<26",
+    "authlib>=1.6,<2",
     "boto3>=1.43.77",
     "duckdb>=1.4,<2",
+    "email-validator>=2.3,<3",
     "fastapi>=0.141.1",
     "google-genai>=2.26.0",
+    "itsdangerous>=2.2,<3",
     "pandas>=3.0.5",
     "psycopg[binary]>=3.3.4",
     "pyarrow>=25.0.1",
@@ -37,3 +41,4 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+testpaths = ["tests"]

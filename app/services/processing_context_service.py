@@ -36,12 +36,20 @@ def validate_scope(user, workspace_id, dataset_id):
     validate_upload_context(user["user_id"], workspace_id, dataset_id)
 
 
+def lock_scope(conn, user, workspace_id, dataset_id):
+    """Recheck authorization under publication locks, including ownership moves."""
+    parent = conn.execute('SELECT owner FROM workspaces WHERE workspace_id=%s FOR SHARE', (workspace_id,)).fetchone()
+    child = conn.execute('SELECT owner FROM datasets WHERE dataset_id=%s AND workspace_id=%s FOR UPDATE',
+                         (dataset_id,workspace_id)).fetchone()
+    if not parent or not child or parent[0] != user['owner_key'] or child[0] != user['owner_key']:
+        raise PermissionError('Dataset access denied')
+
+
 def owned_upload(upload_id, user, workspace_id=None, dataset_id=None):
     upload = get_upload_request_by_id(upload_id)
     if upload is None:
         raise LookupError("Upload not found")
-    if upload[1] != user["user_id"]:
-        raise PermissionError("Upload access denied")
+    # user_id records the uploader, not current resource authorization.
     if workspace_id is not None and upload[3] != workspace_id:
         raise PermissionError("Workspace context mismatch")
     if dataset_id is not None and upload[4] != dataset_id:

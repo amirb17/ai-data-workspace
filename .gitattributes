@@ -1,0 +1,2 @@
+# Preserve the exact reviewed/applied migration checksums across platforms.
+/migrations/pending/0028_ownership_adoption_events*.sql -text whitespace=cr-at-eol

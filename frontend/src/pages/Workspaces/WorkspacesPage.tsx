@@ -2,7 +2,8 @@ import {
   Plus,
   Search,
 } from "lucide-react"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import {useSearchParams} from 'react-router-dom'
 
 import { CreateWorkspaceDialog } from "../../features/workspaces/components/CreateWorkspaceDialog"
 import { listWorkspaces, createWorkspace } from "../../services/api/workspaces"
@@ -16,13 +17,21 @@ import { WorkspaceCard } from "../../features/workspaces/components/WorkspaceCar
 
 
 export function WorkspacesPage() {
+  const [params,setParams]=useSearchParams()
+  useEffect(()=>{
+    if(params.get('create')==='true'){
+      const next=new URLSearchParams(params)
+      next.delete('create')
+      setParams(next,{replace:true})
+    }
+  },[params,setParams])
   const [search, setSearch] =
     useState("")
   const load = useCallback((signal: AbortSignal) => listWorkspaces(signal), [])
   const resource = useApiResource("workspaces", load)
   const workspaces = useMemo(() => resource.data ?? [], [resource.data])
 
-    const [createOpen, setCreateOpen] = useState(false)
+    const [createOpen, setCreateOpen] = useState(()=>params.get('create')==='true')
 
   const filteredWorkspaces =
     useMemo(() => {
