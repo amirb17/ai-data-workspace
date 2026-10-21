@@ -150,7 +150,18 @@ def test_no_cloud_import_execution_hooks_or_api_routes():
             if isinstance(node, ast.Import):
                 assert not any(alias.name.startswith(('google', 'boto3', 'duckdb')) for alias in node.names)
             elif isinstance(node, ast.ImportFrom):
+                # 11E verifies immutable accepted source outcomes by reusing
+                # these pure engines in one bounded, read-only adapter.
+                if path == ROOT/'app/warehouse/source_evidence.py' and node.module in (
+                    'app.processing.append_engine', 'app.processing.upsert_engine',
+                    'app.processing.snapshot_engine'):
+                    continue
                 assert not (node.module or '').startswith(('google', 'app.storage', 'app.processing'))
+    for filename in ('append_application_service.py', 'incremental_application_service.py',
+                     'delivery_execution_service.py', 'dataset_analytics_service.py'):
+        tree = ast.parse((ROOT/'app/services'/filename).read_text(encoding='utf-8'))
+        assert not any(isinstance(n, ast.ImportFrom) and (n.module or '').startswith('app.warehouse')
+                       for n in ast.walk(tree))
     from app.main import app
     assert not any('warehouse' in path for path in app.openapi()['paths'])
 
