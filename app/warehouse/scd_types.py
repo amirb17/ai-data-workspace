@@ -26,6 +26,13 @@ class Decision(StrEnum):
     HISTORICAL_REPAIR_REQUIRED = 'HISTORICAL_REPAIR_REQUIRED'
     ALREADY_APPLIED = 'ALREADY_APPLIED'
     SOURCE_REJECTED = 'SOURCE_REJECTED'
+    HISTORICAL_INSERT = 'HISTORICAL_INSERT'
+    HISTORICAL_SPLIT = 'HISTORICAL_SPLIT'
+    HISTORICAL_REPLACE = 'HISTORICAL_REPLACE'
+    GAP_INSERT = 'GAP_INSERT'
+    BEFORE_HISTORY_REJECTED = 'BEFORE_HISTORY_REJECTED'
+    REPAIR_NOT_AUTHORIZED = 'REPAIR_NOT_AUTHORIZED'
+    DEFERRED_NONHISTORICAL = 'DEFERRED_NONHISTORICAL'
 
 
 class Code(StrEnum):
@@ -41,6 +48,7 @@ class Code(StrEnum):
     PRECONDITION_FAILED = 'PRECONDITION_FAILED'
     SOURCE_NOT_ACCEPTED = 'SOURCE_NOT_ACCEPTED'
     EVENT_ID_REUSED = 'EVENT_ID_REUSED'
+    OBSERVATION_COVERAGE_REQUIRED = 'OBSERVATION_COVERAGE_REQUIRED'
 
 
 class ScdError(ValueError):
@@ -69,6 +77,9 @@ class Action(StrEnum):
     UPDATE_NONHISTORICAL = 'UPDATE_NONHISTORICAL_ATTRIBUTES'
     CORRECT_CURRENT = 'CORRECT_CURRENT'
     OBSERVE = 'OBSERVE_ACCEPTED_EVENT'
+    SHORTEN_INTERVAL = 'SHORTEN_INTERVAL'
+    INSERT_HISTORICAL = 'INSERT_HISTORICAL_VERSION'
+    CORRECT_HISTORICAL = 'CORRECT_HISTORICAL_VERSION'
 
 
 @dataclass(frozen=True)
@@ -196,3 +207,130 @@ class TransitionPlan:
 class ApplyResult:
     decision: Decision
     state: MemberState | None
+
+
+class BeforeHistoryPolicy(StrEnum):
+    EXTEND_FROM_ACCEPTED_EVIDENCE = 'EXTEND_FROM_ACCEPTED_EVIDENCE'
+    REJECT = 'REJECT'
+
+
+@dataclass(frozen=True)
+class TimeRange:
+    valid_from: BusinessTime
+    valid_to: BusinessTime | None
+
+
+@dataclass(frozen=True)
+class HistoricalRepairPlan:
+    transition: TransitionPlan
+    affected_ranges: tuple[TimeRange, ...]
+    event_digest: str
+    earliest_authoritative_valid_from: BusinessTime | None
+
+
+class InferredStatus(StrEnum):
+    INFERRED = 'INFERRED'
+    RESOLVED = 'RESOLVED'
+
+
+class InferenceDecision(StrEnum):
+    CREATED = 'CREATED'
+    ALREADY_APPLIED = 'ALREADY_APPLIED'
+    COMPLETED = 'COMPLETED'
+    REJECTED = 'REJECTED'
+    SOURCE_REJECTED = 'SOURCE_REJECTED'
+
+
+@dataclass(frozen=True)
+class InferredMember:
+    context: ModelContext
+    business_keys: Values
+    member_sk: str
+    status: InferredStatus = InferredStatus.INFERRED
+    authoritative_state_digest: str | None = None
+
+
+@dataclass(frozen=True)
+class InferencePlan:
+    decision: InferenceDecision
+    code: Code
+    expected_inferred_digest: str
+    result: InferredMember | None
+    authoritative: TransitionPlan | None = None
+
+
+@dataclass(frozen=True)
+class FactReference:
+    """An existing logical fact identity and one dimension relationship; no measures."""
+    fact_sk: str
+    relationship_id: UUID
+    context: ModelContext
+    business_keys: Values
+    event_time: BusinessTime
+    acceptance: Acceptance
+    source_contract: SourceContractPin
+    fact_event_id: UUID | None = None
+
+    @classmethod
+    def from_mapping(cls, fact_sk, relationship_id, context, keys, event_time, *, acceptance,
+                     source_contract, fact_event_id=None):
+        return cls(fact_sk, relationship_id, context,
+                   tuple((n, keys.get(n)) for n in sorted(context.configuration.business_keys)),
+                   event_time, acceptance, source_contract, fact_event_id)
+
+
+class ResolutionStatus(StrEnum):
+    RESOLVED = 'RESOLVED'
+    CURRENT_MEMBER_ONLY = 'CURRENT_MEMBER_ONLY'
+    INFERRED_MEMBER_REQUIRED = 'INFERRED_MEMBER_REQUIRED'
+    INFERRED_REFERENCE = 'INFERRED_REFERENCE'
+    MEMBER_NOT_FOUND = 'MEMBER_NOT_FOUND'
+    NO_VERSION_AT_EVENT_TIME = 'NO_VERSION_AT_EVENT_TIME'
+    AMBIGUOUS_HISTORY = 'AMBIGUOUS_HISTORY'
+    INVALID_DIMENSION_STATE = 'INVALID_DIMENSION_STATE'
+    INVALID_BUSINESS_KEY = 'INVALID_BUSINESS_KEY'
+    SOURCE_REJECTED = 'SOURCE_REJECTED'
+
+
+@dataclass(frozen=True)
+class ResolutionResult:
+    fact: FactReference
+    status: ResolutionStatus
+    code: Code
+    member_sk: str | None
+    version_sk: str | None
+    dimension_state_digest: str
+    inferred_digest: str | None = None
+
+
+class RebindDecision(StrEnum):
+    UNCHANGED = 'UNCHANGED'
+    REBIND = 'REBIND'
+    UNRESOLVED = 'UNRESOLVED'
+
+
+class RebindReason(StrEnum):
+    OUTSIDE_AFFECTED_RANGE = 'OUTSIDE_AFFECTED_RANGE'
+    IDENTITY_STABLE = 'IDENTITY_STABLE'
+    VERSION_CHANGED = 'VERSION_CHANGED'
+    COVERAGE_UNRESOLVED = 'COVERAGE_UNRESOLVED'
+
+
+@dataclass(frozen=True)
+class FactRebind:
+    decision: RebindDecision
+    reason: RebindReason
+    before: ResolutionResult
+    after: ResolutionResult
+    expected_previous_resolution_digest: str
+
+
+@dataclass(frozen=True)
+class FactReResolutionPlan:
+    context: ModelContext
+    before: MemberState | None
+    after: MemberState | None
+    before_inferred: InferredMember | None
+    after_inferred: InferredMember | None
+    affected_ranges: tuple[TimeRange, ...]
+    entries: tuple[FactRebind, ...]

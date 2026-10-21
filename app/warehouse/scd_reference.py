@@ -37,26 +37,38 @@ def apply_plan(current, plan) -> ApplyResult:
             continue
         if patch.after is None or patch.version_sk != patch.after.version_sk:
             raise ScdError(Code.KEY_MISMATCH)
-        if patch.action in (Action.INSERT_MEMBER, Action.INSERT_VERSION):
+        if patch.action in (Action.INSERT_MEMBER, Action.INSERT_VERSION, Action.INSERT_HISTORICAL):
             if patch.before is not None or any(v.version_sk == patch.version_sk for v in rows):
                 raise ScdError(Code.PRECONDITION_FAILED)
             expected_action = Action.INSERT_MEMBER if plan.context.configuration.scd_type == 'SCD_TYPE_1' else Action.INSERT_VERSION
-            if patch.action != expected_action:
+            if patch.action != expected_action and not (patch.action == Action.INSERT_HISTORICAL
+                                                        and expected_action == Action.INSERT_VERSION):
                 raise ScdError(Code.INVALID_INPUT)
-            rows.append(patch.after)
-        elif patch.action in (Action.UPDATE_MEMBER, Action.CLOSE_VERSION, Action.UPDATE_NONHISTORICAL, Action.CORRECT_CURRENT):
+            if patch.action == Action.INSERT_HISTORICAL:
+                index = next((i for i, v in enumerate(rows) if v.valid_from >= patch.after.valid_from), len(rows))
+                rows.insert(index, patch.after)
+            else:
+                rows.append(patch.after)
+        elif patch.action in (Action.UPDATE_MEMBER, Action.CLOSE_VERSION, Action.UPDATE_NONHISTORICAL,
+                              Action.CORRECT_CURRENT, Action.SHORTEN_INTERVAL, Action.CORRECT_HISTORICAL):
             if patch.before is None or patch.before not in rows:
                 raise ScdError(Code.PRECONDITION_FAILED)
             before, after = patch.before, patch.after
-            if patch.action == Action.CLOSE_VERSION:
+            if patch.action == Action.SHORTEN_INTERVAL:
+                if (after.valid_to is None or after.valid_to <= before.valid_from
+                        or before.valid_to is not None and after.valid_to >= before.valid_to
+                        or after != replace(before, valid_to=after.valid_to, is_current=False)):
+                    raise ScdError(Code.INVALID_INPUT)
+            elif patch.action == Action.CLOSE_VERSION:
                 if (not before.is_current or after.valid_to is None
                         or after != replace(before, valid_to=after.valid_to, is_current=False)):
                     raise ScdError(Code.INVALID_INPUT)
             elif patch.action == Action.UPDATE_NONHISTORICAL:
                 if after != replace(before, nonhistorical=after.nonhistorical) or not before.is_current:
                     raise ScdError(Code.INVALID_INPUT)
-            elif after != replace(before, tracked=after.tracked, nonhistorical=after.nonhistorical,
-                                  tracked_hash=after.tracked_hash) or not before.is_current:
+            elif (after != replace(before, tracked=after.tracked, nonhistorical=after.nonhistorical,
+                                   tracked_hash=after.tracked_hash)
+                  or patch.action != Action.CORRECT_HISTORICAL and not before.is_current):
                 raise ScdError(Code.INVALID_INPUT)
             if (patch.action == Action.UPDATE_MEMBER) != (plan.context.configuration.scd_type == 'SCD_TYPE_1'):
                 raise ScdError(Code.INVALID_INPUT)
