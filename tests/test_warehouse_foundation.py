@@ -47,7 +47,9 @@ def pg(monkeypatch):
     try:
         with connect() as conn:
             for migration in sorted((ROOT / 'migrations').glob('*.sql')):
-                if migration.name != MIGRATION.name:
+                # This fixture verifies the 11A baseline; later migrations have
+                # dedicated fixtures and must not run before 0029 exists.
+                if migration.name < MIGRATION.name:
                     conn.execute(migration.read_text(encoding='utf-8'))
             conn.execute(MIGRATION.read_text(encoding='utf-8'))
             # Existing pending adoption migration is compatible too, without applying it to public.

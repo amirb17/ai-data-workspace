@@ -65,6 +65,9 @@ def approve_version(workspace_id, model_id, version_id, user):
         rows = validate_sources(conn, workspace_id, version_id, user['owner_key'])
         if not any(row['purpose'] == 'PRIMARY' for row in rows):
             raise HTTPException(409, 'A primary source is required')
+        if repository.modeling_available(conn):
+            from app.services.warehouse_modeling_service import check_configuration
+            check_configuration(conn, workspace_id, model_id, version_id)
         return repository.approve(conn, model_id, version_id, user['user_id'])
 
 

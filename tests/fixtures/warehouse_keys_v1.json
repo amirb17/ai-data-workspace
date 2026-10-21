@@ -1,0 +1,184 @@
+[
+  {
+    "name": "string",
+    "namespace": "00000000-0000-0000-0000-000000000001",
+    "role": "DIMENSION_MEMBER",
+    "columns": [
+      "id"
+    ],
+    "values": [
+      [
+        "string",
+        "C001"
+      ]
+    ],
+    "canonical_utf8": "[\"datarise-warehouse-key\",1,\"00000000-0000-0000-0000-000000000001\",\"DIMENSION_MEMBER\",[[\"id\",[\"string\",\"C001\"]]],null]",
+    "sha256": "b60ec522cb560ecc822384d9754a2ec9c6d283e7dda51abc98ad60f242dfc511"
+  },
+  {
+    "name": "integer",
+    "namespace": "00000000-0000-0000-0000-000000000001",
+    "role": "DIMENSION_MEMBER",
+    "columns": [
+      "id"
+    ],
+    "values": [
+      [
+        "integer",
+        "9007199254740993"
+      ]
+    ],
+    "canonical_utf8": "[\"datarise-warehouse-key\",1,\"00000000-0000-0000-0000-000000000001\",\"DIMENSION_MEMBER\",[[\"id\",[\"integer\",\"9007199254740993\"]]],null]",
+    "sha256": "282cff04206b7bd75babb03ca86655d829e095473be0ccfc4b3f16982bf6f301"
+  },
+  {
+    "name": "composite",
+    "namespace": "00000000-0000-0000-0000-000000000001",
+    "role": "DIMENSION_MEMBER",
+    "columns": [
+      "country",
+      "id"
+    ],
+    "values": [
+      [
+        "string",
+        "IN"
+      ],
+      [
+        "string",
+        "C001"
+      ]
+    ],
+    "canonical_utf8": "[\"datarise-warehouse-key\",1,\"00000000-0000-0000-0000-000000000001\",\"DIMENSION_MEMBER\",[[\"country\",[\"string\",\"IN\"]],[\"id\",[\"string\",\"C001\"]]],null]",
+    "sha256": "0b82f49f353f36aed93d6c8936dbff9cffad6d38e456541873afe285e24419c1"
+  },
+  {
+    "name": "unicode",
+    "namespace": "00000000-0000-0000-0000-000000000001",
+    "role": "DIMENSION_MEMBER",
+    "columns": [
+      "id"
+    ],
+    "values": [
+      [
+        "string",
+        "é客户"
+      ]
+    ],
+    "canonical_utf8": "[\"datarise-warehouse-key\",1,\"00000000-0000-0000-0000-000000000001\",\"DIMENSION_MEMBER\",[[\"id\",[\"string\",\"é客户\"]]],null]",
+    "sha256": "0d81bd6da838caa6c196877a0fc0fffc857247dedebe512f3ab12d843a8f52a0"
+  },
+  {
+    "name": "date",
+    "namespace": "00000000-0000-0000-0000-000000000001",
+    "role": "DIMENSION_MEMBER",
+    "columns": [
+      "id"
+    ],
+    "values": [
+      [
+        "date",
+        "2026-01-01"
+      ]
+    ],
+    "canonical_utf8": "[\"datarise-warehouse-key\",1,\"00000000-0000-0000-0000-000000000001\",\"DIMENSION_MEMBER\",[[\"id\",[\"date\",\"2026-01-01\"]]],null]",
+    "sha256": "79c764fcc1e23b38116a65977f19820242adbc72456da07f4fa9cc6a23de3ed8"
+  },
+  {
+    "name": "utc_timestamp",
+    "namespace": "00000000-0000-0000-0000-000000000001",
+    "role": "DIMENSION_MEMBER",
+    "columns": [
+      "id"
+    ],
+    "values": [
+      [
+        "timestamp",
+        "2026-06-01T00:00:00+00:00"
+      ]
+    ],
+    "canonical_utf8": "[\"datarise-warehouse-key\",1,\"00000000-0000-0000-0000-000000000001\",\"DIMENSION_MEMBER\",[[\"id\",[\"timestamp\",\"2026-06-01T00:00:00.000000+00:00\"]]],null]",
+    "sha256": "aed4c5126a81980055109a58741e94095b24b6a1acbab6a8191c3799afd48a60"
+  },
+  {
+    "name": "offset_timestamp",
+    "namespace": "00000000-0000-0000-0000-000000000001",
+    "role": "DIMENSION_MEMBER",
+    "columns": [
+      "id"
+    ],
+    "values": [
+      [
+        "timestamp",
+        "2026-06-01T05:30:00+05:30"
+      ]
+    ],
+    "canonical_utf8": "[\"datarise-warehouse-key\",1,\"00000000-0000-0000-0000-000000000001\",\"DIMENSION_MEMBER\",[[\"id\",[\"timestamp\",\"2026-06-01T00:00:00.000000+00:00\"]]],null]",
+    "sha256": "aed4c5126a81980055109a58741e94095b24b6a1acbab6a8191c3799afd48a60"
+  },
+  {
+    "name": "decimal",
+    "namespace": "00000000-0000-0000-0000-000000000001",
+    "role": "DIMENSION_MEMBER",
+    "columns": [
+      "id"
+    ],
+    "values": [
+      [
+        "decimal",
+        "12345678901234567890.123400"
+      ]
+    ],
+    "canonical_utf8": "[\"datarise-warehouse-key\",1,\"00000000-0000-0000-0000-000000000001\",\"DIMENSION_MEMBER\",[[\"id\",[\"decimal\",\"12345678901234567890.1234\"]]],null]",
+    "sha256": "ec5de7ac8c233ad2469698e367e913dfe4ab12ebc395af923312960b2fe3fc65"
+  },
+  {
+    "name": "empty_string",
+    "namespace": "00000000-0000-0000-0000-000000000001",
+    "role": "DIMENSION_MEMBER",
+    "columns": [
+      "id"
+    ],
+    "values": [
+      [
+        "string",
+        ""
+      ]
+    ],
+    "canonical_utf8": "[\"datarise-warehouse-key\",1,\"00000000-0000-0000-0000-000000000001\",\"DIMENSION_MEMBER\",[[\"id\",[\"string\",\"\"]]],null]",
+    "sha256": "367bb3ffad8dd6856cdabb1b7413cdd250a158a1113768c5b3f8c7d76ba3bea9"
+  },
+  {
+    "name": "boolean",
+    "namespace": "00000000-0000-0000-0000-000000000001",
+    "role": "DIMENSION_MEMBER",
+    "columns": [
+      "id"
+    ],
+    "values": [
+      [
+        "boolean",
+        true
+      ]
+    ],
+    "canonical_utf8": "[\"datarise-warehouse-key\",1,\"00000000-0000-0000-0000-000000000001\",\"DIMENSION_MEMBER\",[[\"id\",[\"boolean\",true]]],null]",
+    "sha256": "f3a1e94ce7f65b79a6ec2b46b93bb75118eed40ef49f26801c4be3e8bb7a135c"
+  },
+  {
+    "name": "scd2_version",
+    "namespace": "00000000-0000-0000-0000-000000000001",
+    "role": "DIMENSION_VERSION",
+    "columns": [
+      "id"
+    ],
+    "values": [
+      [
+        "string",
+        "C001"
+      ]
+    ],
+    "valid_from": "2026-06-01T00:00:00+00:00",
+    "canonical_utf8": "[\"datarise-warehouse-key\",1,\"00000000-0000-0000-0000-000000000001\",\"DIMENSION_VERSION\",[[\"id\",[\"string\",\"C001\"]]],[\"timestamp\",\"2026-06-01T00:00:00.000000+00:00\"]]",
+    "sha256": "ab51609380916238099b5418f8ce8aaac3845f04728de20983a924aa3a0ef86d"
+  }
+]

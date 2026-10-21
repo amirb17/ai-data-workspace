@@ -119,3 +119,28 @@ def transition(conn, run_id, request):
         completed_at=CASE WHEN %s IN ('SUCCEEDED','FAILED') THEN NOW() ELSE NULL END,
         failure_code=%s WHERE warehouse_run_id=%s RETURNING *''',
         (request.status, request.status, request.status, request.failure_code, run_id)).fetchone()
+
+
+def modeling_available(conn):
+    return conn.execute("SELECT to_regclass('warehouse_model_configurations') IS NOT NULL").fetchone()[0]
+
+
+def modeling(conn, workspace_id, model_id, version_id):
+    return cursor(conn).execute('''SELECT * FROM warehouse_model_configurations WHERE workspace_id=%s
+        AND warehouse_model_id=%s AND warehouse_model_version_id=%s''', (workspace_id, model_id, version_id)).fetchone()
+
+
+def source_contract(conn, dataset_id, policy_id, rule_version):
+    return cursor(conn).execute('''SELECT p.*,r.rules FROM dataset_load_policies p
+        JOIN dataset_versions v ON v.dataset_version_id=p.dataset_version_id AND v.dataset_id=p.dataset_id
+        JOIN approved_rule_policies r ON r.dataset_version_id=v.dataset_version_id AND r.rule_version=%s
+        WHERE p.policy_id=%s AND p.dataset_id=%s AND v.schema_hash=p.schema_hash''', (rule_version, policy_id, dataset_id)).fetchone()
+
+
+def save_modeling(conn, workspace_id, model_id, version_id, dataset_id, contract, actor, request, schema, rule_hash):
+    return cursor(conn).execute('''INSERT INTO warehouse_model_configurations(warehouse_model_version_id,workspace_id,
+        warehouse_model_id,source_dataset_id,source_dataset_version_id,source_policy_id,source_rule_version,model_type,
+        configuration,source_schema,source_rule_sha256,created_by) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *''',
+        (version_id,workspace_id,model_id,dataset_id,contract['dataset_version_id'],request.source_policy_id,request.source_rule_version,
+         request.configuration.model_type,Jsonb(request.configuration.model_dump(mode='json')),Jsonb(schema.model_dump(mode='json')),
+         rule_hash,actor)).fetchone()
