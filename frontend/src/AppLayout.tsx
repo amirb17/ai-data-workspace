@@ -35,6 +35,7 @@ import { DatasetUnderstandingPage } from "./pages/Dataset/Understanding/DatasetU
 import { IdentityBootstrap } from "./components/layout/IdentityBootstrap"
 import { NotFoundPage } from "./components/ui/NotFoundPage"
 const SqlPage=lazy(()=>import('./features/workspaces/sql/SqlPage').then(module=>({default:module.SqlPage})))
+const WorkspaceModelPage=lazy(()=>import('./features/workspaces/model/WorkspaceModelPage').then(module=>({default:module.WorkspaceModelPage})))
 
 export default function AppLayout() {
   return (
@@ -122,7 +123,8 @@ export default function AppLayout() {
           element={<WorkspaceOverviewPage />}
         />
         <Route path="understanding" element={<WorkspaceUnderstandingPage />} />
-        <Route path="data-model" element={<RelationshipsPage />} />
+        <Route path="data-model" element={<Suspense fallback={<p role="status">Loading model…</p>}><WorkspaceModelPage/></Suspense>} />
+        <Route path="relationships" element={<RelationshipsPage />} />
         <Route path="metrics" element={<MetricsPage />} />
         <Route path="sql" element={<Suspense fallback={<p role="status">Loading SQL editor…</p>}><SqlPage/></Suspense>} />
 

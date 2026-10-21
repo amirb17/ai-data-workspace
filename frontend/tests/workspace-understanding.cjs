@@ -5,10 +5,10 @@ const {WorkspaceEvidence}=require('../src/features/workspaces/understanding/Work
 const api=require('../src/services/api/workspaceUnderstanding.ts')
 const base={workspace_id:1,workspace_name:'Commerce',status:'NOT_GENERATED',can_generate:true,readiness_message:'All datasets are eligible.',coverage:{datasets_total:2,datasets_analyzed:2,partial:false,excluded:[]},source_pins:[{dataset_id:1,dataset_name:'Orders'},{dataset_id:2,dataset_name:'Customers'}],suggestion:null}
 const render=(extra={})=>renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(WorkspaceEvidence,{data:{...base,...extra},busy:false,error:'',generate:()=>{}})))
-assert.ok(render().includes('Generate Workspace Understanding'))
+assert.ok(render().includes('Prepare descriptions'))
 assert.ok(render({status:'GENERATING',can_generate:false}).includes('Analyzing…'))
 assert.ok(render({status:'GENERATING',can_generate:false}).includes('disabled=""'))
-assert.ok(render({status:'FAILED',failure_code:'TIMEOUT'}).includes('Retry Understanding'))
+assert.ok(render({status:'FAILED',failure_code:'TIMEOUT'}).includes('Retry descriptions'))
 assert.ok(render({coverage:{...base.coverage,datasets_analyzed:1,partial:true,excluded:[{dataset_id:3,dataset_name:'Missing',reason:'PROFILE_STALE'}]}}).includes('Review Dataset'))
 const classification={primary:{label:'Retail',confidence:.9,rationale:'Commerce columns'},alternatives:[{label:'Operations',confidence:.5,rationale:'Possible'}]}
 const suggestion={suggestion_version:1,completed_at:'2026-10-09T00:00:00Z',reasoning:{domain:classification,subdomain:classification,overall_confidence:.8,business_processes:[{name:'Order handling',contributing_datasets:[1,2],confidence:.8,rationale:'Participation'}],entities:[{canonical_name:'Customer',contributing_datasets:[2],confidence:.8,rationale:'Likely entity'}],dataset_roles:[{dataset_id:1,role:'TRANSACTION',confidence:.8,rationale:'Orders'}],warnings:['Mixed domain possible'],unresolved_questions:['Confirm business scope']}}

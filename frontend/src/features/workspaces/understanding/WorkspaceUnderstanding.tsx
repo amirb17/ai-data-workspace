@@ -8,7 +8,7 @@ export function WorkspaceUnderstandingPage() {
   const {workspaceId = ''} = useParams()
   const load = useCallback((signal: AbortSignal)=>getWorkspaceUnderstanding(workspaceId,signal),[workspaceId])
   const resource = useApiResource(`workspace-understanding:${workspaceId}`,load)
-  return resource.data ? <Content key={workspaceId} workspaceId={workspaceId} data={resource.data} reload={resource.retry}/> : <ApiFeedback loading="Checking workspace understanding…" error={resource.error} retry={resource.retry}/>
+  return resource.data ? <Content key={workspaceId} workspaceId={workspaceId} data={resource.data} reload={resource.retry}/> : <ApiFeedback loading="Checking dataset descriptions…" error={resource.error} retry={resource.retry}/>
 }
 function Content({workspaceId,data,reload}: {workspaceId: string; data: Result; reload: () => void}) {
   const [busy,setBusy] = useState(false), [error,setError] = useState('')

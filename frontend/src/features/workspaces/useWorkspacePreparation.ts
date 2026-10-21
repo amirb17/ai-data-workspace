@@ -37,6 +37,6 @@ export function preparationAction(workspace: string, row: DatasetPreparation) {
   if (row.analytics.current_state_id === null) return { label: "Configure load policy", to: `${base}/contract` }
   if (!row.analytics.analytics_ready) return { label: "Refresh analytics", to: `${base}/analytics` }
   if (!row.profile?.profile_ready) return { label: "Prepare data profile", to: `${base}/profile` }
-  if (row.understanding?.status !== "READY") return { label: "Review understanding", to: `${base}/understanding` }
+  if (row.understanding?.status !== "READY") return { label: "Review description", to: `${base}/understanding` }
   return { label: "Explore dataset", to: base }
 }

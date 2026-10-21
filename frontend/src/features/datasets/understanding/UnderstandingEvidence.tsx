@@ -17,17 +17,17 @@ export function UnderstandingEvidence({data, busy=false, error='', generate}: {d
   const reasoning = suggestion?.reasoning
   return <div className="min-w-0 space-y-5 [overflow-wrap:anywhere]">
     <section className="space-y-3 rounded-xl border bg-white p-4 sm:p-5">
-      <h2 className="text-lg font-semibold">AI Understanding</h2>
+      <h2 className="text-lg font-semibold">Dataset description</h2>
       <p className="text-sm text-slate-600">Suggested by AI · Review required. These interpretations do not approve keys, rules, sensitivity classifications, or business meaning.</p>
       <p className="text-sm text-slate-600">Analysis sends dataset and column names with redacted aggregate evidence to the configured AI provider. No raw record values are sent.</p>
-      {data.profile_freshness !== 'READY' ? <><p role="status">Refresh the Data Profile before generating AI understanding.</p><Link className="inline-flex min-h-11 items-center text-indigo-700 underline" to="../profile">Go to Data Profile</Link></> : <>
-        <p role="status">{busy || data.status === 'GENERATING' ? 'Analyzing dataset…' : data.status === 'READY' ? 'AI suggestions ready for review' : data.status === 'FAILED' ? 'AI analysis could not complete. Trusted data and the Data Profile are unchanged.' : data.status === 'STALE' ? 'Previous suggestions are stale. Analyze the current profile.' : 'AI Understanding has not been generated.'}</p>
+      {data.profile_freshness !== 'READY' ? <><p role="status">Refresh the Data Profile before preparing a description.</p><Link className="inline-flex min-h-11 items-center text-indigo-700 underline" to="../profile">Go to Data Profile</Link></> : <>
+        <p role="status">{busy || data.status === 'GENERATING' ? 'Analyzing dataset…' : data.status === 'READY' ? 'AI suggestions ready for review' : data.status === 'FAILED' ? 'AI analysis could not complete. Trusted data and the Data Profile are unchanged.' : data.status === 'STALE' ? 'Previous suggestions are stale. Analyze the current profile.' : 'A dataset description has not been prepared yet.'}</p>
         {!ready && <button type="button" className="min-h-11 rounded-lg bg-indigo-600 px-4 text-white disabled:opacity-50" disabled={busy || !data.can_generate} onClick={generate}>{busy || data.status === 'GENERATING' ? 'Analyzing…' : data.status === 'FAILED' ? 'Retry Analysis' : 'Analyze Dataset'}</button>}
       </>}
       {error && <p role="alert" className="text-sm text-amber-800">{error}</p>}
     </section>
     {suggestion && reasoning && <>
-      <details className="text-sm text-slate-500"><summary className="min-h-11 cursor-pointer py-2">Analysis details</summary><p>Suggestion {suggestion.suggestion_version} · Profile {suggestion.source_profile_id} · Dataset state {suggestion.source_state_version} · {suggestion.provider} / {suggestion.resolved_model || suggestion.model} · {new Date(suggestion.completed_at).toLocaleString()}</p></details>
+      <details className="text-sm text-slate-500"><summary className="min-h-11 cursor-pointer py-2">Technical details</summary><p>Suggestion {suggestion.suggestion_version} · Profile {suggestion.source_profile_id} · Dataset state {suggestion.source_state_version} · {suggestion.provider} / {suggestion.resolved_model || suggestion.model} · {new Date(suggestion.completed_at).toLocaleString()}</p></details>
       <p className="text-sm">Overall confidence: {confidenceBand(reasoning.overall_confidence)}. Confidence is an uncalibrated AI assessment.</p>
       {suggestion.compact_mode && <p className="text-sm text-amber-800">Wide dataset: context was reduced deterministically. Every column name and type was included.</p>}
       <div className="grid gap-3 md:grid-cols-3"><ClassificationCard title="Suggested domain" value={reasoning.domain}/><ClassificationCard title="Suggested subdomain" value={reasoning.subdomain}/><ClassificationCard title="Likely dataset type" value={reasoning.entity}/></div>

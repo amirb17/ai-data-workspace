@@ -21,7 +21,7 @@ export function MetricList({data,busy,generate,review}: {data: MetricView; busy:
     </div>
     {data.failure_code && <p role="alert">Discovery could not complete ({data.failure_code}). Existing analytics and datasets are unchanged.</p>}
     {data.status==='STALE' && <p className="text-amber-800">Dependencies changed. Historical definitions remain visible with separate freshness; they are not current recommendations.</p>}
-    {data.coverage.excluded.map(d=><p key={d.dataset_id} className="break-words text-sm">{d.dataset_name}: {statusLabel(d.reason)} · <Link className="text-indigo-700 underline" to={`/app/workspaces/${data.workspace_id}/datasets/${d.dataset_id}/understanding`}>Review Dataset Understanding</Link></p>)}
+    {data.coverage.excluded.map(d=><p key={d.dataset_id} className="break-words text-sm">{d.dataset_name}: {statusLabel(d.reason)} · <Link className="text-indigo-700 underline" to={`/app/workspaces/${data.workspace_id}/datasets/${d.dataset_id}/understanding`}>Review dataset description</Link></p>)}
     {data.status==='READY' && !data.candidates.length && <p>No safe metric definitions were proposed for the current evidence.</p>}
     {data.discovery_context && <details className="text-sm"><summary className="min-h-11 cursor-pointer py-2">Discovery version and model</summary><pre className="whitespace-pre-wrap break-words">{JSON.stringify(data.discovery_context,null,2)}</pre></details>}
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">{data.candidates.map(c=><MetricCard key={c.candidate_id} candidate={c} busy={busy} review={review}/>)}</div>

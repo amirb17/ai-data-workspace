@@ -6,7 +6,7 @@ import { UnderstandingEvidence } from './UnderstandingEvidence'
 export function DatasetUnderstanding({workspaceId,datasetId}: {workspaceId: string; datasetId: string}) {
   const load = useCallback((signal: AbortSignal)=>getUnderstanding(workspaceId,datasetId,signal),[workspaceId,datasetId])
   const resource = useApiResource(`understanding:${workspaceId}:${datasetId}`,load)
-  return resource.data ? <Content key={`${workspaceId}:${datasetId}`} data={resource.data} workspaceId={workspaceId} datasetId={datasetId} reload={resource.retry}/> : <ApiFeedback loading="Checking AI understanding…" error={resource.error} retry={resource.retry}/>
+  return resource.data ? <Content key={`${workspaceId}:${datasetId}`} data={resource.data} workspaceId={workspaceId} datasetId={datasetId} reload={resource.retry}/> : <ApiFeedback loading="Checking dataset description…" error={resource.error} retry={resource.retry}/>
 }
 function Content({data,workspaceId,datasetId,reload}: {data: Understanding; workspaceId: string; datasetId: string; reload: () => void}) {
   const [busy,setBusy] = useState(false), [error,setError] = useState('')

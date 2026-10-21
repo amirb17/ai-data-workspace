@@ -6,7 +6,7 @@ const {UnderstandingEvidence}=require('../src/features/datasets/understanding/Un
 const api=require('../src/services/api/understanding.ts')
 const base={workspace_id:15,dataset_id:23,dataset_name:'Synthetic',status:'NOT_GENERATED',profile_freshness:'READY',can_generate:true,suggestion:null,evidence:[]}
 const render=(extra={})=>renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(UnderstandingEvidence,{data:{...base,...extra},generate:()=>{}})))
-assert.ok(render().includes('has not been generated') && render().includes('Analyze Dataset'))
+assert.ok(render().includes('description has not been prepared yet') && render().includes('Analyze Dataset'))
 assert.ok(render({status:'GENERATING',can_generate:false}).includes('disabled=""'))
 assert.ok(render({status:'FAILED'}).includes('Retry Analysis'))
 assert.ok(render({status:'STALE'}).includes('Previous suggestions are stale'))
