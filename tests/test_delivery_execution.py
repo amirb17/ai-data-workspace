@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.http_client import enable_csrf
 from tests.test_rule_approval_postgres import pg
 from tests.test_approved_rule_reuse import deliveries, approve
 from app.db import dataset_repository as datasets, file_repository as files
@@ -232,6 +233,7 @@ def test_owned_routes_safe_responses_and_legacy_mutation_cannot_regress_success(
     app.dependency_overrides[get_current_user] = lambda: database[1]
     try:
         with TestClient(app) as client:
+            enable_csrf(client)
             association = result["dataset_version_file"][0]
             for path in [f"/files/uploads/{upload_id}/continue", f"/files/dataset-version-files/{association}/silver/process", f"/files/dataset-version-files/{association}/gold/process"]:
                 assert client.post(path+f"?workspace_id={database[2]+100}&dataset_id={database[3]}").status_code == 403
@@ -255,6 +257,7 @@ def test_legacy_stage_rejects_owned_but_schema_mismatched_association(pipeline):
     app.dependency_overrides[get_current_user] = lambda: database[1]
     try:
         with TestClient(app) as client:
+            enable_csrf(client)
             for stage in ("silver", "gold"):
                 assert client.post(f"/files/dataset-version-files/{association}/{stage}/process").status_code == 400
         assert pipeline[5]["silver"] == pipeline[5]["gold"] == 0

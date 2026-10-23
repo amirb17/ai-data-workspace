@@ -12,8 +12,20 @@ DS = (13, "Orders", None, "dev:test", "ACTIVE", None, None, 7)
 @pytest.fixture
 def client():
     app.dependency_overrides[get_current_user] = lambda: USER
+
     with TestClient(app) as client:
+        csrf = client.get("/auth/csrf")
+        assert csrf.status_code == 200
+
+        client.headers.update(
+            {
+                "Origin": "http://localhost:5173",
+                "X-CSRF-Token": csrf.json()["csrf_token"],
+            }
+        )
+
         yield client
+
     app.dependency_overrides.pop(get_current_user, None)
 
 
@@ -73,18 +85,33 @@ def test_identity_disabled_by_default(monkeypatch):
 
 
 def test_dev_identity_uses_database_user(monkeypatch):
-    monkeypatch.setenv('APP_ENV','development')
-    monkeypatch.setenv('ENABLE_DEV_IDENTITY','true')
-    monkeypatch.setenv('DEV_USER_KEY','test')
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("ENABLE_DEV_IDENTITY", "true")
+    monkeypatch.setenv("AUTH_MODE", "development")
+    monkeypatch.setenv("DEV_USER_KEY", "test")
+
     def get_user(key, name):
-        assert key == 'dev:test'
+        assert key == "dev:test"
         return USER
-    monkeypatch.setattr(identity, 'get_or_create_dev_user', get_user)
-    assert identity.get_current_user()['user_id'] == 42
+
+    monkeypatch.setattr(
+        identity,
+        "get_or_create_dev_user",
+        get_user,
+    )
+
+    assert identity.get_current_user()["user_id"] == 42
 
 
-def test_me(client):
-    assert client.get('/me').json()['user_id'] == 42
+def test_me(client, monkeypatch):
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("AUTH_MODE", "development")
+
+    response = client.get("/me")
+
+    assert response.status_code == 200
+    assert response.json()["user_id"] == 42
+    assert response.json()["identity_mode"] == "development"
 
 
 def test_session_api_uses_principal_and_id_only(client, monkeypatch):

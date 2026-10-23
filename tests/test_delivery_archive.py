@@ -4,6 +4,7 @@ from threading import Event
 
 import pytest
 from fastapi.testclient import TestClient
+from tests.http_client import enable_csrf
 from tests.test_rule_approval_postgres import pg
 from tests.test_approved_rule_reuse import deliveries
 from tests.test_delivery_execution import pipeline, approve_first, execute, counts
@@ -26,7 +27,8 @@ def test_unprocessed_repeat_scope_refresh_and_pending(pg):
     assert datasets.read_dataset_processing(pg[2],pg[3],pg[1])["summary"]["pending"] == 1
     app.dependency_overrides[get_current_user] = lambda: pg[1]
     try:
-        client=TestClient(app); url=f"/files/uploads/{upload}/archive"
+        client = enable_csrf(TestClient(app))
+        url = f"/files/uploads/{upload}/archive"
         assert client.post(url,json={"workspace_id":pg[2]+1,"dataset_id":pg[3]}).status_code == 403
         assert client.post(url,json={"workspace_id":pg[2],"dataset_id":pg[3]+1}).status_code == 403
         app.dependency_overrides[get_current_user] = lambda: {"user_id":pg[1]['user_id']+1,"owner_key":"other"}

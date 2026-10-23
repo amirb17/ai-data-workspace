@@ -4,6 +4,7 @@ from threading import Event
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
+from tests.http_client import enable_csrf
 from tests.test_rule_approval_postgres import pg
 from tests.test_approved_rule_reuse import deliveries
 from tests.test_delivery_execution import pipeline, approve_first, execute
@@ -116,7 +117,8 @@ def test_ownership_and_api_no_private_paths(pipeline):
     p,first=ready(pipeline); db=pipeline[0]
     app.dependency_overrides[get_current_user]=lambda:db[1]
     try:
-        client=TestClient(app); base=f'/workspaces/{db[2]}/datasets/{db[3]}/incremental'
+        client = enable_csrf(TestClient(app))
+        base = f'/workspaces/{db[2]}/datasets/{db[3]}/incremental'
         response=client.get(base)
         assert response.status_code==200 and response.json()['execution_available'] is True
         assert response.json()['executable_modes']==['APPEND','UPSERT','SNAPSHOT']

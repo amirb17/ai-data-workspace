@@ -24,6 +24,35 @@ USER = {"user_id": 1, "owner_key": "dev:test"}
 @pytest.fixture
 def scope(monkeypatch):
     app.dependency_overrides[get_current_user] = lambda: USER
+
+    monkeypatch.setattr(
+        context,
+        "validate_upload_context",
+        lambda *args: None,
+    )
+    monkeypatch.setattr(
+        context,
+        "get_dataset_by_workspace",
+        lambda *args: (
+            20,
+            "Orders",
+            None,
+            USER["owner_key"],
+        ),
+    )
+    monkeypatch.setattr(
+        context,
+        "get_upload_request_by_id",
+        lambda _: (
+            40,
+            1,
+            30,
+            10,
+            20,
+            "UPLOADED",
+            None,
+        ),
+    )
     monkeypatch.setattr(context, "validate_upload_context", lambda *args: None)
     monkeypatch.setattr(context, "get_dataset_by_workspace", lambda *args: (20, "Orders", None, USER["owner_key"]))
     monkeypatch.setattr(context, "get_upload_request_by_id", lambda _: (40, 1, 30, 10, 20, "UPLOADED", None))
@@ -36,8 +65,23 @@ def scope(monkeypatch):
     monkeypatch.setattr(context, "get_delivery_attempts", lambda *args: [])
     monkeypatch.setattr(context, "get_latest_successful_dq_run_for_dataset_version_file", lambda _: None)
     monkeypatch.setattr(context, "get_dataset_profile_summary", lambda _: None)
-    yield TestClient(app)
-    app.dependency_overrides.pop(get_current_user, None)
+    with TestClient(app) as client:
+        csrf = client.get("/auth/csrf")
+        assert csrf.status_code == 200
+
+        client.headers.update(
+            {
+                "Origin": "http://localhost:5173",
+                "X-CSRF-Token": csrf.json()["csrf_token"],
+            }
+        )
+
+        yield client
+
+    app.dependency_overrides.pop(
+        get_current_user,
+        None,
+    )
 
 
 def test_completed_upload_can_prepare_bronze_and_exposes_pending_rules(scope, monkeypatch):

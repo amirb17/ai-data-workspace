@@ -4,6 +4,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 import pytest
+from tests.http_client import enable_csrf
 from app.ai.workspace_semantics import build_handoff,validate_output,WorkspaceProvider,SYSTEM_PROMPT
 from app.ai.semantic_provider import ProviderResult,ProviderFailure
 from app.services import workspace_understanding_service as service
@@ -171,7 +172,8 @@ def test_failures_retry_interruption_and_api(workspace_ready):
     from app.api.identity import get_current_user
     app.dependency_overrides[get_current_user]=lambda:db[1]
     try:
-        client=TestClient(app);path=f'/workspaces/{db[2]}/semantic-understanding'
+        client = enable_csrf(TestClient(app))
+        path = f'/workspaces/{db[2]}/semantic-understanding'
         r=client.get(path);assert r.status_code==200 and r.json()['status']=='READY'
         assert all(secret not in r.text for secret in ('owner_key','configuration_key','source_signature','s3://'))
         assert client.get(path+'/readiness').json()['suggestion'] is None

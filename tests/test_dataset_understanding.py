@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 import pandas as pd
 import pytest
+from tests.http_client import enable_csrf
 from app.processing.semantic_evidence import build_evidence
 from app.ai.semantic_handoff import build_handoff
 from app.ai.semantic_validator import validate_output
@@ -239,7 +240,8 @@ def test_malformed_retry_interruption_publication_and_api(ready):
     result=call(f,service.generate_understanding)
     app.dependency_overrides[get_current_user]=lambda:db[1]
     try:
-        client=TestClient(app);path=f'/workspaces/{db[2]}/datasets/{db[3]}/semantic-understanding'
+        client = enable_csrf(TestClient(app))
+        path = f'/workspaces/{db[2]}/datasets/{db[3]}/semantic-understanding'
         assert client.get(path).json()['suggestion']['suggestion_id']==result['suggestion']['suggestion_id']
         status=client.get(path+'/readiness').json()
         assert status['status']=='READY' and status['suggestion'] is None and status['evidence']==[]

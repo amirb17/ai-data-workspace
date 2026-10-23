@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 import pandas as pd
 import pytest
+from tests.http_client import enable_csrf
 from app.processing.semantic_evidence import build_evidence
 from app.processing.relationship_evidence import propose, verify, LIMITS, values
 from app.services import relationship_service as service
@@ -158,7 +159,8 @@ def test_real_discovery_review_history_staleness_isolation_and_api(relationship_
     from app.api.identity import get_current_user
     app.dependency_overrides[get_current_user]=lambda:user
     try:
-        client=TestClient(app); path=f'/workspaces/{ws}/relationships'
+        client = enable_csrf(TestClient(app))
+        path = f'/workspaces/{ws}/relationships'
         assert client.get(path).status_code==200
         assert client.get(path+'/readiness').json()['candidates']==[]
         assert client.post(path+'/discover',json={'state_ids':[1]}).status_code==422

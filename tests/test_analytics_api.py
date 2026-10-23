@@ -7,6 +7,16 @@ from app.main import app
 
 client = TestClient(app)
 
+csrf = client.get("/auth/csrf")
+assert csrf.status_code == 200
+
+client.headers.update(
+    {
+        "Origin": "http://localhost:5173",
+        "X-CSRF-Token": csrf.json()["csrf_token"],
+    }
+)
+
 
 @pytest.fixture(autouse=True)
 def endpoint_unit_scope():

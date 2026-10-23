@@ -5,6 +5,7 @@ from threading import Event
 import psycopg
 import pandas as pd
 import pytest
+from tests.http_client import enable_csrf
 from tests.test_rule_approval_postgres import pg
 from tests.test_approved_rule_reuse import deliveries
 from tests.test_delivery_execution import pipeline, approve_first, execute
@@ -234,6 +235,7 @@ def test_pg_api_declaration_scope_and_no_private_paths(snapshot_pipeline):
     app.dependency_overrides[get_current_user]=lambda:db[1]
     try:
         with TestClient(app) as client:
+            enable_csrf(client)
             base=f'/workspaces/{db[2]}/datasets/{db[3]}/incremental'
             assert client.get(base).status_code==200
             body={'coverage':'COMPLETE','effective_at':'2026-10-06T00:00:00Z'}

@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 import pandas as pd
 import pytest
+from tests.http_client import enable_csrf
 from tests.test_rule_approval_postgres import pg
 from tests.test_approved_rule_reuse import deliveries
 from tests.test_delivery_execution import pipeline
@@ -175,7 +176,8 @@ def test_api_scope_not_ready_and_safe_response(gold):
     from app.api.identity import get_current_user
     from fastapi.testclient import TestClient
     db=gold[0][0][0]; app.dependency_overrides[get_current_user]=lambda:db[1]
-    client=TestClient(app); url=f'/workspaces/{db[2]}/datasets/{db[3]}/analytics'
+    client = enable_csrf(TestClient(app))
+    url = f'/workspaces/{db[2]}/datasets/{db[3]}/analytics'
     try:
         assert client.get(url+'/readiness').json()['freshness']=='STALE'
         legacy=client.get(f'/analytics/dataset-versions/{db[5]}/workspace')

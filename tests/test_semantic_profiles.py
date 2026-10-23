@@ -4,6 +4,7 @@ from threading import Event
 from decimal import Decimal
 import pandas as pd
 import pytest
+from tests.http_client import enable_csrf
 from tests.test_rule_approval_postgres import pg
 from tests.test_approved_rule_reuse import deliveries
 from tests.test_delivery_execution import pipeline
@@ -196,7 +197,8 @@ def test_concurrency_and_api_ownership(profiled):
     from fastapi.testclient import TestClient
     db=profiled[0][0];app.dependency_overrides[get_current_user]=lambda:db[1]
     try:
-        client=TestClient(app);url=f'/workspaces/{db[2]}/datasets/{db[3]}/profile'
+        client = enable_csrf(TestClient(app))
+        url = f'/workspaces/{db[2]}/datasets/{db[3]}/profile'
         result=client.get(url);assert result.status_code==200 and result.json()['profile_ready']
         assert not any(secret in result.text for secret in ('s3://','manifest','sha256','storage_path','owner_key'))
         assert client.post(url+'/refresh').json()['profile_id']==result.json()['profile_id']
