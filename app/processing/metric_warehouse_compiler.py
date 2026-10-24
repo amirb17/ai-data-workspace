@@ -24,7 +24,6 @@ from app.query_governance.providers.base import (
     QueryExecutionResult,
 )
 from app.processing.relationship_evidence import digest
-from app.query_governance.providers.base import CompiledQuery
 from app.schemas.metrics import MetricProposal
 
 
@@ -63,6 +62,9 @@ class MetricWarehouseSource:
 
     publication_id: int
     publication_revision: int
+    serving_materialization_id: int
+    serving_sha256: str
+    serving_row_count: int
 
     physical_table: str
 
@@ -103,6 +105,7 @@ class MetricWarehouseSource:
             self.generation,
             self.publication_id,
             self.publication_revision,
+            self.serving_materialization_id,
         )
 
         if any(
@@ -121,11 +124,21 @@ class MetricWarehouseSource:
             or not _HEX64.fullmatch(
                 self.source_vector_sha256
             )
+            or not _HEX64.fullmatch(
+                self.serving_sha256
+            )
         ):
             raise ValueError(
                 "Pinned warehouse contract hashes required"
             )
-
+        if (
+            type(self.serving_row_count)
+            is not int
+            or self.serving_row_count < 0
+        ):
+            raise ValueError(
+                "Valid serving row count required"
+            )
         if (
             not isinstance(
                 self.physical_table,
@@ -324,6 +337,15 @@ class MetricWarehouseSource:
             ),
             "source_vector_sha256": (
                 self.source_vector_sha256
+            ),
+            "serving_materialization_id": (
+                self.serving_materialization_id
+            ),
+            "serving_sha256": (
+                self.serving_sha256
+            ),
+            "serving_row_count": (
+                self.serving_row_count
             ),
         }
 

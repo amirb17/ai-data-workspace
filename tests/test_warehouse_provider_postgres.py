@@ -34,6 +34,11 @@ def provider_pg(modeling_pg, monkeypatch):
     with p['connect']() as conn:
         from pathlib import Path
         conn.execute(Path('migrations/0031_warehouse_reliability.sql').read_text())
+        conn.execute(
+            Path(
+                'migrations/0034_warehouse_serving_materialization.sql'
+            ).read_text()
+        )
     monkeypatch.setenv('BIGQUERY_ENABLED', 'true')
     monkeypatch.setenv('BIGQUERY_PROJECT_ID', 'synthetic-project')
     cloud = Client()
@@ -158,6 +163,11 @@ def fact_provider_pg(
         conn.execute(
             Path(
                 'migrations/0031_warehouse_reliability.sql'
+            ).read_text()
+        )
+        conn.execute(
+            Path(
+                'migrations/0034_warehouse_serving_materialization.sql'
             ).read_text()
         )
 

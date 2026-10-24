@@ -8,7 +8,14 @@ Read-only metadata resolution only:
 """
 
 from uuid import UUID
-
+from app.warehouse.providers import (
+    fact_physical,
+    model_adapter,
+    physical,
+)
+from app.warehouse.serving_materialization import (
+    materialization_identity,
+)
 from pydantic import TypeAdapter
 
 from app.db import (
@@ -221,6 +228,101 @@ def _source(
         row,
         workspace_id,
     )
+    if (
+        row[
+            "serving_materialization_id"
+        ]
+        is None
+    ):
+        raise ValueError(
+            "WAREHOUSE_SERVING_NOT_READY"
+        )
+
+    configuration_sha256 = digest(
+        row["configuration"]
+    )
+
+    schema_sha256 = (
+        model_adapter.schema_hash(
+            context
+        )
+    )
+
+    source_vector_sha256 = digest(
+        row["source_vector"]
+    )
+
+    identity = materialization_identity(
+        workspace_id=workspace_id,
+        model_id=row[
+            "warehouse_model_id"
+        ],
+        model_version_id=row[
+            "warehouse_model_version_id"
+        ],
+        resource_id=row[
+            "resource_id"
+        ],
+        generation=row[
+            "generation"
+        ],
+        publication_id=row[
+            "publication_id"
+        ],
+        publication_revision=row[
+            "publication_revision"
+        ],
+        physical_table=table,
+        configuration_sha256=(
+            configuration_sha256
+        ),
+        schema_sha256=schema_sha256,
+        source_vector_sha256=(
+            source_vector_sha256
+        ),
+    )
+
+    if (
+        row[
+            "serving_publication_revision"
+        ]
+        != row[
+            "publication_revision"
+        ]
+        or row[
+            "serving_generation"
+        ]
+        != row[
+            "generation"
+        ]
+        or row[
+            "serving_configuration_sha256"
+        ]
+        != configuration_sha256
+        or row[
+            "serving_schema_sha256"
+        ]
+        != schema_sha256
+        or row[
+            "serving_source_vector_sha256"
+        ]
+        != source_vector_sha256
+        or row[
+            "materialization_token"
+        ]
+        != identity[
+            "materialization_token"
+        ]
+        or row[
+            "serving_intent_sha256"
+        ]
+        != identity[
+            "intent_sha256"
+        ]
+    ):
+        raise ValueError(
+            "WAREHOUSE_SERVING_EVIDENCE_INVALID"
+        )
 
     if (
         row["head_revision"]
@@ -265,6 +367,15 @@ def _source(
             publication_revision=row[
                 "publication_revision"
             ],
+            serving_materialization_id=row[
+                "serving_materialization_id"
+            ],
+            serving_sha256=row[
+                "serving_sha256"
+            ],
+            serving_row_count=row[
+                "serving_row_count"
+            ],
             physical_table=table,
             columns=(
                 fact_physical.columns(
@@ -277,11 +388,11 @@ def _source(
                 .identity_columns
             ),
             business_keys=(),
-            configuration_sha256=digest(
-                row["configuration"]
+            configuration_sha256=(
+                configuration_sha256
             ),
-            source_vector_sha256=digest(
-                row["source_vector"]
+            source_vector_sha256=(
+                source_vector_sha256
             ),
             model_type="FACT",
             event_time_column=(
@@ -306,44 +417,53 @@ def _source(
     )
 
     return MetricWarehouseSource(
-        dataset_id=row[
-            "source_dataset_id"
-        ],
-        state_id=state_id,
-        model_id=row[
-            "warehouse_model_id"
-        ],
-        model_version_id=row[
-            "warehouse_model_version_id"
-        ],
-        resource_id=row[
-            "resource_id"
-        ],
-        generation=row[
-            "generation"
-        ],
-        publication_id=row[
-            "publication_id"
-        ],
-        publication_revision=row[
-            "publication_revision"
-        ],
-        physical_table=table,
-        columns=physical.columns(
-            context
-        ),
-        grain_keys=(),
-        business_keys=tuple(
-            configuration.business_keys
-        ),
-        configuration_sha256=digest(
-            row["configuration"]
-        ),
-        source_vector_sha256=digest(
-            row["source_vector"]
-        ),
-        model_type="DIMENSION",
-    )
+    dataset_id=row[
+        "source_dataset_id"
+    ],
+    state_id=state_id,
+    model_id=row[
+        "warehouse_model_id"
+    ],
+    model_version_id=row[
+        "warehouse_model_version_id"
+    ],
+    resource_id=row[
+        "resource_id"
+    ],
+    generation=row[
+        "generation"
+    ],
+    publication_id=row[
+        "publication_id"
+    ],
+    publication_revision=row[
+        "publication_revision"
+    ],
+    serving_materialization_id=row[
+        "serving_materialization_id"
+    ],
+    serving_sha256=row[
+        "serving_sha256"
+    ],
+    serving_row_count=row[
+        "serving_row_count"
+    ],
+    physical_table=table,
+    columns=physical.columns(
+        context
+    ),
+    grain_keys=(),
+    business_keys=tuple(
+        configuration.business_keys
+    ),
+    configuration_sha256=(
+        configuration_sha256
+    ),
+    source_vector_sha256=(
+        source_vector_sha256
+    ),
+    model_type="DIMENSION",
+)
 
 
 def resolve_metric_warehouse_sources(

@@ -30,6 +30,9 @@ def source(**updates):
         generation=1,
         publication_id=50,
         publication_revision=2,
+        serving_materialization_id=60,
+        serving_sha256="9" * 64,
+        serving_row_count=100,
         physical_table=TABLE,
         columns=(
         (
@@ -81,6 +84,9 @@ def dimension_source(**updates):
         generation=1,
         publication_id=51,
         publication_revision=3,
+        serving_materialization_id=61,
+        serving_sha256="8" * 64,
+        serving_row_count=20,
         physical_table=(
             "synthetic-project."
             "dr_dev_w1."

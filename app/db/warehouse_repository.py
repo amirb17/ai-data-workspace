@@ -187,8 +187,31 @@ def metric_warehouse_bindings(
             h.revision AS head_revision,
 
             p.revision AS publication_revision,
-            p.source_vector
+            p.source_vector,
 
+            sm.serving_materialization_id,
+            sm.publication_revision
+                AS serving_publication_revision,
+            sm.generation
+                AS serving_generation,
+            sm.materialization_token,
+            sm.intent_sha256
+                AS serving_intent_sha256,
+            sm.configuration_sha256
+                AS serving_configuration_sha256,
+            sm.schema_sha256
+                AS serving_schema_sha256,
+            sm.source_vector_sha256
+                AS serving_source_vector_sha256,
+            sm.provider_job_id
+                AS serving_provider_job_id,
+            sm.serving_sha256,
+            sm.row_count
+                AS serving_row_count,
+            sm.bytes_processed
+                AS serving_bytes_processed,
+            sm.bytes_billed
+    AS serving_bytes_billed
         FROM warehouse_model_sources s
 
         JOIN warehouse_models m
@@ -226,7 +249,9 @@ def metric_warehouse_bindings(
           ON p.resource_id = h.resource_id
          AND p.publication_id
              = h.publication_id
-
+        LEFT JOIN warehouse_serving_materializations sm
+        ON sm.resource_id = r.resource_id
+        AND sm.publication_id = h.publication_id
         WHERE s.workspace_id = %s
           AND s.source_dataset_id = ANY(%s)
           AND s.purpose = 'PRIMARY'

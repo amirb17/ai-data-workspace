@@ -52,3 +52,109 @@ def lease(conn, resource):
 def latest_stage(conn, operation):
     return one(conn, '''SELECT j.* FROM warehouse_run_journal j JOIN warehouse_runs r USING(warehouse_run_id)
         WHERE r.operation_id=%s AND j.stage IN ('PLANNED','TARGET_RECEIPT') ORDER BY j.journal_id DESC LIMIT 1''', (operation,))
+def serving_materialization(
+    conn,
+    resource_id,
+    publication_id,
+):
+    return one(
+        conn,
+        """
+        SELECT *
+        FROM warehouse_serving_materializations
+        WHERE resource_id=%s
+          AND publication_id=%s
+        """,
+        (
+            resource_id,
+            publication_id,
+        ),
+    )
+
+
+def record_serving_materialization(
+    conn,
+    evidence,
+):
+    return one(
+        conn,
+        """
+        INSERT INTO warehouse_serving_materializations(
+            workspace_id,
+            warehouse_model_id,
+            warehouse_model_version_id,
+            resource_id,
+            publication_id,
+            publication_revision,
+            generation,
+            materialization_token,
+            intent_sha256,
+            configuration_sha256,
+            schema_sha256,
+            source_vector_sha256,
+            provider_job_id,
+            serving_sha256,
+            row_count,
+            bytes_processed,
+            bytes_billed
+        )
+        VALUES (
+            %s,%s,%s,%s,%s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,%s,%s,%s
+        )
+        RETURNING *
+        """,
+        (
+            evidence[
+                "workspace_id"
+            ],
+            evidence[
+                "warehouse_model_id"
+            ],
+            evidence[
+                "warehouse_model_version_id"
+            ],
+            evidence[
+                "resource_id"
+            ],
+            evidence[
+                "publication_id"
+            ],
+            evidence[
+                "publication_revision"
+            ],
+            evidence[
+                "generation"
+            ],
+            evidence[
+                "materialization_token"
+            ],
+            evidence[
+                "intent_sha256"
+            ],
+            evidence[
+                "configuration_sha256"
+            ],
+            evidence[
+                "schema_sha256"
+            ],
+            evidence[
+                "source_vector_sha256"
+            ],
+            evidence[
+                "provider_job_id"
+            ],
+            evidence[
+                "serving_sha256"
+            ],
+            evidence[
+                "row_count"
+            ],
+            evidence[
+                "bytes_processed"
+            ],
+            evidence[
+                "bytes_billed"
+            ],
+        ),
+    )
