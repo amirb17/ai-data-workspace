@@ -50,6 +50,12 @@ class FactConfiguration(Contract):
     model_type: Literal['FACT']
     grain: Grain
     event_time: TimePolicy | None = None
+
+    # Explicit reviewed analytical roles.
+    # Never infer these roles from source data types or metric usage.
+    measures: Columns = ()
+    attributes: Columns = ()
+
     identity_null_policy: Literal['REJECT'] = 'REJECT'
 
 

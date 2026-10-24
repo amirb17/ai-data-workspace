@@ -63,17 +63,26 @@ class SourcePin(Contract):
 
 
 def projection(configuration):
-    """Only roles present in the approved V1 model; no guessed FACT measures."""
+    """Only explicitly reviewed model roles enter trusted warehouse evidence."""
     if configuration.model_type == 'DIMENSION':
-        names = list(configuration.business_keys) + list(configuration.tracked_attributes) + list(configuration.nonhistorical_attributes)
+        names = (
+            list(configuration.business_keys)
+            + list(configuration.tracked_attributes)
+            + list(configuration.nonhistorical_attributes)
+        )
         time = configuration.effective_time
     else:
-        names = list(configuration.grain.identity_columns)
+        names = (
+            list(configuration.grain.identity_columns)
+            + list(configuration.measures)
+            + list(configuration.attributes)
+        )
         time = configuration.event_time
+
     if time:
         names.append(time.column)
-    return tuple(sorted(set(names)))
 
+    return tuple(sorted(set(names)))
 
 def payload(row, columns):
     if not columns or len(columns) > 128 or len(set(columns)) != len(columns):

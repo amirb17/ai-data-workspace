@@ -52,7 +52,94 @@ def test_valid_fact_and_dimension_metadata(payload):
     assert result['valid'] and result['identity_null_policy']=='REJECT'
     assert all(v is None for v in result['source_key_nullability'].values())
 
+def test_fact_analytical_roles_are_explicit_and_backward_compatible():
+    legacy = ADAPTER.validate_python(fact())
 
+    assert legacy.measures == ()
+    assert legacy.attributes == ()
+
+    configured = ADAPTER.validate_python(
+        fact(
+            measures=['amount'],
+            attributes=['segment', 'label'],
+            event_time=dict(
+                column='effective',
+                interpretation='UTC',
+            ),
+        )
+    )
+
+    assert configured.measures == ('amount',)
+    assert configured.attributes == (
+        'segment',
+        'label',
+    )
+
+    result = validate_model(
+        configured,
+        schema(),
+    )
+
+    assert result['valid']
+    assert result['identity_columns'] == [
+        'id',
+        'line',
+    ]
+@pytest.mark.parametrize(
+    'payload',
+    [
+        fact(measures=['amount', 'amount']),
+        fact(attributes=['segment', 'segment']),
+
+        # Grain identity cannot also carry another role.
+        fact(measures=['id']),
+        fact(attributes=['line']),
+
+        # Analytical roles must be mutually exclusive.
+        fact(
+            measures=['amount'],
+            attributes=['amount'],
+        ),
+
+        # Event time has its own semantic role.
+        fact(
+            attributes=['effective'],
+            event_time=dict(
+                column='effective',
+                interpretation='UTC',
+            ),
+        ),
+
+        # Measures are explicitly numeric.
+        fact(measures=['segment']),
+        fact(measures=['label']),
+
+        # All configured roles must exist in the pinned schema.
+        fact(measures=['missing']),
+        fact(attributes=['missing']),
+    ],
+)
+def test_fact_analytical_role_conflicts_are_rejected(payload):
+    fact(measures=['float_id']),
+    fact(attributes=['float_id']),
+    with pytest.raises(ValueError):
+        validate_model(
+            ADAPTER.validate_python(payload),
+            schema(),
+        )
+def test_fact_measure_must_be_exact_numeric():
+    config = ADAPTER.validate_python(
+        fact(measures=['float_id'])
+    )
+
+    with pytest.raises(
+        ValueError,
+        match='Fact measures must use exact numeric source columns',
+    ):
+        validate_model(
+            config,
+            schema(),
+        )
 @pytest.mark.parametrize('payload',[
     {},dict(grain=dict(description='Event',identity_columns=['id'])),
     {'model_type':'FACT'},dict(model_type='FACT',grain=dict(description='   ',identity_columns=['id'])),
@@ -169,6 +256,12 @@ def test_partial_snapshots_never_authorize_absence_deactivation(load,coverage):
 def modeling_pg(pg):
     with pg['connect']() as conn:
         conn.execute((ROOT/'migrations/0030_warehouse_modeling.sql').read_text(encoding='utf-8'))
+        conn.execute(
+            (
+                ROOT
+                / 'migrations/0033_fact_analytical_roles.sql'
+            ).read_text(encoding='utf-8')
+        )
         version=conn.execute("INSERT INTO dataset_versions(dataset_id,version_number,schema_hash) VALUES (%s,1,%s) RETURNING dataset_version_id",(pg['dataset'],'b'*64)).fetchone()[0]
         columns=[dict(name=n,data_type=t) for n,t in [('id','TEXT'),('line','INTEGER'),('segment','TEXT'),('label','TEXT'),('effective','DATETIME'),('float_id','DECIMAL')]]
         conn.execute('INSERT INTO approved_rule_policies(dataset_version_id,rule_version,rules) VALUES (%s,1,%s)',(version,Jsonb([])))
@@ -222,6 +315,12 @@ def test_approval_requires_explicit_config_but_legacy_rows_survive(pg):
         before_rows=snapshot()
         before=conn.execute('SELECT to_jsonb(v) FROM warehouse_model_versions v').fetchall()
         conn.execute((ROOT/'migrations/0030_warehouse_modeling.sql').read_text(encoding='utf-8'))
+        conn.execute(
+    (
+        ROOT
+        / 'migrations/0033_fact_analytical_roles.sql'
+    ).read_text(encoding='utf-8')
+)
         assert conn.execute('SELECT to_jsonb(v) FROM warehouse_model_versions v').fetchall()==before
         assert snapshot()==before_rows
         assert conn.execute('SELECT count(*) FROM warehouse_model_configurations').fetchone()[0]==0
@@ -236,6 +335,12 @@ def test_approval_requires_explicit_config_but_legacy_rows_survive(pg):
     with pg['connect']() as conn:
         conn.execute((ROOT/'migrations/rollback/0030_warehouse_modeling.sql').read_text(encoding='utf-8'))
         conn.execute((ROOT/'migrations/0030_warehouse_modeling.sql').read_text(encoding='utf-8'))
+        conn.execute(
+    (
+        ROOT
+        / 'migrations/0033_fact_analytical_roles.sql'
+    ).read_text(encoding='utf-8')
+)
         assert conn.execute('SELECT to_jsonb(v) FROM warehouse_model_versions v WHERE warehouse_model_version_id=%s',(v,)).fetchall()==before
 
 
@@ -318,3 +423,70 @@ def test_database_rejects_uncontrolled_or_invalid_semantics(modeling_pg,invalid)
             source_rule_sha256,created_by) SELECT %s,workspace_id,warehouse_model_id,source_dataset_id,source_dataset_version_id,
             source_policy_id,source_rule_version,%s,%s,source_schema,source_rule_sha256,created_by
             FROM warehouse_model_configurations WHERE warehouse_model_version_id=%s''',(next_v,kind,Jsonb(payload),v))
+def test_fact_analytical_roles_persist_under_additive_migration(
+    modeling_pg,
+):
+    pg = modeling_pg
+
+    payload = dict(
+        model_type='FACT',
+        grain=dict(
+            description='One row per source id',
+            identity_columns=['id'],
+        ),
+
+        # INTEGER is exact in the current pinned source contract.
+        measures=['line'],
+
+        attributes=[
+            'segment',
+            'label',
+        ],
+
+        event_time=dict(
+            column='effective',
+            interpretation='UTC',
+        ),
+    )
+
+    m, v, _, result = configured(
+        pg,
+        payload,
+        name='FACT analytical roles',
+    )
+
+    assert result['model_type'] == 'FACT'
+
+    assert result['configuration']['measures'] == [
+        'line'
+    ]
+
+    assert result['configuration']['attributes'] == [
+        'segment',
+        'label',
+    ]
+
+    models.approve_version(
+        pg['workspace'],
+        m,
+        v,
+        pg['owner'],
+    )
+
+    stored = modeling.read_configuration(
+        pg['workspace'],
+        m,
+        v,
+        pg['owner'],
+    )
+
+    assert stored['validation']['valid']
+
+    assert stored['configuration']['measures'] == [
+        'line'
+    ]
+
+    assert stored['configuration']['attributes'] == [
+        'segment',
+        'label',
+    ]

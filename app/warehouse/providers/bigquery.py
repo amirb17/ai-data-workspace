@@ -9,9 +9,9 @@ from google.auth.exceptions import DefaultCredentialsError, RefreshError
 from google.cloud import bigquery
 
 from app.warehouse.accepted_changes import digest
-from app.warehouse.providers import physical
+from app.warehouse.providers import model_adapter
 from app.warehouse.providers.base import Binding, ErrorCode, Policy, ProviderError, TokenState
-from app.warehouse.providers.planning import LogicalPlan, compile_dimension, result_checksum
+from app.warehouse.providers.model_adapter import Plan
 from app.warehouse.reliability import Result
 
 JOURNAL = (('application_token', 'STRING', 'REQUIRED'), ('intent_sha256', 'STRING', 'REQUIRED'),
@@ -48,7 +48,7 @@ class Batch:
     operation_id: int
     application_token: str
     intent_sha256: str
-    plan: LogicalPlan
+    plan: Plan
     operation_type: str = 'INITIAL_LOAD'
 
     def __post_init__(self):
@@ -64,7 +64,14 @@ class Batch:
         if any(m['pin']['workspace_id'] != self.binding.workspace_id for m in self.plan.manifests):
             raise ProviderError(ErrorCode.PERMISSION_DENIED)
         # Recompute the approved planners, rejecting hand-assembled altered plans.
-        if compile_dimension(c, self.plan.manifests, self.plan.before) != self.plan:
+        if (
+            model_adapter.compile_plan(
+                c,
+                self.plan.manifests,
+                self.plan.before,
+            )
+            != self.plan
+        ):
             raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
 
     @property
@@ -107,7 +114,9 @@ class BigQueryTarget:
                       workspace=str(self.binding.workspace_id), model=str(self.binding.model_id),
                       generation=str(self.binding.generation))
         if context:
-            labels['contract'] = physical.schema_hash(context)[:63]
+            labels["contract"] = (
+                model_adapter.schema_hash(context)[:63]
+            )
         return labels
 
     def _dataset_labels(self):
@@ -128,7 +137,7 @@ class BigQueryTarget:
                 found = self._call(self.client.get_dataset, name)
             self._verify_dataset(found)
         self._table(self.binding.physical('journal'), JOURNAL, create=True, journal=True)
-        self._table(self._serving_table(), physical.schema(context), context=context, create=True)
+        self._table(self._serving_table(), model_adapter.schema(context), context=context, create=True)
 
     def _serving_table(self):
         return f'{self.binding.project}.{self.binding.serving}.{self.binding.table}'
@@ -183,8 +192,8 @@ class BigQueryTarget:
             raise ProviderError(ErrorCode.PERMISSION_DENIED)
         # The registered serving table is a verified, empty reservation. 11F
         # never promotes candidates into it or makes a current consumer view.
-        self._table(self._serving_table(), physical.schema(batch.plan.context), context=batch.plan.context)
-        data = physical.rows(batch.plan)
+        self._table(self._serving_table(), model_adapter.schema(batch.plan.context), context=batch.plan.context)
+        data = model_adapter.rows(batch.plan)
         if (len(data) > self.policy.maximum_rows
                 or len(json.dumps(data, ensure_ascii=False).encode()) > self.policy.maximum_payload_bytes):
             raise ProviderError(ErrorCode.COST_LIMIT_EXCEEDED)
@@ -286,7 +295,7 @@ class BigQueryTarget:
             return self.reconcile(batch)
         if state != TokenState.NOT_APPLIED:
             raise ProviderError(ErrorCode.TARGET_INCONSISTENT, uncertain=True)
-        fields = physical.schema(batch.plan.context)
+        fields = model_adapter.schema(batch.plan.context)
         stage, candidate = self._name(batch, 'input'), self._name(batch, 'candidate')
         for name in (stage, candidate):
             self._table(name, fields, context=batch.plan.context, create=True)
@@ -309,7 +318,13 @@ class BigQueryTarget:
         # Independently read typed staging before mutation; a changed input or
         # reused load job cannot silently change a plan under the same token.
         staged = self._query(batch, f'SELECT * FROM `{stage}`', 'validate_input')
-        if physical.states(batch.plan.context, staged) != batch.plan.after:
+        if (
+            model_adapter.states(
+                batch.plan.context,
+                staged,
+            )
+            != batch.plan.after
+        ):
             raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
         journal = self.binding.physical('journal')
         insert = f'INSERT INTO `{candidate}` SELECT * FROM `{stage}`'
@@ -338,27 +353,76 @@ class BigQueryTarget:
 
     def reconcile(self, batch):
         self._check(batch)
-        if self.lookup(batch) != TokenState.APPLIED:
-            raise ProviderError(ErrorCode.TARGET_INCONSISTENT, uncertain=True)
-        candidate = self._name(batch, 'candidate')
-        self._table(candidate, physical.schema(batch.plan.context), context=batch.plan.context)
-        physical_rows = self._query(batch, f'SELECT * FROM `{candidate}`', 'reconcile')
-        actual = physical.states(batch.plan.context, physical_rows)
-        if actual != batch.plan.after:
-            raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
-        before = {(s.member_sk, v.version_sk): v for s in batch.plan.before for v in s.versions}
-        after = {(s.member_sk, v.version_sk): v for s in actual for v in s.versions}
-        self.last_reconciliation = dict(affected_members=len(actual), physical_versions=len(after),
-            inserted_versions=len(after.keys()-before.keys()),
-            updated_versions=sum(before[k] != after[k] for k in before.keys() & after.keys()),
-            interval_ends_changed=sum(before[k].valid_to != after[k].valid_to for k in before.keys() & after.keys()),
-            application_token=batch.application_token, resource_generation=self.binding.generation,
-            checksum=result_checksum(actual), passed=True)
-        # Reconstruct typed values, keys, hashes and intervals from physical data;
-        # do not echo the loader's row counts/checksum or trust declared PK/FKs.
-        expected = batch.plan.result
-        return Result(**(expected.model_dump() | dict(checksum=result_checksum(actual))))
 
+        if self.lookup(batch) != TokenState.APPLIED:
+            raise ProviderError(
+                ErrorCode.TARGET_INCONSISTENT,
+                uncertain=True,
+            )
+
+        candidate = self._name(
+            batch,
+            "candidate",
+        )
+
+        self._table(
+            candidate,
+            model_adapter.schema(
+                batch.plan.context
+            ),
+            context=batch.plan.context,
+        )
+
+        physical_rows = self._query(
+            batch,
+            f"SELECT * FROM `{candidate}`",
+            "reconcile",
+        )
+
+        actual = model_adapter.states(
+            batch.plan.context,
+            physical_rows,
+        )
+
+        if actual != batch.plan.after:
+            raise ProviderError(
+                ErrorCode.TARGET_INCONSISTENT
+            )
+
+        checksum = model_adapter.result_checksum(
+            batch.plan.context,
+            actual,
+        )
+
+        self.last_reconciliation = (
+            model_adapter.reconciliation(
+                batch.plan,
+                actual,
+            )
+            | dict(
+                application_token=(
+                    batch.application_token
+                ),
+                resource_generation=(
+                    self.binding.generation
+                ),
+                checksum=checksum,
+                passed=True,
+            )
+        )
+
+        # Reconstruct typed values and identities from the physical candidate.
+        # Never trust declared loader counts/checksums as reconciliation evidence.
+        expected = batch.plan.result
+
+        return Result(
+            **(
+                expected.model_dump()
+                | dict(
+                    checksum=checksum
+                )
+            )
+        )
     def read_published_candidate(self, batch, expected):
         """Called only for a PostgreSQL-published, owned immutable intent.
 
@@ -372,9 +436,15 @@ class BigQueryTarget:
                 or journal[0]['scope_sha256'] != batch.scope_hash):
             raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
         name = self._name(batch, 'candidate')
-        self._table(name, physical.schema(batch.plan.context), context=batch.plan.context)
-        actual = physical.states(batch.plan.context, self._query(batch, f'SELECT * FROM `{name}`', 'read_publication'))
-        if result_checksum(actual) != expected.checksum:
+        self._table(name, model_adapter.schema(batch.plan.context), context=batch.plan.context)
+        actual = model_adapter.states(batch.plan.context, self._query(batch, f'SELECT * FROM `{name}`', 'read_publication'))
+        if (
+    model_adapter.result_checksum(
+        batch.plan.context,
+        actual,
+    )
+    != expected.checksum
+):
             raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
         return actual
 

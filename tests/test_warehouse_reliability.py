@@ -23,7 +23,13 @@ from app.storage.incremental_artifacts import IncrementalArtifacts
 from app.processing.append_engine import append_rows, LINEAGE, effective_schema
 from app.processing.upsert_engine import upsert_rows, UPSERT_LINEAGE
 from app.processing.snapshot_engine import snapshot_rows, SNAPSHOT_LINEAGE
-from app.warehouse.accepted_changes import SourcePin, event, manifest, payload
+from app.warehouse.accepted_changes import (
+    SourcePin,
+    event,
+    manifest,
+    payload,
+    projection,
+)
 from app.warehouse.reliability import (ProtocolError, Decision, Receipt, Result, ReferenceTarget, recover)
 from app.warehouse.source_evidence import classify_bootstrap
 from app.warehouse.scd_hashing import digest
@@ -59,7 +65,94 @@ def test_event_identity_retry_payload_conflict_and_projection():
     assert a.event_id == event(pin(accepted_at=NOW+timedelta(days=1)), a.evidence_key, a.outcome,
                                dict(id='A',value=Decimal('1.20')), ('id','value')).event_id
 
+def test_fact_projection_contains_only_reviewed_analytical_roles():
+    from pydantic import TypeAdapter
+    from app.schemas.warehouse_modeling import ModelConfiguration
 
+    adapter = TypeAdapter(ModelConfiguration)
+
+    config = adapter.validate_python(
+        fact(
+            measures=['amount'],
+            attributes=['segment', 'label'],
+            event_time=dict(
+                column='effective',
+                interpretation='UTC',
+            ),
+        )
+    )
+
+    columns = projection(config)
+
+    assert columns == (
+        'amount',
+        'effective',
+        'id',
+        'label',
+        'line',
+        'segment',
+    )
+
+    row = dict(
+        id='A',
+        line=1,
+        amount=Decimal('12.300'),
+        segment='Retail',
+        label='Order',
+        effective=NOW,
+
+        # Exists in the source but was never approved for FACT analytics.
+        float_id=1.5,
+
+        # Arbitrary source value must never leak into warehouse evidence.
+        secret='private',
+    )
+
+    accepted = event(
+        pin(),
+        'ledger-key:fact-projection',
+        'INSERTED',
+        row,
+        columns,
+    )
+
+    names = tuple(
+        name
+        for name, _ in accepted.payload
+    )
+
+    assert names == columns
+    assert 'float_id' not in names
+    assert 'secret' not in names
+
+    values = dict(accepted.payload)
+
+    assert values['amount'] == (
+        'decimal',
+        '12.3',
+    )
+    assert values['segment'] == (
+        'string',
+        'Retail',
+    )
+    assert values['line'] == (
+        'integer',
+        '1',
+    )
+def test_legacy_fact_projection_remains_identity_only():
+    from pydantic import TypeAdapter
+    from app.schemas.warehouse_modeling import ModelConfiguration
+
+    config = TypeAdapter(
+        ModelConfiguration
+    ).validate_python(
+        fact()
+    )
+
+    assert projection(config) == (
+        'id',
+        'line',
+    )
 @pytest.mark.parametrize('value', [1.5, float('nan'), datetime(2026,1,1), {}, [], 'x'*65537],
                          ids=['float','nan','naive','mapping','list','oversized'])
 def test_payload_fails_closed_on_lossy_or_unbounded_scalar(value):

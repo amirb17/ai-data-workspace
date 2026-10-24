@@ -6,7 +6,12 @@ import pytest
 from fastapi import HTTPException
 
 from tests.test_warehouse_foundation import pg
-from tests.test_warehouse_modeling import modeling_pg, configured, dimension
+from tests.test_warehouse_modeling import (
+    modeling_pg,
+    configured,
+    dimension,
+    fact,
+)
 from tests.test_warehouse_reliability import publish_source, Objects, NOW
 from tests.bigquery_fake import Client
 from app.schemas.warehouse import ResourceRegistration
@@ -59,6 +64,161 @@ def work(f, records=None, *, effective=NOW, key='first'):
 def publish(f, intent, claim, response):
     return f.service.publish(intent['operation_id'], claim['run_id'], claim['fence'], response['reconciliation_id'])
 
+@pytest.fixture
+def fact_provider_pg(
+    modeling_pg,
+    monkeypatch,
+):
+    p = dict(modeling_pg)
+
+    # FACT update semantics need a keyed source state so the second
+    # accepted delivery can produce UPDATED for the same fact identity.
+    with p['connect']() as conn:
+        p['policy'] = conn.execute(
+            """
+            INSERT INTO dataset_load_policies(
+                dataset_id,
+                dataset_version_id,
+                policy_version,
+                load_strategy,
+                business_keys,
+                schema_columns,
+                schema_hash,
+                schema_evolution_policy,
+                created_by
+            )
+            SELECT
+                dataset_id,
+                dataset_version_id,
+                2,
+                'UPSERT',
+                '["id"]',
+                schema_columns,
+                schema_hash,
+                schema_evolution_policy,
+                created_by
+            FROM dataset_load_policies
+            WHERE policy_id=%s
+            RETURNING policy_id
+            """,
+            (p['policy'],),
+        ).fetchone()[0]
+
+    configuration = fact(
+        grain=dict(
+            description='One fact per source id',
+            identity_columns=['id'],
+        ),
+        measures=['line'],
+        attributes=[
+            'segment',
+            'label',
+        ],
+        event_time=dict(
+            column='effective',
+            interpretation='UTC',
+        ),
+    )
+
+    m, v, _, _ = configured(
+        p,
+        configuration,
+        name='Physical FACT provider',
+    )
+
+    models.approve_version(
+        p['workspace'],
+        m,
+        v,
+        p['owner'],
+    )
+
+    r = resources.register_resource(
+        p['workspace'],
+        m,
+        v,
+        p['owner'],
+        ResourceRegistration(
+            environment='development',
+            location='asia-south1',
+            generation=1,
+            physical_reference=dict(
+                project='synthetic-project',
+                dataset=(
+                    f'dr_dev_w{p["workspace"]}'
+                ),
+                table=f'm{m}_v{v}_g1',
+            ),
+        ),
+    )
+
+    with p['connect']() as conn:
+        from pathlib import Path
+
+        conn.execute(
+            Path(
+                'migrations/0031_warehouse_reliability.sql'
+            ).read_text()
+        )
+
+    monkeypatch.setenv(
+        'BIGQUERY_ENABLED',
+        'true',
+    )
+
+    monkeypatch.setenv(
+        'BIGQUERY_PROJECT_ID',
+        'synthetic-project',
+    )
+
+    cloud = Client()
+    targets = []
+
+    def factory(policy, binding):
+        target = BigQueryTarget(
+            policy,
+            binding,
+            cloud,
+        )
+        targets.append(target)
+        return target
+
+    provider = ProviderService(
+        p['workspace'],
+        m,
+        v,
+        p['owner'],
+        target_factory=factory,
+    )
+
+    f = SimpleNamespace(
+        pg=p,
+        model=m,
+        version=v,
+        resource=r['resource_id'],
+        mode='UPSERT',
+        store=IncrementalArtifacts(
+            Objects()
+        ),
+        frame=None,
+        state=None,
+        service=ReliabilityService(
+            p['workspace'],
+            m,
+            v,
+            p['owner'],
+        ),
+        provider=provider,
+        cloud=cloud,
+        factory=factory,
+        targets=targets,
+    )
+
+    provider.provision(
+        f.resource
+    )
+
+    return f
 
 def test_provider_to_fenced_reconciliation_publication_and_incremental(provider_pg):
     f = provider_pg

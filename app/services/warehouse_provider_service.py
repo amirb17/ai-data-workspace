@@ -9,8 +9,9 @@ from app.services.warehouse_modeling_service import ADAPTER, check_configuration
 from app.services.warehouse_reliability_service import ReliabilityService
 from app.warehouse.accepted_changes import digest
 from app.warehouse.providers.base import Binding, ErrorCode, Policy, ProviderError, TokenState
-from app.warehouse.providers.planning import compile_dimension
 from app.warehouse.reliability import Receipt, Result
+from app.warehouse.fact_planning import FactContext
+from app.warehouse.providers import model_adapter
 from app.warehouse.scd_types import ModelContext, SourceContractPin
 from app.warehouse.access import owned_version
 
@@ -40,14 +41,59 @@ class ProviderService:
                           resource['environment'], resource['location'])
         if reference != dict(reference_version=1, project=binding.project, dataset=binding.serving, table=binding.table):
             raise ProviderError(ErrorCode.SCHEMA_MISMATCH)
-        typed = ADAPTER.validate_python(config['configuration'])
-        if typed.model_type != 'DIMENSION':
-            raise ValueError('Physical FACT roles require a separately approved model extension')
-        context = ModelContext(m, v, UUID(str(model['key_namespace'])), typed,
-            SourceSchema.model_validate(config['source_schema']), SourceContractPin(config['source_dataset_id'],
-            config['source_dataset_version_id'], config['source_policy_id'], config['source_rule_version']))
-        return binding, context
+        typed = ADAPTER.validate_python(
+            config['configuration']
+        )
 
+        source_schema = SourceSchema.model_validate(
+            config['source_schema']
+        )
+
+        source_contract = SourceContractPin(
+            config['source_dataset_id'],
+            config['source_dataset_version_id'],
+            config['source_policy_id'],
+            config['source_rule_version'],
+        )
+
+        namespace = UUID(
+            str(model['key_namespace'])
+        )
+
+        if typed.model_type == 'FACT':
+            context = FactContext(
+                m,
+                v,
+                namespace,
+                typed,
+                source_schema,
+                source_contract,
+                configuration_sha256=digest(
+                config["configuration"]
+            ),
+            )
+        else:
+            context = ModelContext(
+                m,
+                v,
+                namespace,
+                typed,
+                source_schema,
+                source_contract,
+            )
+
+        return binding, context
+    @staticmethod
+    def _state_key(context, state):
+        if isinstance(context, FactContext):
+            return state.fact_sk
+
+        if isinstance(context, ModelContext):
+            return state.member_sk
+
+        raise ProviderError(
+            ErrorCode.SCHEMA_MISMATCH
+        )
     def provision(self, resource_id):
         with self.reliability.transaction() as (conn, source, config, settings):
             binding, context = self._resolve(conn, config, settings, resource_id)
@@ -75,8 +121,13 @@ class ProviderService:
                 scope_hash=digest([target.binding.__dict__, pub['operation_id']]),
                 plan=SimpleNamespace(context=context), evidence=dict(application_token=intent['application_token']))
             for state in target.read_published_candidate(address, Result.model_validate(intent['body']['expected'])):
-                if state.member_sk in keys and state.member_sk not in result:
-                    result[state.member_sk] = state
+                            key = self._state_key(
+                context,
+                state,
+            )
+
+            if key in keys and key not in result:
+                result[key] = state
             publication_id = pub['previous_publication_id']
         return tuple(result[k] for k in sorted(result))
 
@@ -87,14 +138,66 @@ class ProviderService:
             self._registered(conn, manifests, source['source_mapping_id'])
             target = self._target(binding)
             keys = self._keys(context, manifests)
-            return compile_dimension(context, manifests, self._prior(conn, target, context, resource_id, keys))
+            return model_adapter.compile_plan(
+                context,
+                manifests,
+                self._prior(
+                    conn,
+                    target,
+                    context,
+                    resource_id,
+                    keys,
+                ),
+            )
 
     @staticmethod
     def _keys(context, manifests):
         from app.warehouse.keys import surrogate_key
         from app.warehouse.providers.types import scalar
-        return {surrogate_key(context.namespace, 'DIMENSION_MEMBER', context.configuration.business_keys,
-                    {n: scalar(v) for n, v in e['payload']}) for m in manifests for e in m['events']}
+
+        if isinstance(context, FactContext):
+            role = 'FACT'
+            columns = (
+                context.configuration
+                .grain
+                .identity_columns
+            )
+
+        elif isinstance(context, ModelContext):
+            role = 'DIMENSION_MEMBER'
+            columns = (
+                context.configuration
+                .business_keys
+            )
+
+        else:
+            raise ProviderError(
+                ErrorCode.SCHEMA_MISMATCH
+            )
+
+        result = set()
+
+        for manifest in manifests:
+            for accepted in manifest['events']:
+                values = {
+                    name: scalar(value)
+                    for name, value
+                    in accepted['payload']
+                }
+
+                result.add(
+                    surrogate_key(
+                        context.namespace,
+                        role,
+                        columns,
+                        values,
+                        algorithm_version=(
+                            context.key_algorithm_version
+                        ),
+                    )
+                )
+
+        return result
 
     @staticmethod
     def _registered(conn, manifests, mapping):
@@ -115,8 +218,20 @@ class ProviderService:
                                 (m['id'],))['body'] for m in intent['body']['manifests']]
             self._registered(conn, manifests, source['source_mapping_id'])
             target = self._target(binding)
-            plan = compile_dimension(context, manifests,
-                self._prior(conn, target, context, intent['resource_id'], self._keys(context, manifests)))
+            plan = model_adapter.compile_plan(
+                context,
+                manifests,
+                self._prior(
+                    conn,
+                    target,
+                    context,
+                    intent['resource_id'],
+                    self._keys(
+                        context,
+                        manifests,
+                    ),
+                ),
+            )
             if plan.result != Result.model_validate(intent['body']['expected']):
                 raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
             batch = Batch(binding, operation_id, intent['application_token'], intent['intent_sha256'], plan,
