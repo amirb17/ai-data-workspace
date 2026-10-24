@@ -144,3 +144,105 @@ def save_modeling(conn, workspace_id, model_id, version_id, dataset_id, contract
         (version_id,workspace_id,model_id,dataset_id,contract['dataset_version_id'],request.source_policy_id,request.source_rule_version,
          request.configuration.model_type,Jsonb(request.configuration.model_dump(mode='json')),Jsonb(schema.model_dump(mode='json')),
          rule_hash,actor)).fetchone()
+
+def metric_warehouse_bindings(
+    conn,
+    workspace_id,
+    dataset_ids,
+    environment="development",
+):
+    dataset_ids = sorted(
+        set(dataset_ids)
+    )
+
+    if not dataset_ids:
+        return []
+
+    return cursor(conn).execute(
+        """
+        SELECT
+            s.source_mapping_id,
+            s.source_dataset_id,
+
+            m.warehouse_model_id,
+            m.key_namespace,
+
+            v.warehouse_model_version_id,
+            v.key_algorithm_version,
+
+            c.configuration,
+            c.source_schema,
+            c.source_dataset_version_id,
+            c.source_policy_id,
+            c.source_rule_version,
+
+            r.resource_id,
+            r.provider,
+            r.environment,
+            r.location,
+            r.generation,
+            r.physical_reference,
+
+            h.publication_id,
+            h.revision AS head_revision,
+
+            p.revision AS publication_revision,
+            p.source_vector
+
+        FROM warehouse_model_sources s
+
+        JOIN warehouse_models m
+          ON m.workspace_id = s.workspace_id
+         AND m.warehouse_model_id
+             = s.warehouse_model_id
+
+        JOIN warehouse_model_versions v
+          ON v.workspace_id = s.workspace_id
+         AND v.warehouse_model_id
+             = s.warehouse_model_id
+         AND v.warehouse_model_version_id
+             = s.warehouse_model_version_id
+
+        JOIN warehouse_model_configurations c
+          ON c.workspace_id = s.workspace_id
+         AND c.warehouse_model_id
+             = s.warehouse_model_id
+         AND c.warehouse_model_version_id
+             = s.warehouse_model_version_id
+         AND c.source_dataset_id
+             = s.source_dataset_id
+
+        JOIN warehouse_resources r
+          ON r.workspace_id = s.workspace_id
+         AND r.warehouse_model_id
+             = s.warehouse_model_id
+         AND r.warehouse_model_version_id
+             = s.warehouse_model_version_id
+
+        JOIN warehouse_publication_heads h
+          ON h.resource_id = r.resource_id
+
+        JOIN warehouse_publications p
+          ON p.resource_id = h.resource_id
+         AND p.publication_id
+             = h.publication_id
+
+        WHERE s.workspace_id = %s
+          AND s.source_dataset_id = ANY(%s)
+          AND s.purpose = 'PRIMARY'
+          AND m.status = 'APPROVED'
+          AND v.status = 'APPROVED'
+          AND r.status = 'REGISTERED'
+          AND r.provider = 'BIGQUERY'
+          AND r.environment = %s
+
+        ORDER BY
+            s.source_dataset_id,
+            r.resource_id
+        """,
+        (
+            workspace_id,
+            dataset_ids,
+            environment,
+        ),
+    ).fetchall()

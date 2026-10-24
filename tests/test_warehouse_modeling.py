@@ -30,8 +30,17 @@ VECTORS = json.loads((ROOT/'tests/fixtures/warehouse_keys_v1.json').read_text(en
 
 
 def fact(**updates):
-    return dict(model_type='FACT',grain=dict(description='One row per business event',identity_columns=['id','line']),**updates)
+    value = dict(
+        model_type='FACT',
+        grain=dict(
+            description='One row per business event',
+            identity_columns=['id', 'line'],
+        ),
+    )
 
+    value.update(updates)
+
+    return value
 
 def dimension(**updates):
     value = dict(model_type='DIMENSION',business_keys=['id'],scd_type='SCD_TYPE_2',tracked_attributes=['segment'],
