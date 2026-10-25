@@ -95,7 +95,38 @@ class Binding:
     @property
     def table(self):
         return f'm{self.model_id}_v{self.version_id}_g{self.generation}'
+    def publication_table(
+        self,
+        publication_id,
+        revision,
+    ):
+        if (
+            type(publication_id) is not int
+            or publication_id < 1
+            or type(revision) is not int
+            or revision < 1
+        ):
+            raise ValueError(
+                "Positive publication identity required"
+            )
 
+        return (
+            f"{self.table}"
+            f"_p{publication_id}"
+            f"_r{revision}"
+        )
+
+
+    def publication_physical(
+        self,
+        publication_id,
+        revision,
+    ):
+        return (
+            f"{self.project}."
+            f"{self.serving}."
+            f"{self.publication_table(publication_id, revision)}"
+        )
     def physical(self, suffix, *, serving=False):
         if not re.fullmatch(r'[a-z0-9_]{1,100}', suffix):
             raise ValueError('Backend-generated suffix required')

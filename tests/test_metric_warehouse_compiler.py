@@ -254,6 +254,18 @@ def test_sum_compiles_to_exact_fact_column():
     ) == 64
 
 
+def test_publication_tables_remain_physically_and_logically_pinned():
+    a = source(physical_table='synthetic-project.dr_dev_w1.m20_v30_g1_p50_r2')
+    b = source(physical_table='synthetic-project.dr_dev_w1.m20_v30_g1_p54_r3',
+               publication_id=54, publication_revision=3, serving_materialization_id=61)
+    first = compile_metric_query(plan(), {10: a})
+    second = compile_metric_query(plan(), {10: b})
+    assert first.physical_tables == (a.physical_table,)
+    assert second.physical_tables == (b.physical_table,)
+    assert first.request_token != second.request_token
+    assert first.intent_sha256 != second.intent_sha256
+
+
 def test_compilation_is_deterministic():
     first = compile_metric_query(
         plan(),

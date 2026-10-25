@@ -6,6 +6,7 @@ from threading import Event
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
+from tests.http_client import enable_csrf
 
 from tests.test_rule_approval_postgres import pg
 from tests.test_approved_rule_reuse import deliveries
@@ -137,10 +138,12 @@ def test_dataset_scope_and_api_ownership(pipeline, other_workspace):
     assert contexts.read_processing_context(other_id, db[1]) == before
     app.dependency_overrides[get_current_user] = lambda: db[1]
     try:
-        client = TestClient(app)
+        client = enable_csrf(TestClient(app))
         url = f"/workspaces/{db[2]}/datasets/{db[3]}/processing"
         assert client.get(url).json()["summary"]["successful"] == 1
-        assert client.post(url+"/pending").json()["operation"]["processed"] == 0
+        response = client.post(url+"/pending")
+        assert response.status_code == 200
+        assert response.json()["operation"]["processed"] == 0
         if other_workspace:
             assert client.post(f"/workspaces/{db[2]}/datasets/{ds}/processing/pending").status_code == 403
         app.dependency_overrides[get_current_user] = lambda: {"user_id": db[1]["user_id"]+1, "owner_key": "other"}

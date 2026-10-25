@@ -38,6 +38,19 @@ def query(**updates):
     return CompiledQuery(**value)
 
 
+@pytest.mark.parametrize('suffix', ['', '_p50_r7'])
+def test_generated_publication_table_grammar(suffix):
+    table = 'synthetic-project.dr_dev_w1.m20_v30_g1' + suffix
+    assert query(physical_tables=(table,)).physical_tables == (table,)
+
+
+@pytest.mark.parametrize('suffix', ['_p0_r7', '_p50_r0', '_p50', '_r7', '_p50_r7_extra',
+                                  '_p-1_r7', '_p01_r7', '_candidate_abc', '_pTrue_r7'])
+def test_publication_grammar_rejects_arbitrary_or_partial_suffix(suffix):
+    with pytest.raises(ValueError):
+        query(physical_tables=('synthetic-project.dr_dev_w1.m20_v30_g1' + suffix,))
+
+
 def claimed(**updates):
     value = dict(
         reservation_id=1,

@@ -140,9 +140,7 @@ def _context_payload(context: FactContext):
             context.source_contract.dataset_version_id,
             context.source_contract.policy_id,
             context.source_contract.rule_version,
-        ],
-        
-    ]
+        ],]
 def _configuration_digest(
     context: FactContext,
 ):

@@ -72,7 +72,7 @@ def serving_materialization(
     )
 
 
-def record_serving_materialization(
+def _insert_serving_materialization(
     conn,
     evidence,
 ):
@@ -158,3 +158,31 @@ def record_serving_materialization(
             ],
         ),
     )
+
+
+SERVING_EVIDENCE_FIELDS = (
+    'workspace_id', 'warehouse_model_id', 'warehouse_model_version_id', 'resource_id',
+    'publication_id', 'publication_revision', 'generation', 'materialization_token',
+    'intent_sha256', 'configuration_sha256', 'schema_sha256', 'source_vector_sha256',
+    'provider_job_id', 'serving_sha256', 'row_count', 'bytes_processed', 'bytes_billed',
+)
+
+
+def record_serving_materialization(conn, evidence):
+    """Idempotent exact proof, including a concurrent insert under a savepoint."""
+    from psycopg.errors import UniqueViolation
+    from app.warehouse.providers.base import ProviderError, ErrorCode
+
+    def exact(row):
+        if row is None or any(row[k] != evidence[k] for k in SERVING_EVIDENCE_FIELDS):
+            raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+        return row
+
+    old = serving_materialization(conn, evidence['resource_id'], evidence['publication_id'])
+    if old is not None:
+        return exact(old)
+    try:
+        with conn.transaction():
+            return _insert_serving_materialization(conn, evidence)
+    except UniqueViolation:
+        return exact(serving_materialization(conn, evidence['resource_id'], evidence['publication_id']))

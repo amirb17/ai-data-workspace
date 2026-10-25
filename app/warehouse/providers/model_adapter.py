@@ -70,7 +70,17 @@ def rows(plan: Plan):
         plan.context
     ).rows(plan)
 
-
+def rows_from_states(
+    context,
+    states,
+):
+    """Encode a complete trusted warehouse snapshot."""
+    return _physical(
+        context
+    ).rows_from_states(
+        context,
+        states,
+    )
 def states(context, physical_rows):
     return _physical(
         context

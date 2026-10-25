@@ -15,6 +15,7 @@ from app.warehouse.providers import (
 )
 from app.warehouse.serving_materialization import (
     materialization_identity,
+    configuration_digest,
 )
 from pydantic import TypeAdapter
 
@@ -157,11 +158,7 @@ def _physical_table(
             "WAREHOUSE_RESOURCE_DRIFT"
         )
 
-    return (
-        f"{binding.project}."
-        f"{binding.serving}."
-        f"{binding.table}"
-    )
+    return binding.publication_physical(row['publication_id'], row['publication_revision'])
 
 
 def _context(row):
@@ -238,9 +235,7 @@ def _source(
             "WAREHOUSE_SERVING_NOT_READY"
         )
 
-    configuration_sha256 = digest(
-        row["configuration"]
-    )
+    configuration_sha256 = configuration_digest(context)
 
     schema_sha256 = (
         model_adapter.schema_hash(

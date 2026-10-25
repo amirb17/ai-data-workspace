@@ -1,7 +1,12 @@
 """Deterministic typed columns and independent physical-member reconstruction."""
 from uuid import UUID
 from app.warehouse.accepted_changes import digest, projection
-from app.warehouse.scd_types import AcceptedOrder, MemberState, Version
+from app.warehouse.scd_types import (
+    AcceptedOrder,
+    MemberState,
+    ScdError,
+    Version,
+)
 from app.warehouse.scd_invariants import validate_timeline
 from app.warehouse.providers.base import ErrorCode, ProviderError
 from app.warehouse.providers.types import TYPES, decode, encode
@@ -29,31 +34,146 @@ def schema(context):
                   ('order_position', 'INT64', 'NULLABLE'), ('last_event_id', 'STRING', 'NULLABLE'),
                   ('last_event_digest', 'STRING', 'REQUIRED')] + business)
 
-
-def rows(plan):
+def rows_from_states(
+    context,
+    states,
+):
+    """Encode complete trusted DIMENSION state independently of an incremental plan."""
     result = []
-    kinds = {n: t for n, t, _ in schema(plan.context)}
-    policy = plan.context.configuration.effective_time
-    for state in plan.after:
-        validate_timeline(state)
+    seen_members = set()
+
+    kinds = {
+        name: kind
+        for name, kind, _
+        in schema(context)
+    }
+
+    policy = (
+        context
+        .configuration
+        .effective_time
+    )
+
+    for state in states:
+        if (
+            not isinstance(
+                state,
+                MemberState,
+            )
+            or state.context
+            != context
+        ):
+            raise ProviderError(
+                ErrorCode.TARGET_INCONSISTENT
+            )
+
+        try:
+            validate_timeline(
+                state
+            )
+        except ScdError:
+            raise ProviderError(
+                ErrorCode.TARGET_INCONSISTENT
+            ) from None
+        if state.member_sk in seen_members:
+            raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+        seen_members.add(state.member_sk)
         for version in state.versions:
-            row = dict(member_sk=state.member_sk, version_sk=version.version_sk,
-                valid_from=encode(version.valid_from, kinds['valid_from']),
-                valid_to=encode(version.valid_to, kinds['valid_to']), is_current=version.is_current,
-                tracked_hash=version.tracked_hash, observed_time=encode(state.observed_time, kinds['observed_time']),
-                order_domain=str(state.order.domain) if state.order else None,
-                order_position=state.order.position if state.order else None,
-                last_event_id=str(state.last_event_id) if state.last_event_id else None,
-                last_event_digest=state.last_event_digest)
-            values = dict(state.business_keys + version.tracked + version.nonhistorical)
+            row = {
+                "member_sk": (
+                    state.member_sk
+                ),
+                "version_sk": (
+                    version.version_sk
+                ),
+                "valid_from": encode(
+                    version.valid_from,
+                    kinds[
+                        "valid_from"
+                    ],
+                ),
+                "valid_to": encode(
+                    version.valid_to,
+                    kinds[
+                        "valid_to"
+                    ],
+                ),
+                "is_current": (
+                    version.is_current
+                ),
+                "tracked_hash": (
+                    version.tracked_hash
+                ),
+                "observed_time": encode(
+                    state.observed_time,
+                    kinds[
+                        "observed_time"
+                    ],
+                ),
+                "order_domain": (
+                    str(
+                        state.order.domain
+                    )
+                    if state.order
+                    else None
+                ),
+                "order_position": (
+                    state.order.position
+                    if state.order
+                    else None
+                ),
+                "last_event_id": (
+                    str(
+                        state.last_event_id
+                    )
+                    if state.last_event_id
+                    else None
+                ),
+                "last_event_digest": (
+                    state.last_event_digest
+                ),
+            }
+
+            values = dict(
+                state.business_keys
+                + version.tracked
+                + version.nonhistorical
+            )
+
             if policy:
-                values[policy.column] = state.observed_time
-            row.update({column: encode(values[name], kind) for name, column, kind in columns(plan.context)})
-            result.append(row)
+                values[
+                    policy.column
+                ] = state.observed_time
+
+            row.update(
+                {
+                    column: encode(
+                        values[name],
+                        kind,
+                    )
+                    for (
+                        name,
+                        column,
+                        kind,
+                    )
+                    in columns(
+                        context
+                    )
+                }
+            )
+
+            result.append(
+                row
+            )
+
     return result
+def rows(plan):
+    return rows_from_states(
+        plan.context,
+        plan.after,
+    )
 
-
-def states(context, physical_rows):
+def _states(context, physical_rows):
     kinds = {n: t for n, t, _ in schema(context)}
     grouped = {}
     for incoming in physical_rows:
@@ -92,3 +212,12 @@ def states(context, physical_rows):
 
 def schema_hash(context):
     return digest([schema(context), columns(context)])
+
+
+def states(context, physical_rows):
+    try:
+        return _states(context, physical_rows)
+    except ProviderError:
+        raise
+    except (ScdError, ValueError, TypeError, KeyError):
+        raise ProviderError(ErrorCode.TARGET_INCONSISTENT) from None

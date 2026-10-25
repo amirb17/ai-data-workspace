@@ -14,6 +14,11 @@ from app.warehouse.fact_planning import FactContext
 from app.warehouse.providers import model_adapter
 from app.warehouse.scd_types import ModelContext, SourceContractPin
 from app.warehouse.access import owned_version
+from app.warehouse.serving_materialization import (
+    ServingMaterializationRequest, ServingMaterializationResult, configuration_digest,
+    materialization_identity,
+)
+import json
 
 
 class ProviderService:
@@ -121,13 +126,9 @@ class ProviderService:
                 scope_hash=digest([target.binding.__dict__, pub['operation_id']]),
                 plan=SimpleNamespace(context=context), evidence=dict(application_token=intent['application_token']))
             for state in target.read_published_candidate(address, Result.model_validate(intent['body']['expected'])):
-                            key = self._state_key(
-                context,
-                state,
-            )
-
-            if key in keys and key not in result:
-                result[key] = state
+                key = self._state_key(context, state)
+                if key in keys and key not in result:
+                    result[key] = state
             publication_id = pub['previous_publication_id']
         return tuple(result[k] for k in sorted(result))
 
@@ -149,6 +150,131 @@ class ProviderService:
                     keys,
                 ),
             )
+
+    def _published_lineage(self, conn, binding, publication):
+        """Capture only immutable published metadata; perform no provider reads."""
+        lineage, seen = [], set()
+        current, revision = publication['publication_id'], publication['revision']
+        while current is not None:
+            if len(lineage) >= 100:
+                raise ValueError('Publication lineage exceeds 100; explicit compaction/rebuild required')
+            if current in seen:
+                raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+            seen.add(current)
+            pub = db.one(conn, 'SELECT * FROM warehouse_publications WHERE publication_id=%s AND resource_id=%s',
+                         (current, binding.resource_id))
+            if not pub or pub['revision'] != revision:
+                raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+            intent = db.intent(conn, pub['operation_id'])
+            op = metadata.operation(conn, binding.workspace_id, pub['operation_id'])
+            expected = dict(workspace_id=binding.workspace_id, warehouse_model_id=binding.model_id,
+                warehouse_model_version_id=binding.version_id, resource_id=binding.resource_id)
+            if (not intent or not op or any(intent.get(k) != v or op.get(k) != v for k, v in expected.items())
+                    or intent['generation'] != binding.generation or op['environment'] != binding.environment
+                    or intent['body']['prior_head'] != pub['previous_publication_id']
+                    or intent['body']['prior_revision'] != revision - 1):
+                raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+            lineage.append((pub, intent))
+            current, revision = pub['previous_publication_id'], revision - 1
+        if revision != 0:
+            raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+        return tuple(lineage)
+
+    def _complete_published_state(self, target, context, lineage):
+        """Overlay all published identities, newest first, outside a DB transaction."""
+        complete, physical_count, payload_bytes = {}, 0, 0
+        if not 1 <= len(lineage) <= 100:
+            raise ValueError('Bounded published lineage required; compaction/rebuild may be required')
+        for pub, intent in lineage:
+            address = SimpleNamespace(binding=target.binding, operation_id=pub['operation_id'],
+                application_token=intent['application_token'], intent_sha256=intent['intent_sha256'],
+                scope_hash=digest([target.binding.__dict__, pub['operation_id']]),
+                plan=SimpleNamespace(context=context), evidence=dict(application_token=intent['application_token']),
+                manifest_evidence=json.dumps([[m['id'], m['checksum']] for m in intent['body']['manifests']],
+                                             separators=(',', ':')))
+            seen = set()
+            for state in target.read_published_candidate(address, Result.model_validate(intent['body']['expected'])):
+                key = self._state_key(context, state)
+                if key in seen or state.context != context:
+                    raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+                seen.add(key)
+                if key not in complete:
+                    physical_rows = model_adapter.rows_from_states(context, (state,))
+                    physical_count += len(physical_rows)
+                    payload_bytes += len(json.dumps(physical_rows, ensure_ascii=False).encode('utf-8'))
+                    if (physical_count > target.policy.maximum_rows
+                            or payload_bytes > target.policy.maximum_payload_bytes):
+                        raise ProviderError(ErrorCode.COST_LIMIT_EXCEEDED)
+                    complete[key] = state
+        return tuple(complete[k] for k in sorted(complete))
+
+    @staticmethod
+    def _serving_pins(binding, context, publication):
+        table = binding.publication_physical(publication['publication_id'], publication['revision'])
+        pins = dict(workspace_id=binding.workspace_id, model_id=binding.model_id,
+            model_version_id=binding.version_id, resource_id=binding.resource_id, generation=binding.generation,
+            publication_id=publication['publication_id'], publication_revision=publication['revision'],
+            physical_table=table, configuration_sha256=configuration_digest(context),
+            schema_sha256=model_adapter.schema_hash(context), source_vector_sha256=digest(publication['source_vector']))
+        return pins | materialization_identity(**pins)
+
+    @staticmethod
+    def _check_existing_serving(row, pins):
+        if row is None:
+            return
+        expected = {k: v for k, v in pins.items() if k not in ('model_id', 'model_version_id', 'physical_table')}
+        expected.update(warehouse_model_id=pins['model_id'], warehouse_model_version_id=pins['model_version_id'])
+        if any(row.get(k) != v for k, v in expected.items()):
+            raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+        ServingMaterializationResult(**{k: row[k] for k in (
+            'publication_id', 'publication_revision', 'generation', 'materialization_token', 'intent_sha256',
+            'provider_job_id', 'serving_sha256', 'row_count', 'bytes_processed', 'bytes_billed')})
+
+    def materialize_current_publication(self, resource_id):
+        # Transaction 1: authenticate and capture an exact immutable publication.
+        with self.reliability.transaction() as (conn, source, config, settings):
+            binding, context = self._resolve(conn, config, settings, resource_id)
+            head = db.head(conn, resource_id)
+            if not head:
+                raise ValueError('WAREHOUSE_PUBLICATION_REQUIRED')
+            publication = db.one(conn, 'SELECT * FROM warehouse_publications WHERE resource_id=%s AND publication_id=%s',
+                                 (resource_id, head['publication_id']))
+            if not publication or publication['revision'] != head['revision']:
+                raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+            pins = self._serving_pins(binding, context, publication)
+            existing = db.serving_materialization(conn, resource_id, publication['publication_id'])
+            self._check_existing_serving(existing, pins)
+            lineage = self._published_lineage(conn, binding, publication)
+
+        # ADC/client creation and all candidate/serving reads occur without an
+        # open PostgreSQL transaction or publication/model lock.
+        target = self._target(binding)
+        states = self._complete_published_state(target, context, lineage)
+        request = ServingMaterializationRequest(binding=binding, context=context, states=states,
+            **{k: v for k, v in pins.items() if k not in ('workspace_id', 'model_id', 'model_version_id', 'resource_id', 'generation')})
+        outcome = target.materialize_serving(request)
+        if not isinstance(outcome, ServingMaterializationResult):
+            raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+        evidence = dict(workspace_id=binding.workspace_id, warehouse_model_id=binding.model_id,
+            warehouse_model_version_id=binding.version_id, resource_id=resource_id, **outcome.__dict__,
+            configuration_sha256=pins['configuration_sha256'], schema_sha256=pins['schema_sha256'],
+            source_vector_sha256=pins['source_vector_sha256'])
+        self._check_existing_serving(evidence, pins)
+        if outcome.serving_sha256 != request.serving_sha256 or outcome.row_count != request.row_count:
+            raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+
+        # Transaction 2: a physically successful old publication is harmless;
+        # it becomes eligible only if ownership and the current head still match.
+        with self.reliability.transaction() as (conn, source, config, settings):
+            current_binding, current_context = self._resolve(conn, config, settings, resource_id)
+            head = db.head(conn, resource_id)
+            current = db.one(conn, 'SELECT * FROM warehouse_publications WHERE resource_id=%s AND publication_id=%s',
+                             (resource_id, publication['publication_id']))
+            if (current_binding != binding or current_context != context or not current
+                    or not head or (head['publication_id'], head['revision']) != (publication['publication_id'], publication['revision'])
+                    or self._serving_pins(current_binding, current_context, current) != pins):
+                raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
+            return db.record_serving_materialization(conn, evidence)
 
     @staticmethod
     def _keys(context, manifests):

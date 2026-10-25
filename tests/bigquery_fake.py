@@ -1,7 +1,8 @@
 """Stateful SDK boundary fake: separate tables/jobs, rollback and lost responses."""
 from copy import deepcopy
 from types import SimpleNamespace
-from google.api_core.exceptions import NotFound, BadRequest
+from google.api_core.exceptions import NotFound, BadRequest, Conflict
+from google.cloud import bigquery
 
 
 class Job:
@@ -11,6 +12,9 @@ class Job:
         self.location, self.labels, self.state = location, labels or {}, 'DONE'
         self.started = self.ended = None
         self.num_dml_affected_rows = None
+        self.project = 'synthetic-project'
+        self.job_type = 'query'
+        self.error_result = None
 
     def result(self, **kwargs):
         return iter(deepcopy(self.rows))
@@ -24,6 +28,7 @@ class Client:
         self.calls = []
         self.estimate = 128
         self.lose_response = self.fail_transaction = False
+        self.lose_load_response = self.fail_load = False
 
     def get_dataset(self, name, **kwargs):
         if name not in self.datasets:
@@ -53,11 +58,20 @@ class Client:
 
     def load_table_from_json(self, rows, destination, *, job_id, job_config, **kwargs):
         assert kwargs['location'] == 'asia-south1' and kwargs['retry'] is None
-        assert job_config.write_disposition == 'WRITE_EMPTY' and not self.rows[destination]
+        assert job_config.write_disposition == 'WRITE_EMPTY'
+        if job_id in self.jobs:
+            raise Conflict('synthetic duplicate job')
+        if self.rows[destination] or self.fail_load:
+            raise BadRequest('synthetic immutable load rejected')
         assert job_config.create_disposition == 'CREATE_NEVER'
         self.calls.append(('load', destination, job_config))
         self.rows[destination] = deepcopy(rows)
         self.jobs[job_id] = Job(job_id, labels=job_config.labels)
+        self.jobs[job_id].job_type = 'load'
+        self.jobs[job_id].destination = bigquery.TableReference.from_string(destination)
+        if self.lose_load_response:
+            self.lose_load_response = False
+            raise ConnectionError('synthetic committed load response lost')
         return self.jobs[job_id]
 
     def query(self, sql, *, job_config, job_id=None, job_id_prefix=None, **kwargs):
@@ -72,13 +86,13 @@ class Client:
         names = re.findall(r'`([^`]+)`', sql)
         result = []
         if sql.startswith('BEGIN TRANSACTION'):
+            if 'DELETE FROM' in sql:
+                raise AssertionError('Mutable serving replacement is not supported')
             if self.fail_transaction:
                 raise BadRequest('synthetic controlled statement failure')
             journal, candidate, _, stage, _ = names
             assert not self.rows[candidate]
-            assert not any(r['application_token'] == params['application_token'] for r in self.rows[journal])
-            # Both writes become visible together; fail_transaction above leaves
-            # both unchanged, unlike a fake that merely echoes expected counts.
+            assert not any(row['application_token'] == params['application_token'] for row in self.rows[journal])
             self.rows[candidate] = deepcopy(self.rows[stage])
             self.rows[journal].append(deepcopy(params))
         elif sql.startswith('SELECT *'):

@@ -20,9 +20,14 @@ _PROJECT = re.compile(
 )
 
 _WAREHOUSE_TABLE = re.compile(
-    r"^m[1-9][0-9]*_v[1-9][0-9]*_g[1-9][0-9]*$"
+    r"^m[1-9][0-9]*"
+    r"_v[1-9][0-9]*"
+    r"_g[1-9][0-9]*"
+    r"(?:"
+    r"_p[1-9][0-9]*"
+    r"_r[1-9][0-9]*"
+    r")?$"
 )
-
 MAX_COMPILED_SQL_BYTES = 100_000
 MAX_PHYSICAL_TABLES = 32
 MAX_EXECUTION_BYTES = 1 << 30

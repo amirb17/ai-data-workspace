@@ -3,7 +3,10 @@ from dataclasses import dataclass
 import json
 import re
 from itertools import islice
-
+from app.warehouse.serving_materialization import (
+    ServingMaterializationRequest,
+    ServingMaterializationResult,
+)
 from google.api_core import exceptions as google_errors
 from google.auth.exceptions import DefaultCredentialsError, RefreshError
 from google.cloud import bigquery
@@ -153,16 +156,34 @@ class BigQueryTarget:
         if any(e.entity_id in ('allUsers', 'allAuthenticatedUsers') for e in dataset.access_entries):
             raise ProviderError(ErrorCode.PERMISSION_DENIED)
 
-    def _table(self, name, fields, *, context=None, create=False, journal=False):
+    def _table(
+            self,
+            name,
+            fields,
+            *,
+            context=None,
+            create=False,
+            journal=False,
+            extra_labels=None,
+        ):
         for dataset in (self.binding.staging, self.binding.serving):
             self._verify_dataset(self._call(self.client.get_dataset, f'{self.binding.project}.{dataset}'))
         try:
+            expected_labels = (
+                self._labels(
+                    context
+                )
+                | (
+                    extra_labels
+                    or {}
+                )
+            )
             found = self._call(self.client.get_table, name)
         except ProviderError as error:
             if error.code != ErrorCode.RESOURCE_NOT_FOUND or not create:
                 raise
             spec = bigquery.Table(name, schema=[bigquery.SchemaField(*field) for field in fields])
-            spec.labels = self._labels(context)
+            spec.labels = expected_labels
             if journal:
                 spec.clustering_fields = ['application_token']
             self._call(self.client.create_table, spec)
@@ -182,7 +203,7 @@ class BigQueryTarget:
                 or found.time_partitioning is not None or found.range_partitioning is not None
                 or found.clustering_fields != (['application_token'] if journal else None)
                 or found.require_partition_filter or found.expires is not None
-                or any(found.labels.get(k) != v for k, v in self._labels(context).items())):
+                or any(found.labels.get(k) != v for k, v in expected_labels.items())):
             raise ProviderError(ErrorCode.SCHEMA_MISMATCH)
         return found
 
@@ -217,7 +238,734 @@ class BigQueryTarget:
         return self._labels() | dict(operation=getattr(batch, 'operation_type', 'REPLAY').lower(),
             intent=digest(batch.intent_sha256)[:63],
             plan=digest(getattr(batch.plan, 'checksum', ['publication-read', batch.application_token]))[:63])
+    def _serving_stage(
+        self,
+        request,
+    ):
+        return self.binding.physical(
+            "serving_"
+            + request.materialization_token
+        )
 
+    def _serving_job_id(
+        self,
+        request,
+        purpose,
+    ):
+        if not re.fullmatch(
+            r"[a-z0-9_]{1,40}",
+            purpose,
+        ):
+            raise ValueError(
+                "Backend serving purpose required"
+            )
+
+        return (
+            "dr_serving_"
+            + purpose
+            + "_"
+            + digest(
+                [
+                    request.intent_sha256,
+                    purpose,
+                ]
+            )
+        )
+
+    def _serving_job_labels(
+        self,
+        request,
+        purpose,
+    ):
+        return (
+            self._labels(
+                request.context
+            )
+            | {
+                "operation": (
+                    "materialize"
+                ),
+                "purpose": purpose[
+                    :63
+                ],
+                "materialization": (
+                    request
+                    .materialization_token[
+                        :63
+                    ]
+                ),
+                "intent": (
+                    digest(
+                        request.intent_sha256
+                    )[
+                        :63
+                    ]
+                ),
+            }
+        )
+
+    def _serving_config(
+        self,
+        request,
+        purpose,
+        *,
+        dry=False,
+    ):
+        return bigquery.QueryJobConfig(
+            dry_run=dry,
+            use_query_cache=False,
+            use_legacy_sql=False,
+            maximum_bytes_billed=(
+                self.policy.maximum_bytes
+            ),
+            priority="INTERACTIVE",
+            labels=(
+                self._serving_job_labels(
+                    request,
+                    purpose,
+                )
+            ),
+            query_parameters=[],
+        )
+
+    def _serving_existing_job(
+        self,
+        request,
+        purpose,
+    ):
+        job_id = self._serving_job_id(
+            request,
+            purpose,
+        )
+
+        try:
+            job = self._call(
+                self.client.get_job,
+                job_id,
+                project=self.policy.project,
+                location=self.policy.location,
+            )
+
+        except ProviderError as error:
+            if (
+                error.code
+                == ErrorCode.RESOURCE_NOT_FOUND
+            ):
+                return None
+
+            raise
+
+        expected_labels = (
+            self._serving_job_labels(
+                request,
+                purpose,
+            )
+        )
+
+        if (
+            job.job_id != job_id
+            or getattr(job, 'project', None) != self.policy.project
+            or getattr(job, 'job_type', None) != 'load'
+            or str(getattr(job, 'destination', '')) != request.physical_table
+            or job.location
+            != self.policy.location
+            or any(
+                job.labels.get(key)
+                != value
+                for key, value
+                in expected_labels.items()
+            )
+        ):
+            raise ProviderError(
+                ErrorCode.JOB_CONFLICT
+            )
+
+        return job
+
+    @staticmethod
+    def _require_successful_job(
+        job,
+    ):
+        if (
+            job.state != "DONE"
+            or getattr(
+                job,
+                "error_result",
+                None,
+            )
+            is not None
+        ):
+            raise ProviderError(
+                ErrorCode.TARGET_INCONSISTENT,
+                uncertain=True,
+            )
+
+    def _record_serving_job(
+        self,
+        job,
+        purpose,
+        request,
+    ):
+        self.telemetry.append(
+            {
+                "job_id": (
+                    job.job_id
+                ),
+                "job_type": (
+                    "serving_"
+                    + purpose
+                ),
+                "location": (
+                    job.location
+                ),
+                "materialization_token": (
+                    request
+                    .materialization_token
+                ),
+                "publication_id": (
+                    request.publication_id
+                ),
+                "publication_revision": (
+                    request
+                    .publication_revision
+                ),
+                "resource_generation": (
+                    self.binding.generation
+                ),
+                "model_id": (
+                    self.binding.model_id
+                ),
+                "started": (
+                    str(job.started)
+                    if job.started
+                    else None
+                ),
+                "ended": (
+                    str(job.ended)
+                    if job.ended
+                    else None
+                ),
+                "duration_seconds": (
+                    (
+                        job.ended
+                        - job.started
+                    ).total_seconds()
+                    if (
+                        job.started
+                        and job.ended
+                    )
+                    else None
+                ),
+                "bytes_processed": (
+                    getattr(
+                        job,
+                        "total_bytes_processed",
+                        None,
+                    )
+                ),
+                "bytes_billed": (
+                    getattr(
+                        job,
+                        "total_bytes_billed",
+                        None,
+                    )
+                ),
+                "affected_rows": (
+                    getattr(
+                        job,
+                        "num_dml_affected_rows",
+                        None,
+                    )
+                ),
+                "retry_count": 0,
+            }
+        )
+    def _check_serving_request(
+        self,
+        request,
+    ):
+        if not isinstance(
+            request,
+            ServingMaterializationRequest,
+        ):
+            raise ValueError(
+                "Typed serving materialization request required"
+            )
+
+        # Re-run immutable request validation at the provider boundary.
+        request.__post_init__()
+
+        if (
+            request.binding
+            != self.binding
+        ):
+            raise ProviderError(
+                ErrorCode.PERMISSION_DENIED
+            )
+
+        fields = (
+            model_adapter.schema(
+                request.context
+            )
+        )
+
+        self._table(
+            self._serving_table(),
+            fields,
+            context=request.context,
+        )
+
+        rows = list(
+            request.physical_rows
+        )
+
+        payload_bytes = len(
+            json.dumps(
+                rows,
+                ensure_ascii=False,
+            ).encode(
+                "utf-8"
+            )
+        )
+
+        # V1 provider remains explicitly bounded.
+        if (
+            len(rows)
+            > self.policy.maximum_rows
+            or payload_bytes
+            > self.policy.maximum_payload_bytes
+        ):
+            raise ProviderError(
+                ErrorCode.COST_LIMIT_EXCEEDED
+            )
+
+        return (
+            fields,
+            rows,
+        )
+
+    def _serving_estimate(
+        self,
+        request,
+        sql,
+        purpose,
+    ):
+        job = self._call(
+            self.client.query,
+            sql,
+            job_config=(
+                self._serving_config(
+                    request,
+                    purpose,
+                    dry=True,
+                )
+            ),
+            location=(
+                self.policy.location
+            ),
+        )
+
+        estimated = (
+            job.total_bytes_processed
+        )
+
+        accuracy = (
+            getattr(
+                job,
+                "_properties",
+                {},
+            )
+            .get(
+                "statistics",
+                {},
+            )
+            .get(
+                "query",
+                {},
+            )
+            .get(
+                "totalBytesProcessedAccuracy"
+            )
+        )
+
+        if accuracy in (
+            "UNKNOWN",
+            "LOWER_BOUND",
+        ):
+            raise ProviderError(
+                ErrorCode.COST_LIMIT_EXCEEDED
+            )
+
+        if (
+            type(estimated)
+            is not int
+            or estimated < 0
+            or estimated
+            > self.policy.maximum_bytes
+        ):
+            raise ProviderError(
+                ErrorCode.COST_LIMIT_EXCEEDED
+            )
+
+        return estimated
+
+    def _serving_read(
+        self,
+        request,
+        table,
+        purpose,
+    ):
+        sql = (
+            f"SELECT * FROM `{table}`"
+        )
+
+        self._serving_estimate(
+            request,
+            sql,
+            purpose,
+        )
+
+        try:
+            job = self._call(
+                self.client.query,
+                sql,
+                job_config=(
+                    self._serving_config(
+                        request,
+                        purpose,
+                    )
+                ),
+                location=(
+                    self.policy.location
+                ),
+                job_id_prefix=(
+                    self._serving_job_id(
+                        request,
+                        purpose,
+                    )
+                    + "_"
+                ),
+                job_retry=None,
+            )
+
+            rows = []
+            encoded_bytes = 0
+
+            for row in islice(
+                job.result(
+                    timeout=(
+                        self.policy
+                        .timeout_seconds
+                    ),
+                    retry=None,
+                ),
+                (
+                    self.policy
+                    .maximum_rows
+                    + 1
+                ),
+            ):
+                encoded_bytes += len(
+                    json.dumps(
+                        dict(row),
+                        ensure_ascii=False,
+                        default=str,
+                    ).encode(
+                        "utf-8"
+                    )
+                )
+
+                if (
+                    len(rows)
+                    >= self.policy
+                    .maximum_rows
+                    or encoded_bytes
+                    > self.policy
+                    .maximum_payload_bytes
+                ):
+                    raise ProviderError(
+                        ErrorCode
+                        .COST_LIMIT_EXCEEDED
+                    )
+
+                rows.append(
+                    row
+                )
+
+            self._record_serving_job(
+                job,
+                purpose,
+                request,
+            )
+
+            return rows
+
+        except ProviderError:
+            raise
+
+        except Exception as error:
+            raise classify(
+                error
+            ) from None
+    def materialize_serving(
+        self,
+        request,
+    ):
+        """Materialize one immutable publication snapshot.
+
+        A publication receives a unique serving TABLE. It is never overwritten
+        by a later publication, so governed queries remain pinned to the exact
+        publication they were compiled against.
+        """
+
+        (
+            fields,
+            rows,
+        ) = self._check_serving_request(
+            request
+        )
+
+        serving = (
+            request.physical_table
+        )
+
+        labels = (
+            self._publication_labels(
+                request
+            )
+        )
+
+        self._table(
+            serving,
+            fields,
+            context=request.context,
+            create=True,
+            extra_labels=labels,
+        )
+
+        load = (
+            self._serving_existing_job(
+                request,
+                "load",
+            )
+        )
+
+        if load is None:
+            if rows:
+                config = (
+                    bigquery
+                    .LoadJobConfig(
+                        schema=[
+                            bigquery.SchemaField(
+                                *field
+                            )
+                            for field
+                            in fields
+                        ],
+                        write_disposition=(
+                            "WRITE_EMPTY"
+                        ),
+                        create_disposition=(
+                            "CREATE_NEVER"
+                        ),
+                        ignore_unknown_values=False,
+                        max_bad_records=0,
+                        labels=(
+                            self
+                            ._serving_job_labels(
+                                request,
+                                "load",
+                            )
+                        ),
+                    )
+                )
+
+                try:
+                    load = self._call(
+                        self.client
+                        .load_table_from_json,
+                        rows,
+                        serving,
+                        job_config=config,
+                        job_id=(
+                            self._serving_job_id(
+                                request,
+                                "load",
+                            )
+                        ),
+                        location=(
+                            self.policy.location
+                        ),
+                    )
+
+                except ProviderError as error:
+                    raise ProviderError(
+                        error.code,
+                        uncertain=True,
+                    ) from None
+
+        if load is not None:
+            try:
+                load.result(
+                    timeout=(
+                        self.policy
+                        .timeout_seconds
+                    ),
+                    retry=None,
+                )
+
+            except Exception as error:
+                raise classify(
+                    error,
+                    uncertain=True,
+                ) from None
+
+            self._require_successful_job(load)
+            # Verify the deterministic job's actual scope after completion too,
+            # including on a fresh submission rather than only on recovery.
+            load = self._serving_existing_job(request, 'load')
+            if load is None:
+                raise ProviderError(ErrorCode.TARGET_INCONSISTENT, uncertain=True)
+            self._require_successful_job(load)
+
+            self._record_serving_job(
+                load,
+                "load",
+                request,
+            )
+
+        # Independently verify immutable publication content.
+        actual_rows = (
+            self._serving_read(
+                request,
+                serving,
+                "verify_serving",
+            )
+        )
+
+        actual_states = (
+            model_adapter.states(
+                request.context,
+                actual_rows,
+            )
+        )
+
+        if (
+            actual_states
+            != request.states
+        ):
+            raise ProviderError(
+                ErrorCode.TARGET_INCONSISTENT
+            )
+
+        canonical_rows = tuple(
+            model_adapter
+            .rows_from_states(
+                request.context,
+                actual_states,
+            )
+        )
+
+        actual_sha256 = digest(
+            [
+                "datarise-serving-state",
+                1,
+                request.schema_sha256,
+                canonical_rows,
+            ]
+        )
+
+        if (
+            actual_sha256
+            != request.serving_sha256
+            or len(canonical_rows)
+            != request.row_count
+        ):
+            raise ProviderError(
+                ErrorCode.TARGET_INCONSISTENT
+            )
+
+        if load is None:
+            # Empty publication snapshot has no load job. Use the deterministic
+            # materialization identity as the durable provider reference.
+            provider_job_id = (
+                "empty_"
+                + request
+                .materialization_token[
+                    :64
+                ]
+            )
+
+            bytes_processed = 0
+            bytes_billed = 0
+
+        else:
+            provider_job_id = (
+                load.job_id
+            )
+
+            bytes_processed = getattr(
+                load,
+                "total_bytes_processed",
+                None,
+            )
+            if bytes_processed is None:
+                bytes_processed = 0
+
+            bytes_billed = getattr(
+                load,
+                "total_bytes_billed",
+                None,
+            )
+            if bytes_billed is None:
+                bytes_billed = 0
+
+            if (
+                type(bytes_processed)
+                is not int
+                or bytes_processed < 0
+                or type(bytes_billed)
+                is not int
+                or bytes_billed < 0
+            ):
+                raise ProviderError(
+                    ErrorCode.TARGET_INCONSISTENT
+                )
+
+        return ServingMaterializationResult(
+            publication_id=(
+                request.publication_id
+            ),
+            publication_revision=(
+                request
+                .publication_revision
+            ),
+            generation=(
+                self.binding.generation
+            ),
+            materialization_token=(
+                request
+                .materialization_token
+            ),
+            intent_sha256=(
+                request.intent_sha256
+            ),
+            provider_job_id=(
+                provider_job_id
+            ),
+            serving_sha256=(
+                actual_sha256
+            ),
+            row_count=len(
+                canonical_rows
+            ),
+            bytes_processed=(
+                bytes_processed
+            ),
+            bytes_billed=(
+                bytes_billed
+            ),
+        )
     def _record(self, job, kind, batch):
         self.telemetry.append(dict(job_id=job.job_id, job_type=kind, location=job.location,
             application_token=batch.application_token, operation_id=batch.operation_id,
@@ -433,7 +1181,10 @@ class BigQueryTarget:
         journal = self._query(batch, f'SELECT * FROM `{self.binding.physical("journal")}` '
                               'WHERE application_token=@application_token', 'read_publication_journal')
         if (len(journal) != 1 or journal[0]['intent_sha256'] != batch.intent_sha256
-                or journal[0]['scope_sha256'] != batch.scope_hash):
+                or journal[0]['scope_sha256'] != batch.scope_hash
+                or journal[0]['application_token'] != batch.application_token
+                or (getattr(batch, 'manifest_evidence', None) is not None
+                    and journal[0]['evidence'] != batch.manifest_evidence)):
             raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
         name = self._name(batch, 'candidate')
         self._table(name, model_adapter.schema(batch.plan.context), context=batch.plan.context)
@@ -454,3 +1205,15 @@ class BigQueryTarget:
             raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
         self.reconcile(batch)
         self._call(self.client.delete_table, self._name(batch, 'input'), not_found_ok=True)
+    def _publication_labels(
+        self,
+        request,
+    ):
+        return {
+            "publication": str(
+                request.publication_id
+            ),
+            "revision": str(
+                request.publication_revision
+            ),
+        }

@@ -228,6 +228,22 @@ def provider(client=None):
     )
 
 
+@pytest.mark.parametrize('changed_label', [None, 'model', 'generation', 'publication', 'revision'])
+def test_publication_table_labels_are_independently_pinned(changed_label):
+    name = 'synthetic-project.dr_dev_w1.m20_v30_g1_p50_r7'
+    client = Client()
+    client.table = Table(name)
+    client.table.labels.update(model='20', generation='1', publication='50', revision='7')
+    client.references = (name,)
+    client.get_table = lambda requested, **kwargs: deepcopy(client.table)
+    request = CompiledQuery(1, 'a'*64, 'b'*64, f'SELECT COUNT(*) FROM `{name}`', (name,))
+    if changed_label:
+        client.table.labels[changed_label] = '99'
+        with pytest.raises(ProviderError): provider(client).estimate(request)
+    else:
+        assert provider(client).estimate(request).confidence == EstimateConfidence.EXACT
+
+
 def test_precise_estimate_and_minimum_billing_floor():
     client = Client()
     client.estimate = 128

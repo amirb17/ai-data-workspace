@@ -30,7 +30,16 @@ from app.warehouse.providers.base import (
     ProviderError,
 )
 from app.warehouse.providers.bigquery import classify
+import re
 
+
+_PUBLICATION_TABLE = re.compile(
+    r"^m(?P<model>[1-9][0-9]*)"
+    r"_v(?P<version>[1-9][0-9]*)"
+    r"_g(?P<generation>[1-9][0-9]*)"
+    r"_p(?P<publication>[1-9][0-9]*)"
+    r"_r(?P<revision>[1-9][0-9]*)$"
+)
 
 BIGQUERY_MINIMUM_BILLED_BYTES_PER_TABLE = 10 * 1024 * 1024
 
@@ -222,6 +231,37 @@ class BigQueryReadProvider:
                 full_name = f"{project}.{dataset}.{table_id}"
 
         labels = getattr(table, "labels", {}) or {}
+        table_id = name.rsplit(
+            ".",
+            1,
+        )[-1]
+
+        publication = (
+            _PUBLICATION_TABLE.fullmatch(
+                table_id
+            )
+        )
+
+        if publication is not None:
+            if (
+                labels.get("model")
+                != publication.group("model")
+                or labels.get("generation")
+                != publication.group(
+                    "generation"
+                )
+                or labels.get("publication")
+                != publication.group(
+                    "publication"
+                )
+                or labels.get("revision")
+                != publication.group(
+                    "revision"
+                )
+            ):
+                raise ProviderError(
+                    ErrorCode.PERMISSION_DENIED
+                )
 
         if (
             full_name != name

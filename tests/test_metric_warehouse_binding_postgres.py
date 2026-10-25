@@ -319,7 +319,7 @@ def test_fact_binding_resolves_exact_published_state(
     assert source.physical_table == (
         "synthetic-project."
         f"dr_dev_w{f.pg['workspace']}."
-        f"m{f.model}_v{f.version}_g1"
+        f"m{f.model}_v{f.version}_g1_p{publication['publication_id']}_r{publication['revision']}"
     )
     assert (
     source.serving_materialization_id

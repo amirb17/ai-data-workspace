@@ -209,19 +209,43 @@ def _state_values(
     return values
 
 
-def rows(plan: FactLogicalPlan):
+def rows(
+    plan: FactLogicalPlan,
+):
     """Encode exact candidate FACT states for a future physical provider."""
-    if not isinstance(plan, FactLogicalPlan):
+    if not isinstance(
+        plan,
+        FactLogicalPlan,
+    ):
         raise ValueError(
             "FACT logical plan required"
         )
 
-    context = plan.context
-    mapping = columns(context)
+    return rows_from_states(
+        plan.context,
+        plan.after,
+    )
+
+def rows_from_states(
+    context: FactContext,
+    states,
+):
+    """Encode complete trusted FACT state independently of an incremental plan."""
+    if not isinstance(
+        context,
+        FactContext,
+    ):
+        raise ValueError(
+            "Typed FACT context required"
+        )
+
+    mapping = columns(
+        context
+    )
 
     result = []
 
-    for state in plan.after:
+    for state in states:
         values = _state_values(
             context,
             state,
@@ -255,16 +279,20 @@ def rows(plan: FactLogicalPlan):
             physical_name,
             kind,
         ) in mapping:
-            row[physical_name] = encode(
-                values[logical_name],
+            row[
+                physical_name
+            ] = encode(
+                values[
+                    logical_name
+                ],
                 kind,
             )
 
-        result.append(row)
+        result.append(
+            row
+        )
 
     return result
-
-
 def states(
     context: FactContext,
     physical_rows,
