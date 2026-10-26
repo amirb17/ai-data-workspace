@@ -372,6 +372,7 @@ def _source(
                 "serving_row_count"
             ],
             physical_table=table,
+            schema_sha256=schema_sha256,
             columns=(
                 fact_physical.columns(
                     context
@@ -444,6 +445,7 @@ def _source(
         "serving_row_count"
     ],
     physical_table=table,
+    schema_sha256=schema_sha256,
     columns=physical.columns(
         context
     ),

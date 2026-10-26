@@ -85,6 +85,13 @@ class QueryGovernanceService:
                 owner_key=self.owner_key,
             )
 
+    def reservation(self, reservation_id: int):
+        if type(reservation_id) is not int or reservation_id < 1:
+            raise ValueError('Positive reservation id required')
+        with repository_transaction() as conn:
+            return repository.read_owned_reservation(conn, workspace_id=self.workspace_id,
+                owner_key=self.owner_key, reservation_id=reservation_id)
+
     def complete(
         self,
         reservation_id: int,

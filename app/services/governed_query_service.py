@@ -19,6 +19,7 @@ from app.query_governance.providers.base import (
     ExecutionPermit,
     QueryExecutionResult,
     ReadQueryProvider,
+    RecoveryState,
 )
 from app.query_governance.types import (
     EstimateConfidence,
@@ -175,9 +176,19 @@ def execute_governed_query(
     if type(reservation_id) is not int or reservation_id < 1:
         raise ValueError("Positive durable reservation id required")
 
+    # An existing execution/terminal intent cannot become a new execution or
+    # enter the ACTIVE-only revalidation/release path.
+    if reservation.get('status', 'ACTIVE') != 'ACTIVE':
+        raise QueryRecoveryRequired(reservation_id)
+
     # Revalidate while still ACTIVE. At this point release is safe because
     # no provider execution has been attempted.
-    fresh_estimate = provider.estimate(query)
+    try:
+        fresh_estimate = provider.estimate(query)
+    except Exception:
+        governance.release(reservation_id)
+        return GovernedQueryResult(state=GovernedExecutionState.REVALIDATION_REQUIRED,
+            admission=admission, reservation_id=reservation_id)
 
     if not _fresh_estimate_fits_reservation(
         fresh_estimate,
@@ -231,3 +242,43 @@ def execute_governed_query(
         result=result,
         usage=usage,
     )
+
+
+class RecoveredQueryFailed(RuntimeError):
+    def __init__(self, reservation_id):
+        self.reservation_id = reservation_id
+        super().__init__('QUERY_FAILED')
+
+
+def recover_governed_query(*, governance, provider, query, consumer, reservation_id):
+    """Read the exact deterministic provider job and settle its original claim.
+
+    Never admit, claim, release or execute during recovery. Absent/running jobs
+    remain reserved. Terminal reservations do not grant another execution.
+    """
+    row = governance.reservation(reservation_id)
+    if (row['workspace_id'] != query.workspace_id or row['consumer'] != consumer
+            or row['provider'] != provider.identity or row['request_token'] != query.request_token
+            or row['intent_sha256'] != query.intent_sha256):
+        raise ValueError('QUERY_RECOVERY_SCOPE_MISMATCH')
+    permit = ExecutionPermit.from_claimed_reservation(row)
+    permit.authorize(query, provider=provider.identity)
+    try:
+        observed = provider.recover(query, permit)
+        if observed.state == RecoveryState.FAILED:
+            governance.fail(reservation_id, bytes_processed=observed.bytes_processed,
+                bytes_billed=observed.bytes_billed, provider_job_id=observed.provider_job_id,
+                duration_ms=observed.duration_ms)
+            raise RecoveredQueryFailed(reservation_id)
+        if observed.state != RecoveryState.SUCCEEDED:
+            raise QueryRecoveryRequired(reservation_id)
+        result = observed.result
+        usage = governance.complete(reservation_id, bytes_processed=result.bytes_processed,
+            bytes_billed=result.bytes_billed, provider_job_id=result.provider_job_id,
+            duration_ms=result.duration_ms)
+    except (QueryRecoveryRequired, RecoveredQueryFailed):
+        raise
+    except Exception:
+        raise QueryRecoveryRequired(reservation_id) from None
+    return GovernedQueryResult(state=GovernedExecutionState.SUCCEEDED,
+        admission={'reservation': row}, reservation_id=reservation_id, result=result, usage=usage)

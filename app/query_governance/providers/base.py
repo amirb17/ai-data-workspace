@@ -80,7 +80,7 @@ class CompiledQuery:
         ):
             raise ValueError("Bounded compiled SQL required")
 
-        if self.compiler_version != 1:
+        if type(self.compiler_version) is not int or self.compiler_version not in (1, 2):
             raise ValueError("Unsupported query compiler contract")
 
         if (

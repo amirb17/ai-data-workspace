@@ -9,6 +9,8 @@ from app.processing.metric_validator import validate_metric
 from app.processing.relationship_evidence import digest
 
 EXECUTION_VERSION = 1
+PANDAS_ENGINE_ID = 'PANDAS_METRIC'
+PANDAS_ENGINE_VERSION = EXECUTION_VERSION
 MAX_ROWS = 250_000
 MAX_GROUPS = 100
 MAX_OUTPUT_BYTES = 256_000

@@ -22,6 +22,19 @@ class ReservationConflict(ValueError):
     pass
 
 
+def read_owned_reservation(conn, *, workspace_id, owner_key, reservation_id):
+    """Recovery reads retain the same current-owner and reservation-owner boundary."""
+    _lock_scopes(conn, workspace_id)
+    _require_owner(conn, workspace_id, owner_key)
+    row = conn.cursor(row_factory=dict_row).execute(
+        '''SELECT * FROM query_governance_reservations
+           WHERE reservation_id=%s AND workspace_id=%s AND owner_key=%s''',
+        (reservation_id, workspace_id, owner_key)).fetchone()
+    if not row:
+        raise ReservationConflict('RESERVATION_NOT_FOUND')
+    return row
+
+
 def _lock_scopes(conn, workspace_id: int):
     # Always global first, workspace second: deterministic lock order.
     conn.execute(

@@ -8,6 +8,8 @@ Pure compilation only:
 """
 
 from dataclasses import dataclass
+from datetime import date, datetime, time
+from decimal import Decimal
 import re
 from typing import Literal
 
@@ -27,7 +29,8 @@ from app.processing.relationship_evidence import digest
 from app.schemas.metrics import MetricProposal
 
 
-COMPILER_VERSION = 1
+# v2 preserves the existing Pandas arithmetic and calendar result contract.
+COMPILER_VERSION = 2
 
 _HEX64 = re.compile(r"^[a-f0-9]{64}$")
 _PHYSICAL_COLUMN = re.compile(r"^c[0-9]+$")
@@ -94,8 +97,11 @@ class MetricWarehouseSource:
         | None
     ) = None
     event_time_timezone: str | None = None
+    schema_sha256: str | None = None
 
     def __post_init__(self):
+        if self.schema_sha256 is not None and (not isinstance(self.schema_sha256,str) or not _HEX64.fullmatch(self.schema_sha256)):
+            raise ValueError('Pinned warehouse schema hash required')
         positive = (
             self.dataset_id,
             self.state_id,
@@ -313,7 +319,7 @@ class MetricWarehouseSource:
             )
 
     def pin(self):
-        return {
+        pin = {
             "dataset_id": self.dataset_id,
             "state_id": self.state_id,
             "model_id": self.model_id,
@@ -348,6 +354,9 @@ class MetricWarehouseSource:
                 self.serving_row_count
             ),
         }
+        if self.schema_sha256 is not None:
+            pin['schema_sha256'] = self.schema_sha256
+        return pin
 
 def _mapping(source: MetricWarehouseSource):
     return {
@@ -461,6 +470,8 @@ def _formula_expression(
     metric: MetricProposal,
     source: MetricWarehouseSource,
     alias: str,
+    *,
+    with_kind=False,
 ):
     expressions = {}
     kinds = {}
@@ -525,12 +536,12 @@ def _formula_expression(
                 )
 
             expressions[node.id] = (
-                f"({args[0]} * {args[1]})"
+                f"(CAST({args[0]} AS BIGNUMERIC) * CAST({args[1]} AS BIGNUMERIC))"
             )
 
             kinds[node.id] = (
                 "ROW",
-                "BIGNUMERIC",
+                'INT64' if all(kinds[a][1] == 'INT64' for a in node.args) else 'BIGNUMERIC',
             )
 
         elif node.op == "COUNT":
@@ -594,11 +605,17 @@ def _formula_expression(
                 result_kind = "INT64"
 
             else:
-                expression = (
-                    f"{node.op}({args[0]})"
-                )
+                operand = args[0]
+                if node.op in ('SUM', 'AVG') and operand_kind == 'INT64':
+                    operand = f'CAST({operand} AS BIGNUMERIC)'
+                expression = f'{node.op}({operand})'
+                if node.op == 'AVG':
+                    # Pandas object-numeric mean converts the SUM once, then
+                    # divides by the non-null count. This is a legacy FLOAT64
+                    # *result*, never a FLOAT warehouse measure or comparison cast.
+                    expression = f'SAFE_DIVIDE(CAST(SUM({operand}) AS FLOAT64), COUNT({args[0]}))'
                 result_kind = (
-                    "BIGNUMERIC"
+                    "FLOAT64"
                     if node.op == "AVG"
                     else operand_kind
                 )
@@ -637,8 +654,14 @@ def _formula_expression(
 
             kinds[node.id] = (
                 "AGG",
-                "BIGNUMERIC",
+                ('FLOAT64' if all(kinds[a][1] == 'INT64' for a in node.args)
+                 or any(kinds[a][1] == 'FLOAT64' for a in node.args) else 'BIGNUMERIC'),
             )
+            if all(kinds[a][1] == 'INT64' for a in node.args):
+                expressions[node.id] = (
+                    f'CAST(SAFE_DIVIDE(CAST({numerator} AS BIGNUMERIC), '
+                    f'CAST({denominator} AS BIGNUMERIC)) AS FLOAT64)'
+                )
 
         else:
             raise ValueError(
@@ -667,7 +690,7 @@ def _formula_expression(
             f"{metric.formula.scale})"
         )
 
-    return result
+    return (result, kinds[metric.formula.root][1]) if with_kind else result
 
 def _resolve_sources(
     plan: MetricExecutionPlan,
@@ -1070,6 +1093,8 @@ def compile_metric_query(
 def decode_metric_query_result(
     plan: MetricExecutionPlan,
     result: QueryExecutionResult,
+    *,
+    sources: dict[int, MetricWarehouseSource] | None = None,
 ):
     if not isinstance(
         plan,
@@ -1090,6 +1115,47 @@ def decode_metric_query_result(
     metric = MetricProposal.model_validate(
         plan.definition
     )
+    if result.truncated:
+        raise ValueError('WAREHOUSE_RESULT_TRUNCATED')
+
+    result_kind = None
+    if sources is not None:
+        _resolve_sources(plan, metric, sources)
+        _, result_kind = _formula_expression(metric, sources[metric.base_dataset_id], 'f', with_kind=True)
+
+    def metric_value(value):
+        if value is None:
+            return None
+        if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+            raise ValueError('WAREHOUSE_RESULT_TYPE')
+        if result_kind == 'INT64':
+            if isinstance(value, Decimal) and value.is_finite() and value == value.to_integral_value():
+                value = int(value)
+            if type(value) is not int:
+                raise ValueError('WAREHOUSE_RESULT_TYPE')
+        elif result_kind == 'BIGNUMERIC':
+            if not isinstance(value, (int, Decimal)):
+                raise ValueError('WAREHOUSE_RESULT_TYPE')
+            # Pandas applies formula.scale even when it is 1, so every Decimal
+            # metric value uses its arithmetic context. Group keys do not.
+            value = +Decimal(value)
+        elif result_kind == 'FLOAT64' and not isinstance(value, (int, float)):
+            raise ValueError('WAREHOUSE_RESULT_TYPE')
+        return scalar(value)
+
+    def group_value(value, index, count):
+        if metric.time_field is not None and index == count - 1 and value is not None:
+            if isinstance(value, datetime):
+                if value.tzinfo is not None:
+                    raise ValueError('WAREHOUSE_RESULT_TIME')
+            elif isinstance(value, date):
+                value = datetime.combine(value, time())
+            else:
+                raise ValueError('WAREHOUSE_RESULT_TIME')
+            return value.isoformat()
+        if value is not None and not isinstance(value, (str, int, float, bool, Decimal, date, datetime)):
+            raise ValueError('WAREHOUSE_RESULT_TYPE')
+        return scalar(value)
 
     grouped = bool(
         metric.dimensions
@@ -1145,7 +1211,7 @@ def decode_metric_query_result(
 
         output = {
             "kind": "scalar",
-            "value": scalar(
+            "value": metric_value(
                 row["__metric_value"]
             ),
             "groups": [],
@@ -1224,6 +1290,9 @@ def decode_metric_query_result(
                 or total_groups < 0
                 or type(missing) is not int
                 or missing < 0
+                or total_groups < 1
+                or input_rows < total_groups
+                or len(rows) != min(total_groups, MAX_GROUPS + 1)
             ):
                 raise ValueError(
                     "WAREHOUSE_RESULT_SHAPE"
@@ -1232,6 +1301,8 @@ def decode_metric_query_result(
             for row in rows:
                 if (
                     set(row) != expected
+                    or any(type(row.get(k)) is not int for k in (
+                        '__input_rows', '__total_groups', '__missing_dimension_rows'))
                     or row["__input_rows"]
                     != input_rows
                     or row["__total_groups"]
@@ -1263,17 +1334,17 @@ def decode_metric_query_result(
                 groups.append(
                     {
                         "dimensions": [
-                            scalar(
+                            group_value(
                                 row[
                                     f"__group_{index}"
-                                ]
+                                ], index, group_count,
                             )
                             for index
                             in range(
                                 group_count
                             )
                         ],
-                        "value": scalar(
+                        "value": metric_value(
                             row[
                                 "__metric_value"
                             ]

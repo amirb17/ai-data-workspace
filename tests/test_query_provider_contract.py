@@ -83,7 +83,7 @@ def test_compiled_query_has_explicit_backend_physical_scope():
         {"intent_sha256": "bad"},
         {"sql": ""},
         {"sql": "\x00SELECT 1"},
-        {"compiler_version": 2},
+        {"compiler_version": 3},
     ],
 )
 def test_invalid_compiled_query_identity_is_rejected(updates):

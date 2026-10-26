@@ -186,7 +186,7 @@ def read_frames(handles, store, cache=None):
     return frames
 
 
-def refresh_analytics(workspace, user, candidate_id=None):
+def refresh_analytics(workspace, user, candidate_id=None, *, shadow_observer=None):
     validate_workspace(workspace, user)
     with repository.execution_lock(workspace):
         frames_cache = OrderedDict()
@@ -217,7 +217,8 @@ def refresh_analytics(workspace, user, candidate_id=None):
             try:
                 with repository_transaction() as conn: handles = load_sources(conn, plan)
                 if store is None: store = BoundedMetricArtifacts.create()
-                output = PandasMetricExecutionEngine().execute(plan, read_frames(handles, store, frames_cache))
+                frames = read_frames(handles, store, frames_cache)
+                output = PandasMetricExecutionEngine().execute(plan, frames)
                 with repository_transaction() as conn:
                     # No mutable current pointer: reads resolve exact current signatures. Old completion is historical.
                     conn.execute("UPDATE workspace_metric_results SET status='FRESH',output=%s,computed_at=NOW() WHERE result_id=%s", (Jsonb(output), attempt['result_id']))
@@ -231,4 +232,11 @@ def refresh_analytics(workspace, user, candidate_id=None):
             if not failure:
                 logger.info('Metric size workspace=%s candidate=%s result=%s input_rows=%s output_groups=%s',
                             workspace, plan.candidate_id, attempt['result_id'], output['input_rows'], len(output['groups']))
+                # The FRESH Pandas result is already committed. Shadow evidence
+                # has no role in persistence, response construction or freshness.
+                try:
+                    from app.services.metric_shadow_service import observe_metric_shadow
+                    observe_metric_shadow(plan, output, user, frames=frames, observer=shadow_observer)
+                except Exception:
+                    logger.warning('Metric shadow hook failed workspace=%s candidate=%s',workspace,plan.candidate_id)
     return read_analytics(workspace, user)
