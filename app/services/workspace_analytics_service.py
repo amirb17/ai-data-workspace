@@ -12,7 +12,10 @@ from app.services import metric_service
 from app.services.workspace_understanding_service import validate_workspace
 from app.processing.metric_execution import compile_plan, PandasMetricExecutionEngine, MAX_ROWS, BoundedMetricArtifacts
 from app.processing.metric_validator import ALGORITHM_VERSION, POLICY_VERSION
-
+from app.services.metric_rollout_service import (
+    primary_enabled,
+    select_metric_output,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -214,11 +217,41 @@ def refresh_analytics(workspace, user, candidate_id=None, *, shadow_observer=Non
                     algorithm_version,dependency_signature,plan,status) VALUES (%s,%s,%s,%s,%s,%s,'COMPUTING') RETURNING result_id''',
                     (workspace, plan.candidate_id, current['row']['run_id'], plan.algorithm_version, plan.signature, Jsonb(asdict(plan)))).fetchone()
             failure = None
+            primary_requested = False
+            selection = None
+
             try:
                 with repository_transaction() as conn: handles = load_sources(conn, plan)
                 if store is None: store = BoundedMetricArtifacts.create()
                 frames = read_frames(handles, store, frames_cache)
-                output = PandasMetricExecutionEngine().execute(plan, frames)
+                pandas_output = PandasMetricExecutionEngine().execute(
+                    plan,
+                    frames,
+                )
+
+                # Pandas remains the deterministic fallback throughout controlled rollout.
+                output = pandas_output
+                primary_requested = primary_enabled()
+
+                if primary_requested:
+                    try:
+                        selection = select_metric_output(
+                            plan,
+                            pandas_output,
+                            user,
+                            frames=frames,
+                        )
+                        output = selection.output
+                    except Exception:
+                        # Rollout infrastructure must never convert a valid Pandas Metric
+                        # into a failed user-visible refresh.
+                        logger.warning(
+                            "Metric primary provider selection failed "
+                            "workspace=%s candidate=%s",
+                            workspace,
+                            plan.candidate_id,
+                        )
+
                 with repository_transaction() as conn:
                     # No mutable current pointer: reads resolve exact current signatures. Old completion is historical.
                     conn.execute("UPDATE workspace_metric_results SET status='FRESH',output=%s,computed_at=NOW() WHERE result_id=%s", (Jsonb(output), attempt['result_id']))
@@ -234,9 +267,53 @@ def refresh_analytics(workspace, user, candidate_id=None, *, shadow_observer=Non
                             workspace, plan.candidate_id, attempt['result_id'], output['input_rows'], len(output['groups']))
                 # The FRESH Pandas result is already committed. Shadow evidence
                 # has no role in persistence, response construction or freshness.
-                try:
-                    from app.services.metric_shadow_service import observe_metric_shadow
-                    observe_metric_shadow(plan, output, user, frames=frames, observer=shadow_observer)
-                except Exception:
-                    logger.warning('Metric shadow hook failed workspace=%s candidate=%s',workspace,plan.candidate_id)
+                if primary_requested:
+                    provider = selection.provider if selection is not None else "PANDAS"
+                    reason = selection.reason if selection is not None else "PRIMARY_SELECTION_ERROR"
+
+                    logger.info(
+                        "Metric provider selection workspace=%s candidate=%s "
+                        "result=%s provider=%s reason=%s",
+                        workspace,
+                        plan.candidate_id,
+                        attempt["result_id"],
+                        provider,
+                        reason,
+                    )
+
+                    # Preserve the existing rule that observers run only after the
+                    # authoritative FRESH result has committed.
+                    if (
+                        selection is not None
+                        and selection.evidence is not None
+                        and shadow_observer is not None
+                    ):
+                        try:
+                            shadow_observer(selection.evidence)
+                        except Exception:
+                            logger.warning(
+                                "Metric rollout observer failed "
+                                "workspace=%s candidate=%s",
+                                workspace,
+                                plan.candidate_id,
+                            )
+                else:
+                    # Existing A1.4 shadow-only behavior remains exactly unchanged when
+                    # primary promotion is not requested.
+                    try:
+                        from app.services.metric_shadow_service import observe_metric_shadow
+
+                        observe_metric_shadow(
+                            plan,
+                            pandas_output,
+                            user,
+                            frames=frames,
+                            observer=shadow_observer,
+                        )
+                    except Exception:
+                        logger.warning(
+                            "Metric shadow hook failed workspace=%s candidate=%s",
+                            workspace,
+                            plan.candidate_id,
+                        )
     return read_analytics(workspace, user)
