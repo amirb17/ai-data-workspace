@@ -56,8 +56,20 @@ class Client:
             raise NotFound('synthetic')
         return self.jobs[job_id]
 
-    def load_table_from_json(self, rows, destination, *, job_id, job_config, **kwargs):
-        assert kwargs['location'] == 'asia-south1' and kwargs['retry'] is None
+    def load_table_from_json(
+        self,
+        rows,
+        destination,
+        *,
+        job_id,
+        job_config,
+        **kwargs,
+    ):
+        assert kwargs["location"] == "asia-south1"
+        assert kwargs["project"] == "synthetic-project"
+        assert kwargs["num_retries"] == 0
+        assert kwargs["timeout"] > 0
+        assert "retry" not in kwargs
         assert job_config.write_disposition == 'WRITE_EMPTY'
         if job_id in self.jobs:
             raise Conflict('synthetic duplicate job')

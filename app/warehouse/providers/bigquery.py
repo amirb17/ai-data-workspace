@@ -111,6 +111,30 @@ class BigQueryTarget:
             raise
         except Exception as error:
             raise classify(error) from None
+    def _load_json(
+            self,
+            rows,
+            destination,
+            *,
+            job_config,
+            job_id,
+        ):
+            """Submit an immutable JSON load using the BigQuery load API contract."""
+            try:
+                return self.client.load_table_from_json(
+                    rows,
+                    destination,
+                    num_retries=0,
+                    job_id=job_id,
+                    location=self.policy.location,
+                    project=self.policy.project,
+                    job_config=job_config,
+                    timeout=self.policy.timeout_seconds,
+                )
+            except ProviderError:
+                raise
+            except Exception as error:
+                raise classify(error) from None
 
     def _labels(self, context=None):
         labels = dict(datarise='warehouse', environment=self.binding.environment,
@@ -781,22 +805,17 @@ class BigQueryTarget:
                 )
 
                 try:
-                    load = self._call(
-                        self.client
-                        .load_table_from_json,
-                        rows,
-                        serving,
-                        job_config=config,
-                        job_id=(
-                            self._serving_job_id(
-                                request,
-                                "load",
-                            )
-                        ),
-                        location=(
-                            self.policy.location
-                        ),
-                    )
+                    load = self._load_json(
+                    rows,
+                    serving,
+                    job_config=config,
+                    job_id=(
+                        self._serving_job_id(
+                            request,
+                            "load",
+                        )
+                    ),
+                )
 
                 except ProviderError as error:
                     raise ProviderError(
@@ -1053,8 +1072,15 @@ class BigQueryTarget:
                 write_disposition='WRITE_EMPTY', create_disposition='CREATE_NEVER',
                 ignore_unknown_values=False, max_bad_records=0, labels=self._job_labels(batch))
             try:
-                load = self._call(self.client.load_table_from_json, data, stage, job_config=config,
-                                  job_id=self._job_id(batch, 'load'), location=self.policy.location)
+                load = self._load_json(
+                data,
+                stage,
+                job_config=config,
+                job_id=self._job_id(
+                    batch,
+                    "load",
+                ),
+            )
             except ProviderError as error:
                 raise ProviderError(error.code, uncertain=True) from None
         if load is not None:
