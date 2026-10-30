@@ -7,7 +7,12 @@ from app.config import get_boto3_session, S3_BUCKET_NAME
 from app.processing.append_engine import effective_schema, LINEAGE
 from app.processing.upsert_engine import UPSERT_LINEAGE,validate_upsert_candidate
 from app.processing.snapshot_engine import SNAPSHOT_LINEAGE,validate_snapshot_candidate,timestamp
+from app.processing.exact_parquet import MAX_PARQUET_BYTES
 
+from app.processing.exact_state_manifest import (
+    encode_exact_state,
+    decode_exact_state,
+)
 
 class IncrementalArtifacts:
     def __init__(self,client=None):
@@ -42,10 +47,59 @@ class IncrementalArtifacts:
             raise ValueError('Artifact integrity failed')
         return pd.read_parquet(io.BytesIO(body))
 
-    def validate_state(self,key,checksum,application,columns,expected_rows,expected_schema,policy=None):
+    def validate_state(
+        self,
+        key,
+        checksum,
+        application,
+        columns,
+        expected_rows,
+        expected_schema,
+        policy=None,
+        approved_rules=None,
+    ):
         body=self.read(key)
         if hashlib.sha256(body).hexdigest()!=checksum: raise ValueError('Candidate manifest integrity failed')
         manifest=json.loads(body)
+        version = manifest.get("manifest_version", 1)
+
+        if type(version) is not int or version not in (1, 2):
+            raise ValueError("Unsupported state manifest version")
+
+        if version == 1 and approved_rules is not None:
+            raise ValueError(
+                "V1 state cannot satisfy an exact-decimal contract"
+            )
+
+        if version == 2:
+            if (
+                policy is None
+                or policy["load_strategy"] != "APPEND"
+                or not approved_rules
+            ):
+                raise ValueError(
+                    "V2 state requires an approved APPEND contract"
+                )
+
+            if (
+                manifest.get("normalization_version")
+                != policy["normalization_version"]
+            ):
+                raise ValueError(
+                    "V2 state normalization version differs"
+                )
+
+            descriptor = manifest.get("exact_descriptor")
+
+            if (
+                not isinstance(descriptor, dict)
+                or descriptor.get("manifest_version") != 2
+                or descriptor.get("effective_schema")
+                != manifest.get("effective_schema")
+            ):
+                raise ValueError(
+                    "V2 state exact descriptor differs"
+                )
         for field in ('application_id','dataset_id','dataset_version_id','policy_id','upload_request_id'):
             if manifest[field]!=application[field]: raise ValueError('Candidate ownership differs')
         prefix=key.rsplit('/',1)[0]+'/'
@@ -66,11 +120,48 @@ class IncrementalArtifacts:
         total=sum(v for k,v in counts.items() if k not in ('conflict_rows','deactivated_rows','active_rows','inactive_rows'))
         if len(outcomes)!=counts['incremental_rejected_rows'] or any(v<0 for v in counts.values()) or total!=application['valid_rows']:
             raise ValueError('Candidate outcome accounting differs')
-        frame=self.frame(manifest['data_key'],manifest['data_sha256'])
+        lineage = (
+            SNAPSHOT_LINEAGE
+            if is_snapshot
+            else UPSERT_LINEAGE
+            if is_upsert
+            else LINEAGE
+        )
+
+        if version == 2:
+            frame = self.read_exact_frame(
+                manifest["data_key"],
+                manifest["data_sha256"],
+                descriptor,
+                approved_rules,
+                columns,
+                dataset_version_id=application["dataset_version_id"],
+                policy_id=application["policy_id"],
+                rule_version=application["applied_rule_version"],
+                expected_columns=columns + lineage,
+            )
+
+            actual_schema = descriptor["effective_schema"]
+
+        else:
+            frame = self.frame(
+                manifest["data_key"],
+                manifest["data_sha256"],
+            )
+
+            actual_schema = effective_schema(
+                frame,
+                columns,
+            )
         if len(frame)!=expected_rows or manifest['row_count']!=expected_rows:
             raise ValueError('Candidate row count differs')
         lineage=SNAPSHOT_LINEAGE if is_snapshot else UPSERT_LINEAGE if is_upsert else LINEAGE
-        if list(frame.columns)!=columns+lineage or effective_schema(frame,columns)!=expected_schema or manifest['effective_schema']!=expected_schema:
+        if (
+            list(frame.columns) != columns + lineage
+            or actual_schema != expected_schema
+            or manifest["effective_schema"] != expected_schema
+        ):
+            raise ValueError("Candidate business schema differs")
             raise ValueError('Candidate business schema differs')
         required=UPSERT_LINEAGE if is_snapshot else lineage
         if frame[required].isna().any().any(): raise ValueError('Candidate lineage incomplete')
@@ -86,3 +177,70 @@ class IncrementalArtifacts:
             else:
                 validate_upsert_candidate(frame,policy,application,counts,payload['ledger'])
         return frame
+    def put_exact_frame(
+        self,
+        key,
+        frame,
+        rules,
+        business_columns,
+        *,
+        dataset_version_id,
+        policy_id,
+        rule_version,
+    ):
+        payload, descriptor = encode_exact_state(
+            frame,
+            rules,
+            business_columns,
+            dataset_version_id=dataset_version_id,
+            policy_id=policy_id,
+            rule_version=rule_version,
+        )
+
+        checksum = self.put(key, payload)
+
+        # Verify the immutable stored object before returning
+        # evidence that a future publisher may consume.
+        self.read_exact_frame(
+            key,
+            checksum,
+            descriptor,
+            rules,
+            business_columns,
+            dataset_version_id=dataset_version_id,
+            policy_id=policy_id,
+            rule_version=rule_version,
+            expected_columns=list(frame.columns),
+        )
+
+        return checksum, descriptor
+
+    def read_exact_frame(
+        self,
+        key,
+        checksum,
+        descriptor,
+        rules,
+        business_columns,
+        *,
+        dataset_version_id,
+        policy_id,
+        rule_version,
+        expected_columns,
+    ):
+        payload = self.read(
+            key,
+            max_bytes=MAX_PARQUET_BYTES,
+        )
+
+        return decode_exact_state(
+            payload,
+            checksum,
+            descriptor,
+            rules,
+            business_columns,
+            dataset_version_id=dataset_version_id,
+            policy_id=policy_id,
+            rule_version=rule_version,
+            expected_columns=expected_columns,
+        )

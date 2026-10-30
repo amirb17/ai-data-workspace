@@ -5,10 +5,45 @@ from app.schemas.ask_data import AskDataRequest
 from app.schemas.analytics_query import AnalyticsQueryRequest
 from app.services.dataset_analytics_service import readiness, refresh_analytics, read_dashboard
 from app.services.analytics_service import ask_dataset, run_dataset_query
+from typing import Literal
 
+from pydantic import BaseModel, Field, StrictInt
+
+from app.services.exact_gold_approval_service import (
+    approve_exact_gold_avg_policy,
+)
 router = APIRouter(prefix='/workspaces/{workspace_id}/datasets/{dataset_id}/analytics', tags=['Dataset analytics'])
 
+class ExactGoldAvgApprovalRequest(BaseModel):
+    source_state_id: int = Field(gt=0)
+    expected_rules_sha256: str = Field(
+        pattern=r"^[a-f0-9]{64}$"
+    )
+    avg_scales: dict[str, StrictInt] = Field(
+        min_length=1
+    )
+    confirm_approval: Literal[True]
 
+
+@router.post("/gold/avg-policy/approve")
+def approve_gold_avg_policy(
+    workspace_id: int,
+    dataset_id: int,
+    request: ExactGoldAvgApprovalRequest,
+    user: dict = Depends(get_current_user),
+):
+    return public_call(
+        lambda: approve_exact_gold_avg_policy(
+            workspace_id=workspace_id,
+            dataset_id=dataset_id,
+            user=user,
+            source_state_id=request.source_state_id,
+            avg_scales=request.avg_scales,
+            expected_rules_sha256=(
+                request.expected_rules_sha256
+            ),
+        )
+    )
 @router.get('')
 def read(workspace_id: int, dataset_id: int, user: dict = Depends(get_current_user)):
     return public_call(lambda: read_dashboard(workspace_id,dataset_id,user))

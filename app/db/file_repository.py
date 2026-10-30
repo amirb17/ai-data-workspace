@@ -1038,20 +1038,54 @@ def save_data_quality_run(
     silver_path: str,
     quarantine_path: str | None,
     dataset_version_file_id: int,
+    silver_sha256: str | None = None,
 ):
-    query = """
+    columns = [
+        "file_id",
+        "attempt_id",
+        "rule_version",
+        "total_rows",
+        "valid_rows",
+        "rejected_rows",
+        "silver_path",
+        "quarantine_path",
+        "dataset_version_file_id",
+    ]
+
+    values = [
+        file_id,
+        attempt_id,
+        rule_version,
+        total_rows,
+        valid_rows,
+        rejected_rows,
+        silver_path,
+        quarantine_path,
+        dataset_version_file_id,
+    ]
+
+    # Preserve the legacy INSERT for V1 deployments
+    # that have not yet applied migration 0036.
+    if silver_sha256 is not None:
+        import re
+
+        if not isinstance(silver_sha256, str) or not re.fullmatch(
+            r"[0-9a-f]{64}",
+            silver_sha256,
+        ):
+            raise ValueError("Invalid Silver SHA-256 checksum")
+
+        columns.append("silver_sha256")
+        values.append(silver_sha256)
+
+    column_sql = ", ".join(columns)
+    placeholders = ", ".join(["%s"] * len(values))
+
+    query = f"""
         INSERT INTO data_quality_runs (
-            file_id,
-            attempt_id,
-            rule_version,
-            total_rows,
-            valid_rows,
-            rejected_rows,
-            silver_path,
-            quarantine_path,
-            dataset_version_file_id
+            {column_sql}
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES ({placeholders})
         RETURNING
             dq_run_id,
             file_id,
@@ -1063,29 +1097,14 @@ def save_data_quality_run(
             silver_path,
             quarantine_path,
             dataset_version_file_id,
-            created_at;
+            created_at
     """
 
     with get_connection() as conn:
         with conn.cursor() as cursor:
-            cursor.execute(
-                query,
-                (
-                    file_id,
-                    attempt_id,
-                    rule_version,
-                    total_rows,
-                    valid_rows,
-                    rejected_rows,
-                    silver_path,
-                    quarantine_path,
-                    dataset_version_file_id,
-                ),
-            )
-
+            cursor.execute(query, tuple(values))
             result = cursor.fetchone()
             conn.commit()
-
             return result
 def get_latest_successful_dq_run(
     file_id: int,

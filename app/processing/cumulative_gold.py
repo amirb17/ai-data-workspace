@@ -3,8 +3,37 @@ import pandas as pd
 from app.processing.gold_planner import build_gold_plan
 from app.processing.gold_mart_builder import build_mart
 from app.processing.gold_catalog_builder import build_gold_artifact_catalog, enrich_catalog_data_types
+from decimal import Decimal
 
+def gold_inferred_type(series: pd.Series) -> str:
+    """
+    Recognize genuine Decimal values as numeric measures.
 
+    Never silently accept a mixture of Decimal and
+    non-Decimal business values.
+    """
+    found_decimal = False
+    found_other = False
+
+    for value in series:
+        if isinstance(value, Decimal):
+            if not value.is_finite():
+                raise ValueError(
+                    "Non-finite Decimal in Gold state"
+                )
+            found_decimal = True
+        elif not pd.isna(value):
+            found_other = True
+
+    if found_decimal and found_other:
+        raise ValueError(
+            "Mixed Decimal and non-Decimal Gold values"
+        )
+
+    if found_decimal:
+        return "decimal"
+
+    return str(series.dtype)
 def build_cumulative_gold(state, policy):
     columns = [c['name'] for c in policy['schema_columns']]
     if policy['load_strategy'] == 'SNAPSHOT':
@@ -14,8 +43,25 @@ def build_cumulative_gold(state, policy):
         state = state.loc[active]
     base = state[columns].copy()
     # Profile the authoritative business frame, never an historical delivery.
-    profiles = [(0, 0, c, 'identifier' if c in policy['business_keys'] else str(base[c].dtype), int(base[c].isna().sum()),
-                 int(base[c].nunique()), 0, None, None, 0) for c in columns]
+    profiles = [
+        (
+            0,
+            0,
+            column,
+            (
+                "identifier"
+                if column in policy["business_keys"]
+                else gold_inferred_type(base[column])
+            ),
+            int(base[column].isna().sum()),
+            int(base[column].nunique()),
+            0,
+            None,
+            None,
+            0,
+        )
+        for column in columns
+    ]
     plan = build_gold_plan(profiles)
     # Time-name heuristics in the legacy planner are unsafe for arbitrary strings.
     safe_times = {c for c in columns if pd.api.types.is_datetime64_any_dtype(base[c])}

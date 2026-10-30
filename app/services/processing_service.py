@@ -2,7 +2,10 @@ from app.processing.gold_catalog_builder import build_gold_artifact_catalog
 from app.processing.gold_processor import process_gold
 from app.processing.silver_processor import process_silver
 from app.processing.bronze_processor import run_bronze_stage
+import hashlib
 
+from app.processing import silver_processor
+from app.processing.silver_transformer import exact_decimal_spec
 from app.db.file_repository import (
     get_active_processing_attempt_for_dataset_version_file,
     get_dataset_profiles,
@@ -390,6 +393,35 @@ def run_silver_processing(
             bucket_name=bucket_name,
             approved_rules=approved_rules,
         )
+                # V2 only: capture the stored Silver bytes before
+        # registering a successful DQ run.
+        exact_silver = any(
+            rule[3] == "DATA_TYPE"
+            and exact_decimal_spec(rule[4]) is not None
+            for rule in approved_rules
+        )
+
+        silver_sha256 = None
+
+        if exact_silver:
+            response = silver_processor.s3_client.get_object(
+                Bucket=bucket_name,
+                Key=result["silver_key"],
+            )
+
+            body = response["Body"]
+
+            try:
+                silver_bytes = body.read()
+            finally:
+                body.close()
+
+            if not silver_bytes:
+                raise ValueError("Silver source artifact is empty")
+
+            silver_sha256 = hashlib.sha256(
+                silver_bytes
+            ).hexdigest()
 
         # -----------------------------------------------------
         # 10. Persist DQ run with DVF lineage
@@ -405,7 +437,8 @@ def run_silver_processing(
                 silver_path=result["silver_key"],
                 quarantine_path=result["quarantine_key"],
                 dataset_version_file_id=
-                    dataset_version_file_id,
+                dataset_version_file_id,
+                silver_sha256=silver_sha256,
             )
 
             dq_run_id = dq_run[0]

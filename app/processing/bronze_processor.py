@@ -20,6 +20,27 @@ def run_bronze_stage(
     raw_bytes = response["Body"].read()
 
     df = pd.read_csv(io.BytesIO(raw_bytes))
+        # Preserve lexical business values separately from pandas'
+    # inferred representation.
+    #
+    # Future exact-numeric processing must never reconstruct an
+    # exact Decimal from an already-inferred binary float.
+    raw_text_df = pd.read_csv(
+        io.BytesIO(raw_bytes),
+        dtype=str,
+        keep_default_na=False,
+        na_filter=False,
+    )
+
+    if (
+        list(raw_text_df.columns)
+        != list(df.columns)
+        or len(raw_text_df) != len(df)
+    ):
+        raise ValueError(
+            "Raw lexical Bronze representation differs "
+            "from inferred Bronze structure"
+        )
     schema_hash = calculate_schema_hash(df)
     profiles = profile_dataframe(df)
     row_count = len(df)
@@ -29,7 +50,25 @@ def run_bronze_stage(
         column: str(dtype)
         for column, dtype in df.dtypes.items()
     }
+    raw_text_buffer = io.BytesIO()
 
+    raw_text_df.to_parquet(
+        raw_text_buffer,
+        index=False,
+        engine="pyarrow",
+    )
+
+    raw_text_key = (
+        f"bronze/file_id={file_id}/raw_text.parquet"
+    )
+
+    raw_text_buffer.seek(0)
+
+    s3.put_object(
+        Bucket=BUCKET_NAME,
+        Key=raw_text_key,
+        Body=raw_text_buffer.getvalue(),
+    )
     df["_source_file_id"] = file_id
     df["_bronze_ingested_at"] = datetime.now(timezone.utc)
 

@@ -5,7 +5,7 @@ from app.db.dataset_repository import initialize_dataset_version_file_rules as i
 from app.db.file_repository import get_active_business_rules_for_dataset_version, get_business_rule_answers_for_dataset_version, get_dataset_profiles
 from app.services.rule_suggestion_service import generate_rule_suggestions
 from app.services.business_rule_service import convert_answer_to_rule_config
-
+from app.schemas.business_rules import answer_matches_options
 
 def approved_rules_cover_questions(approval, questions, answers, active_rules):
     if not approval or not approval[5] or approval[1] <= 0 or approval[2] != approval[1] or not active_rules:
@@ -18,7 +18,11 @@ def approved_rules_cover_questions(approval, questions, answers, active_rules):
     for question in questions:
         key = (question["column_name"], question["suggested_rule_type"])
         answer = saved.get(key)
-        if answer not in question["options"]:
+        if not answer_matches_options(
+            key[1],
+            answer,
+            question["options"],
+        ):
             return False
         expected = convert_answer_to_rule_config(key[1], answer)
         if (expected is None and key in active) or (expected is not None and active.get(key) != expected):

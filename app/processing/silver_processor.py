@@ -2,7 +2,19 @@ import io
 import json
 
 import pandas as pd
+from app.db.file_repository import get_physical_file_by_id
+from app.db.processing_repository import get_approved_policy
 
+from app.processing.exact_source import (
+    verified_exact_lexical_frame,
+)
+from app.processing.exact_parquet import (
+    write_exact_parquet,
+    read_exact_parquet,
+)
+from app.processing.silver_transformer import (
+    exact_decimal_spec,
+)
 from app.config import get_boto3_session
 from app.db.file_repository import (
     get_active_business_rules_for_dataset_version,
@@ -53,7 +65,61 @@ def _write_parquet_to_s3(
         Body=buffer.getvalue(),
         ContentType="application/octet-stream",
     )
+def _write_exact_parquet_to_s3(
+    df: pd.DataFrame,
+    bucket_name: str,
+    key: str,
+    approved_rules: list,
+    business_columns: list[str],
+) -> dict:
+    """
+    Write explicitly typed exact Decimal Parquet.
 
+    Preserve the approved physical type even when the
+    entire Decimal column is NULL or the frame is empty.
+    """
+
+    payload, contract = write_exact_parquet(
+        df,
+        approved_rules,
+        business_columns,
+    )
+
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key=key,
+        Body=payload,
+        ContentType="application/octet-stream",
+    )
+
+    # Verify the actual stored bytes, not just the
+    # in-memory serialized representation.
+    response = s3_client.get_object(
+        Bucket=bucket_name,
+        Key=key,
+    )
+
+    body = response["Body"]
+
+    try:
+        stored = body.read(len(payload) + 1)
+    finally:
+        body.close()
+
+    if stored != payload:
+        raise ValueError(
+            "Exact Silver Parquet readback differs"
+        )
+
+    read_exact_parquet(
+        stored,
+        contract,
+        approved_rules,
+        business_columns,
+        expected_columns=list(df.columns),
+    )
+
+    return contract
 
 def process_silver(
     file_id: int,
@@ -94,7 +160,47 @@ def process_silver(
             f"No active business rules found "
             f"for dataset_version_id={dataset_version_id}"
         )
+        # Detect complete exact-decimal contracts.
+    # Malformed contracts must fail closed.
+    exact_rules = [
+        rule
+        for rule in rules
+        if (
+            rule[3] == "DATA_TYPE"
+            and exact_decimal_spec(rule[4]) is not None
+        )
+    ]
 
+    lexical_frame = None
+
+    if exact_rules:
+        # Exact conversion requires the immutable approved
+        # rule snapshot, never mutable active rules alone.
+        pinned_rules = get_approved_policy(
+            dataset_version_id,
+            rule_version,
+        )
+
+        if (
+            approved_rules is None
+            or rules != pinned_rules
+        ):
+            raise ValueError(
+                "Exact Decimal requires matching "
+                "pinned approved rules"
+            )
+
+        physical_file = get_physical_file_by_id(
+            file_id
+        )
+
+        lexical_frame = verified_exact_lexical_frame(
+            file_id=file_id,
+            physical_file=physical_file,
+            bronze_frame=bronze_df,
+            client=s3_client,
+            bucket=bucket_name,
+        )
     # Apply DQ rules
 
     # Apply Silver transformations
@@ -108,6 +214,7 @@ def process_silver(
     ) = apply_transformations(
         df=cleaned_df,
         rules=rules,
+        lexical_frame=lexical_frame,
     )
 
     validated_df = apply_business_rules(
@@ -159,20 +266,47 @@ def process_silver(
 
     # Write valid rows to Silver
 
-    _write_parquet_to_s3(
-        df=silver_output,
-        bucket_name=bucket_name,
-        key=silver_key,
-    )
+    if exact_rules:
+        # The lexical frame has already been verified
+        # against the registered original CSV.
+        business_columns = list(
+            lexical_frame.columns
+        )
+
+        _write_exact_parquet_to_s3(
+            df=silver_output,
+            bucket_name=bucket_name,
+            key=silver_key,
+            approved_rules=rules,
+            business_columns=business_columns,
+        )
+
+    else:
+        _write_parquet_to_s3(
+            df=silver_output,
+            bucket_name=bucket_name,
+            key=silver_key,
+        )
 
     # Write rejected rows if any
 
     if not quarantine_output.empty:
-        _write_parquet_to_s3(
-            df=quarantine_output,
-            bucket_name=bucket_name,
-            key=quarantine_key,
-        )
+
+        if exact_rules:
+            _write_exact_parquet_to_s3(
+                df=quarantine_output,
+                bucket_name=bucket_name,
+                key=quarantine_key,
+                approved_rules=rules,
+                business_columns=business_columns,
+            )
+
+        else:
+            _write_parquet_to_s3(
+                df=quarantine_output,
+                bucket_name=bucket_name,
+                key=quarantine_key,
+            )
 
     # Return processing result
 

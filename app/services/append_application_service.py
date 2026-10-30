@@ -20,7 +20,12 @@ from app.services.processing_context_service import validate_scope,owned_upload
 from app.services.dataset_processing_service import dataset_lock
 from app.services.delivery_lifecycle_service import lifecycle_lock,require_active
 from app.storage.incremental_artifacts import IncrementalArtifacts
+import os
 
+from app.db.processing_repository import get_approved_policy
+from app.processing.silver_transformer import exact_decimal_spec
+from app.processing.exact_state_manifest import descriptor_for
+from app.processing.exact_parquet import read_exact_parquet
 logger=logging.getLogger(__name__)
 
 
@@ -36,71 +41,399 @@ def artifact_key(path):
     if path.startswith(prefix): return path[len(prefix):]
     if path.startswith('silver/') and '..' not in path and '\\' not in path: return path
     raise ValueError('Silver object outside configured data plane')
+def pinned_exact_rules(application, policy):
+    """Resolve exactness only from the immutable approved snapshot."""
+
+    rules = get_approved_policy(
+        application["dataset_version_id"],
+        application["applied_rule_version"],
+    )
+
+    if not rules:
+        raise ValueError("Pinned approved rules required")
+
+    exact = any(
+        rule[3] == "DATA_TYPE"
+        and exact_decimal_spec(rule[4]) is not None
+        for rule in rules
+    )
+
+    if exact and policy["load_strategy"] != "APPEND":
+        raise ValueError(
+            "Exact Decimal V2 is currently supported "
+            "only for APPEND"
+        )
+
+    return rules if exact else None
 
 
-def delivery_manifest(store,application,policy,file_id):
+def exact_pins(application):
+    return {
+        "dataset_version_id": application["dataset_version_id"],
+        "policy_id": application["policy_id"],
+        "rule_version": application["applied_rule_version"],
+    }
+
+
+def application_schema(frame, columns, application, exact_rules):
+    if exact_rules is None:
+        return effective_schema(frame, columns)
+
+    return descriptor_for(
+        frame,
+        exact_rules,
+        columns,
+        **exact_pins(application),
+    )["effective_schema"]
+
+def delivery_manifest(
+    store, application, policy, file_id, exact_rules=None
+):
+    columns = [c["name"] for c in policy["schema_columns"]]
+    version = 2 if exact_rules is not None else 1
+
     with get_connection() as conn:
-        cursor=conn.cursor(row_factory=dict_row)
-        existing=cursor.execute('SELECT * FROM delivery_manifests WHERE application_id=%s',(application['application_id'],)).fetchone()
-        dq=cursor.execute('SELECT * FROM data_quality_runs WHERE dq_run_id=%s',(application['source_dq_run_id'],)).fetchone()
+        cursor = conn.cursor(row_factory=dict_row)
+        existing = cursor.execute(
+            "SELECT * FROM delivery_manifests "
+            "WHERE application_id=%s",
+            (application["application_id"],),
+        ).fetchone()
+        dq = cursor.execute(
+            "SELECT * FROM data_quality_runs WHERE dq_run_id=%s",
+            (application["source_dq_run_id"],),
+        ).fetchone()
+
+    if not dq or not dq["silver_path"]:
+        raise ValueError("Pinned Silver output unavailable")
+
     if existing:
-        manifest_body=store.read(existing['manifest_key'])
-        if hashlib.sha256(manifest_body).hexdigest()!=existing['manifest_sha256']: raise ValueError('Delivery manifest integrity failed')
-        manifest=json.loads(manifest_body)
-        for field in ('application_id','upload_request_id','dataset_id','dataset_version_id','policy_id','source_dq_run_id','applied_rule_version'):
-            if manifest[field]!=application[field]: raise ValueError('Delivery manifest pin differs')
-        if policy['load_strategy']=='SNAPSHOT':
-            for field in ('snapshot_coverage','delivery_kind'):
-                if manifest[field]!=application[field]: raise ValueError('Delivery snapshot context differs')
+        raw_manifest = store.read(existing["manifest_key"])
+
+        if hashlib.sha256(raw_manifest).hexdigest() != existing["manifest_sha256"]:
+            raise ValueError("Delivery manifest integrity failed")
+
+        manifest = json.loads(raw_manifest)
+        if exact_rules is not None:
+            expected_hash = dq.get("silver_sha256")
+
+            if (
+                not isinstance(expected_hash, str)
+                or manifest.get("source_silver_sha256")
+                != expected_hash
+            ):
+                raise ValueError(
+                    "Pinned delivery Silver-source evidence differs"
+                )
+        if existing["manifest_version"] != version:
+            raise ValueError(
+                "Database delivery manifest version differs"
+            )
+        for field in (
+            "application_id",
+            "upload_request_id",
+            "dataset_id",
+            "dataset_version_id",
+            "policy_id",
+            "source_dq_run_id",
+            "applied_rule_version",
+        ):
+            if manifest[field] != application[field]:
+                raise ValueError("Delivery manifest pin differs")
+
+        if manifest.get("manifest_version", 1) != version:
+            raise ValueError("V1/V2 delivery mixing is forbidden")
+
+        if policy["load_strategy"] == "SNAPSHOT":
+            for field in ("snapshot_coverage", "delivery_kind"):
+                if manifest[field] != application[field]:
+                    raise ValueError("Snapshot delivery context differs")
             from app.processing.snapshot_engine import timestamp
-            if timestamp(manifest['snapshot_effective_at'])!=timestamp(application['snapshot_effective_at']):
-                raise ValueError('Delivery snapshot effective time differs')
-        if manifest['policy']!=json.loads(store.json(policy)) or manifest['silver_key']!=existing['silver_key'] or manifest['silver_sha256']!=existing['silver_sha256']:
-            raise ValueError('Manifest policy/input differs')
-        frame=store.frame(existing['silver_key'],existing['silver_sha256'])
-        if len(frame)!=application['valid_rows'] or effective_schema(frame,[c['name'] for c in policy['schema_columns']])!=existing['effective_schema']:
-            raise ValueError('Pinned Silver output differs')
-        return existing,frame
-    # Copy exact successful bytes, never a mutable reference to the legacy Silver path.
-    source_key=artifact_key(dq['silver_path'])
-    expected=f"silver/dataset_version_id={application['dataset_version_id']}/file_id={file_id}/rule_version={application['applied_rule_version']}/data.parquet"
-    if source_key!=expected: raise ValueError('Silver artifact lineage differs')
-    body=store.read(source_key)
-    frame=pd.read_parquet(io.BytesIO(body))
-    columns=[c['name'] for c in policy['schema_columns']]
-    if len(frame)!=application['valid_rows'] or sorted(c for c in frame if not c.startswith(('_dq_','_source_','_bronze_','_gold_','_datarise_')))!=sorted(columns):
-        raise ValueError('Successful Silver rows/schema differ from policy')
-    frame=frame[columns].copy(); schema=effective_schema(frame,columns)
-    if application['input_rows']!=application['valid_rows']+application['rejected_rows']:
-        raise ValueError('Silver outcome accounting differs')
-    prefix=f"silver/dataset_id={application['dataset_id']}/dataset_version_id={application['dataset_version_id']}/delivery/upload_request_id={application['upload_request_id']}/application_id={application['application_id']}/manifest-{uuid4().hex}/"
-    silver_key=prefix+'data.parquet'; silver_hash=store.put(silver_key,store.parquet(frame))
-    manifest={**application,'physical_file_id':file_id,'source_silver_sha256':hashlib.sha256(body).hexdigest(),'manifest_version':1,'status':'READY_TO_APPLY','policy':policy,
-              'load_strategy':policy['load_strategy'],'business_keys':policy['business_keys'],'normalization_version':policy['normalization_version'],
-              'silver_key':silver_key,'silver_sha256':silver_hash,'effective_schema':schema,'created_at':datetime.now(timezone.utc).isoformat()}
-    manifest_key=prefix+'manifest.json'; manifest_hash=store.put(manifest_key,store.json(manifest))
-    store.frame(silver_key,silver_hash)  # Verify readability before registering READY_TO_APPLY.
+            if timestamp(manifest["snapshot_effective_at"]) != timestamp(
+                application["snapshot_effective_at"]
+            ):
+                raise ValueError("Snapshot effective time differs")
+
+        if (
+            manifest["policy"] != json.loads(store.json(policy))
+            or manifest["silver_key"] != existing["silver_key"]
+            or manifest["silver_sha256"] != existing["silver_sha256"]
+        ):
+            raise ValueError("Delivery policy or artifact differs")
+
+        if exact_rules is not None:
+            descriptor = manifest.get("exact_descriptor")
+
+            if not isinstance(descriptor, dict):
+                raise ValueError("V2 delivery descriptor missing")
+
+            frame = store.read_exact_frame(
+                existing["silver_key"],
+                existing["silver_sha256"],
+                descriptor,
+                exact_rules,
+                columns,
+                expected_columns=columns,
+                **exact_pins(application),
+            )
+
+            schema = descriptor["effective_schema"]
+        else:
+            frame = store.frame(
+                existing["silver_key"],
+                existing["silver_sha256"],
+            )
+            schema = effective_schema(frame, columns)
+
+        if (
+            len(frame) != application["valid_rows"]
+            or schema != existing["effective_schema"]
+            or manifest["effective_schema"] != schema
+        ):
+            raise ValueError("Pinned Silver delivery differs")
+
+        return existing, frame
+
+    source_key = artifact_key(dq["silver_path"])
+    expected = (
+        f"silver/dataset_version_id={application['dataset_version_id']}/"
+        f"file_id={file_id}/"
+        f"rule_version={application['applied_rule_version']}/"
+        "data.parquet"
+    )
+
+    if source_key != expected:
+        raise ValueError("Silver artifact lineage differs")
+
+    source_bytes = store.read(source_key)
+    source_hash = hashlib.sha256(source_bytes).hexdigest()
+
+    if exact_rules is not None:
+        expected_hash = dq.get("silver_sha256")
+
+        if (
+            not isinstance(expected_hash, str)
+            or expected_hash != source_hash
+        ):
+            raise ValueError(
+                "Silver source SHA-256 missing or differs "
+                "from successful DQ run"
+            )
+
+    full_frame = pd.read_parquet(io.BytesIO(source_bytes))
+
+    if (
+        len(full_frame) != application["valid_rows"]
+        or sorted(
+            c for c in full_frame.columns
+            if not c.startswith((
+                "_dq_", "_source_", "_bronze_",
+                "_gold_", "_datarise_",
+            ))
+        ) != sorted(columns)
+    ):
+        raise ValueError("Silver business schema differs")
+
+    frame = full_frame[columns].copy()
+
+    if (
+        application["input_rows"]
+        != application["valid_rows"] + application["rejected_rows"]
+    ):
+        raise ValueError("Silver row accounting differs")
+
+    if exact_rules is not None:
+        source_descriptor = descriptor_for(
+            frame,
+            exact_rules,
+            columns,
+            **exact_pins(application),
+        )
+
+        # A Decimal Python value is not enough.
+        # Verify the original Silver Parquet physical type too.
+        read_exact_parquet(
+            source_bytes,
+            source_descriptor["exact_contract"],
+            exact_rules,
+            columns,
+            expected_columns=list(full_frame.columns),
+        )
+
+    prefix = (
+        f"silver/dataset_id={application['dataset_id']}/"
+        f"dataset_version_id={application['dataset_version_id']}/"
+        f"delivery/upload_request_id={application['upload_request_id']}/"
+        f"application_id={application['application_id']}/"
+        f"manifest-{uuid4().hex}/"
+    )
+
+    silver_key = prefix + "data.parquet"
+
+    if exact_rules is not None:
+        silver_hash, descriptor = store.put_exact_frame(
+            silver_key,
+            frame,
+            exact_rules,
+            columns,
+            **exact_pins(application),
+        )
+        schema = descriptor["effective_schema"]
+    else:
+        silver_hash = store.put(
+            silver_key,
+            store.parquet(frame),
+        )
+        schema = effective_schema(frame, columns)
+        descriptor = None
+        store.frame(silver_key, silver_hash)
+
+    manifest = {
+        **application,
+        "physical_file_id": file_id,
+        "source_silver_sha256": source_hash,
+        "manifest_version": version,
+        "status": "READY_TO_APPLY",
+        "policy": policy,
+        "load_strategy": policy["load_strategy"],
+        "business_keys": policy["business_keys"],
+        "normalization_version": policy["normalization_version"],
+        "silver_key": silver_key,
+        "silver_sha256": silver_hash,
+        "effective_schema": schema,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    if descriptor is not None:
+        manifest["exact_descriptor"] = descriptor
+
+    manifest_key = prefix + "manifest.json"
+    manifest_hash = store.put(
+        manifest_key,
+        store.json(manifest),
+    )
+
     with repository_transaction() as conn:
-        row=conn.cursor(row_factory=dict_row).execute('''INSERT INTO delivery_manifests(application_id,manifest_key,manifest_sha256,silver_key,silver_sha256,effective_schema)
-            VALUES (%s,%s,%s,%s,%s,%s) RETURNING *''',(application['application_id'],manifest_key,manifest_hash,silver_key,silver_hash,Jsonb(schema))).fetchone()
-    return row,frame
+        row = conn.cursor(row_factory=dict_row).execute(
+            """
+            INSERT INTO delivery_manifests(
+                application_id,
+                manifest_key,
+                manifest_sha256,
+                silver_key,
+                silver_sha256,
+                effective_schema,
+                manifest_version
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING *
+            """,
+            (
+                application["application_id"],
+                manifest_key,
+                manifest_hash,
+                silver_key,
+                silver_hash,
+                Jsonb(schema),
+                version,
+            ),
+        ).fetchone()
 
+    if row["manifest_version"] != version:
+        raise ValueError(
+            "Persisted delivery manifest version differs"
+        )
 
-def current_state(store,application,policy):
+    return row, frame
+
+def current_state(
+    store, application, policy, exact_rules=None
+):
     with get_connection() as conn:
-        state=conn.cursor(row_factory=dict_row).execute('SELECT s.* FROM datasets d JOIN dataset_state_versions s ON s.state_id=d.current_state_id WHERE d.dataset_id=%s',(application['dataset_id'],)).fetchone()
-        historical=conn.cursor(row_factory=dict_row).execute('SELECT * FROM delivery_applications WHERE application_id=%s',(state['source_application_id'],)).fetchone() if state else None
-    if not state: return None,None
-    if state['policy_id']!=application['policy_id'] or state['dataset_version_id']!=application['dataset_version_id']:
-        raise ValueError('Explicit state migration required')
-    body=store.read(state['manifest_key'])
-    if hashlib.sha256(body).hexdigest()!=state['manifest_sha256']: raise ValueError('Trusted state manifest integrity failed')
-    manifest=json.loads(body)
-    # Validate historical ownership using the historical source application, not this arrival.
-    columns=[c['name'] for c in policy['schema_columns']]
-    options={'policy':policy} if policy['load_strategy'] in ('UPSERT','SNAPSHOT') else {}
-    return state,store.validate_state(state['manifest_key'],state['manifest_sha256'],historical,columns,state['row_count'],manifest['effective_schema'],**options)
+        cursor = conn.cursor(row_factory=dict_row)
 
+        state = cursor.execute(
+            """
+            SELECT s.*
+            FROM datasets d
+            JOIN dataset_state_versions s
+              ON s.state_id=d.current_state_id
+            WHERE d.dataset_id=%s
+            """,
+            (application["dataset_id"],),
+        ).fetchone()
+
+        historical = (
+            cursor.execute(
+                """
+                SELECT *
+                FROM delivery_applications
+                WHERE application_id=%s
+                """,
+                (state["source_application_id"],),
+            ).fetchone()
+            if state else None
+        )
+
+    if not state:
+        return None, None
+
+    if (
+        state["policy_id"] != application["policy_id"]
+        or state["dataset_version_id"]
+        != application["dataset_version_id"]
+    ):
+        raise ValueError("Explicit state migration required")
+
+    raw = store.read(state["manifest_key"])
+
+    if hashlib.sha256(raw).hexdigest() != state["manifest_sha256"]:
+        raise ValueError("Trusted state manifest integrity failed")
+
+    manifest = json.loads(raw)
+    version = manifest.get("manifest_version", 1)
+
+    expected_version = 2 if exact_rules is not None else 1
+
+    if version != expected_version:
+        raise ValueError(
+            "Existing V1/V2 state requires an explicit migration"
+        )
+
+    if exact_rules is not None:
+        if (
+            not historical
+            or historical["applied_rule_version"]
+            != application["applied_rule_version"]
+        ):
+            raise ValueError(
+                "Exact Decimal state rule version differs"
+            )
+
+        options = {
+            "policy": policy,
+            "approved_rules": exact_rules,
+        }
+    else:
+        options = (
+            {"policy": policy}
+            if policy["load_strategy"] in ("UPSERT", "SNAPSHOT")
+            else {}
+        )
+
+    columns = [c["name"] for c in policy["schema_columns"]]
+
+    verified = store.validate_state(
+        state["manifest_key"],
+        state["manifest_sha256"],
+        historical,
+        columns,
+        state["row_count"],
+        manifest["effective_schema"],
+        **options,
+    )
+
+    return state, verified
 
 def apply_incremental(workspace_id,dataset_id,user,upload_id):
     validate_scope(user,workspace_id,dataset_id)
@@ -114,6 +447,18 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
         if existing and existing['status']=='SUCCESS': return public_application(existing)
         require_active(upload_id)
         application=prepare_application(workspace_id,dataset_id,user,upload_id,policy['policy_id'])
+        exact_rules = pinned_exact_rules(application, policy)
+
+        # Temporary integration-test gate.
+        # Do not enable for normal development or live datasets.
+        if exact_rules is not None and not (
+            os.getenv("RUN_DB_TESTS") == "1"
+            and os.getenv("DATARISE_EXACT_APPEND_V2_TEST_ONLY") == "1"
+        ):
+            raise ValueError(
+                "Exact APPEND V2 publication is disabled "
+                "until cumulative Gold and warehouse gates pass"
+            )
         correlation=uuid4().hex
         started=time.monotonic()
         head=None; state_id=None
@@ -121,11 +466,34 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
             with repository_transaction() as conn:
                 application=conn.cursor(row_factory=dict_row).execute("UPDATE delivery_applications SET status='RUNNING',started_at=NOW(),completed_at=NULL,failure_code=NULL WHERE application_id=%s RETURNING *",(application['application_id'],)).fetchone()
             store=IncrementalArtifacts()
-            manifest,incoming=delivery_manifest(store,application,policy,upload[2])
-            head,current=current_state(store,application,policy)
+            manifest, incoming = delivery_manifest(
+            store,
+            application,
+            policy,
+            upload[2],
+            exact_rules=exact_rules,
+            )
+
+            head, current = current_state(
+            store,
+            application,
+            policy,
+            exact_rules=exact_rules,
+            )
             columns=[c['name'] for c in policy['schema_columns']]
             if current is None: current=pd.DataFrame(columns=columns+(SNAPSHOT_LINEAGE if mode=='SNAPSHOT' else UPSERT_LINEAGE if mode=='UPSERT' else LINEAGE))
-            if len(current) and effective_schema(current,columns)!=manifest['effective_schema']: raise ValueError('Effective Silver schema requires migration')
+            if len(current):
+                current_schema = application_schema(
+                    current,
+                    columns,
+                    application,
+                    exact_rules,
+                    )
+
+                if current_schema != manifest["effective_schema"]:
+                        raise ValueError(
+                            "Effective Silver schema requires migration"
+                        )
             if mode=='SNAPSHOT':
                 with get_connection() as conn:
                     prior=conn.execute('SELECT snapshot_boundary_at FROM delivery_applications WHERE application_id=%s',(head['source_application_id'],)).fetchone() if head else None
@@ -133,9 +501,36 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
             engine=snapshot_rows if mode=='SNAPSHOT' else upsert_rows if mode=='UPSERT' else append_rows
             candidate,counts,outcomes=engine(current,incoming,policy,application)
             if mode=='APPEND' and len(current): pd.testing.assert_frame_equal(candidate.iloc[:len(current)].reset_index(drop=True),current.reset_index(drop=True),check_dtype=False,check_exact=True)
-            schema=effective_schema(candidate,columns)
-            prefix=f"silver/dataset_id={dataset_id}/dataset_version_id={application['dataset_version_id']}/state/application_id={application['application_id']}/candidate-{uuid4().hex}/"
-            data_key=prefix+'data.parquet'; data_hash=store.put(data_key,store.parquet(candidate))
+            prefix = (
+                f"silver/dataset_id={dataset_id}/"
+                f"dataset_version_id={application['dataset_version_id']}/"
+                f"state/application_id={application['application_id']}/"
+                f"candidate-{uuid4().hex}/"
+            )
+
+            data_key = prefix + "data.parquet"
+
+            if exact_rules is not None:
+                data_hash, exact_descriptor = store.put_exact_frame(
+                    data_key,
+                    candidate,
+                    exact_rules,
+                    columns,
+                    **exact_pins(application),
+                )
+                schema = exact_descriptor["effective_schema"]
+
+                if schema != manifest["effective_schema"]:
+                    raise ValueError(
+                        "Candidate exact schema differs from delivery"
+                    )
+            else:
+                schema = effective_schema(candidate, columns)
+                data_hash = store.put(
+                    data_key,
+                    store.parquet(candidate),
+                )
+                exact_descriptor = None
             outcome_body={'ledger':outcomes,'rejected':[r for r in outcomes if r['outcome']=='REJECTED']} if mode in ('UPSERT','SNAPSHOT') else {'rejected':outcomes}
             conflict_key=prefix+'outcomes.json'; conflict_hash=store.put(conflict_key,store.json(outcome_body))
             state_manifest={**{k:application[k] for k in ('application_id','dataset_id','dataset_version_id','policy_id','upload_request_id')},
@@ -144,6 +539,9 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
                 'normalization_version':1,'outcomes_key':conflict_key,'outcomes_sha256':conflict_hash,'counts':counts,
                 'load_strategy':mode,'business_keys':policy['business_keys'],'event_time_column':policy['event_time_column'],
                 'source_state_version':head['state_version'] if head else None}
+            if exact_descriptor is not None:
+                state_manifest["manifest_version"] = 2
+                state_manifest["exact_descriptor"] = exact_descriptor
             if mode=='SNAPSHOT':
                 state_manifest.update({k:application[k] for k in ('snapshot_coverage','snapshot_effective_at','snapshot_boundary_at','snapshot_outcome','delivery_kind')})
             manifest_key=prefix+'manifest.json'; manifest_hash=store.put(manifest_key,store.json(state_manifest))
@@ -152,8 +550,29 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
                     VALUES (%s,%s,%s,%s,%s,(SELECT COALESCE(MAX(state_version),0)+1 FROM dataset_state_versions WHERE dataset_id=%s),%s,%s) RETURNING state_id,state_version''',
                     (dataset_id,application['dataset_version_id'],policy['policy_id'],application['application_id'],head['state_id'] if head else None,dataset_id,manifest_key,manifest_hash)).fetchone()
                 state_id,state_version=state_id
-            options={'policy':policy} if mode in ('UPSERT','SNAPSHOT') else {}
-            verified=store.validate_state(manifest_key,manifest_hash,application,columns,len(candidate),schema,**options)
+                        # Select state validation according to artifact version.
+            if exact_rules is not None:
+                options = {
+                    "policy": policy,
+                    "approved_rules": exact_rules,
+                }
+            else:
+                options = (
+                    {"policy": policy}
+                    if mode in ("UPSERT", "SNAPSHOT")
+                    else {}
+                )
+
+            # Verify candidate state before publication.
+            verified = store.validate_state(
+                manifest_key,
+                manifest_hash,
+                application,
+                columns,
+                len(candidate),
+                schema,
+                **options,
+            )
             if mode=='SNAPSHOT':
                 from app.processing.snapshot_engine import validate_snapshot_transition
                 validate_snapshot_transition(current,verified,policy,application,counts,outcomes)

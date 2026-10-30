@@ -2,8 +2,9 @@
 import io
 import json
 from datetime import datetime,timezone
-from threading import Event
+from threading import Event,get_ident
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import Context
 import pandas as pd
 import pytest
 from tests.test_rule_approval_postgres import pg
@@ -13,6 +14,7 @@ from tests.test_append_execution import append_pipeline
 from tests.test_incremental_foundation import policy,second_delivery
 from app.processing.upsert_engine import upsert_rows,UPSERT_LINEAGE,state_index,validate_upsert_transition
 from app.services import append_application_service as execution
+from app.services import dataset_processing_service as coordination
 from app.services.incremental_policy_service import read_foundation,IncrementalConflict
 from app.services.processing_context_service import read_processing_context
 from app.services.delivery_lifecycle_service import archive_delivery
@@ -146,27 +148,94 @@ def test_pg_failure_recovery_and_committed_response(upsert_pipeline,boundary):
 @pytest.mark.parametrize('same_key',[False,True])
 def test_pg_concurrent_updates_reload_latest_head(upsert_pipeline,same_key):
     first=apply(upsert_pipeline); pipe,p,patch=upsert_pipeline
+    db=pipe[0]
     a,b=second_delivery(pipe),second_delivery(pipe)
-    entered,release=Event(),Event(); original=execution.upsert_rows
-    def updated(current,incoming,policy,app):
-        incoming=incoming.copy()
-        for index,row in incoming.iterrows():
-            incoming.at[index,'status']=current.loc[current.id==row.id,'status'].iloc[0]
-        if app['upload_request_id']==a: incoming.loc[incoming.id==1,'status']='Mumbai'
-        if app['upload_request_id']==b: incoming.loc[incoming.id==(1 if same_key else 3),'status']='Delhi'
-        if app['upload_request_id']==a: entered.set(); assert release.wait(15)
-        return original(current,incoming,policy,app)
-    patch.setattr(execution,'upsert_rows',updated)
-    with ThreadPoolExecutor(2) as pool:
-        pending=pool.submit(apply,upsert_pipeline,a); assert entered.wait(10)
-        try:
-            with pytest.raises(RuntimeError,match='already active'): apply(upsert_pipeline,b)
-        finally: release.set()
-        assert pending.result()['updated_rows']==1
-    final=apply(upsert_pipeline,b)
-    _,frame=execution.current_state(execution.IncrementalArtifacts(),final,p)
-    assert frame.loc[frame.id==1,'status'].iloc[0]==('Delhi' if same_key else 'Mumbai')
-    if not same_key: assert frame.loc[frame.id==3,'status'].iloc[0]=='Delhi'
+    connected,attempt=Event(),Event()
+    holder_thread=get_ident(); pids={}; reads={}
+    original=execution.upsert_rows; read_current=execution.current_state
+    get_connection=coordination.get_connection
+    with db[0]() as observer, ThreadPoolExecutor(max_workers=1) as pool:
+        namespace=observer.execute('SELECT current_schema()').fetchone()[0]
+        key=f'{namespace}:datarise:dataset:{db[2]}:{db[3]}'
+
+        def observed_connection():
+            connection=get_connection()
+            role='holder' if get_ident()==holder_thread else 'contender'
+            pids[role]=connection.info.backend_pid
+            if role=='contender':
+                connected.set()
+                if not attempt.wait(30):
+                    connection.close()
+                    raise AssertionError('Competing dataset-lock attempt was not released')
+            return connection
+
+        def observed_head(store,app,policy,*args,**kwargs):
+            head,frame=read_current(store,app,policy,*args,**kwargs)
+            reads.setdefault(app['upload_request_id'],[]).append(head['state_id'])
+            return head,frame
+
+        def head_id():
+            return observer.execute('SELECT current_state_id FROM datasets WHERE dataset_id=%s', (db[3],)).fetchone()[0]
+
+        def holder_has_lock():
+            return observer.execute("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid=%s AND locktype='advisory' AND granted)", (pids['holder'],)).fetchone()[0]
+
+        def updated(current,incoming,policy,app):
+            incoming=incoming.copy()
+            for index,row in incoming.iterrows():
+                incoming.at[index,'status']=current.loc[current.id==row.id,'status'].iloc[0]
+            if app['upload_request_id']==a:
+                incoming.loc[incoming.id==1,'status']='Mumbai'
+                assert holder_has_lock() and head_id()==first['result_state_id']
+                assert observer.execute('SELECT status,result_state_id FROM delivery_applications WHERE application_id=%s', (app['application_id'],)).fetchone()==('RUNNING',None)
+                competing=pool.submit(Context().run,apply,upsert_pipeline,b)
+                try:
+                    # A is already at the real engine boundary. Only B's own
+                    # preflight/connection setup precedes this readiness signal.
+                    assert connected.wait(60), 'Competing application did not connect'
+                    assert pids['holder']!=pids['contender']
+                    assert not observer.execute('SELECT pg_try_advisory_xact_lock(hashtextextended(%s, 0))', (key,)).fetchone()[0]
+                    attempt.set()
+                    with pytest.raises(RuntimeError,match='Dataset processing is already active'):
+                        competing.result(timeout=30)
+                    assert holder_has_lock() and head_id()==first['result_state_id']
+                    assert b not in reads
+                    assert observer.execute('SELECT application_id FROM delivery_applications WHERE upload_request_id=%s', (b,)).fetchone() is None
+                finally:
+                    attempt.set()
+            if app['upload_request_id']==b:
+                assert current.loc[current.id==1,'status'].iloc[0]=='Mumbai'
+                incoming.loc[incoming.id==(1 if same_key else 3),'status']='Delhi'
+            return original(current,incoming,policy,app)
+
+        patch.setattr(coordination,'get_connection',observed_connection)
+        patch.setattr(execution,'current_state',observed_head)
+        patch.setattr(execution,'upsert_rows',updated)
+        applied=apply(upsert_pipeline,a)
+        assert applied['status']=='SUCCESS' and applied['updated_rows']==1
+        assert reads[a]==[first['result_state_id']]
+        assert head_id()==applied['result_state_id'] and not holder_has_lock()
+        final=apply(upsert_pipeline,b)
+        assert reads[b]==[applied['result_state_id']]
+        assert head_id()==final['result_state_id'] and not holder_has_lock()
+        _,frame=execution.current_state(execution.IncrementalArtifacts(),final,p)
+        assert frame.loc[frame.id==1,'status'].iloc[0]==('Delhi' if same_key else 'Mumbai')
+        if not same_key: assert frame.loc[frame.id==3,'status'].iloc[0]=='Delhi'
+        assert sorted(frame.id.tolist())==[1,3]
+        assert frame._datarise_origin_application_id.tolist()==[first['application_id']]*2
+        assert frame.loc[frame.id==1,'_datarise_application_id'].iloc[0]==(final if same_key else applied)['application_id']
+        assert frame.loc[frame.id==3,'_datarise_application_id'].iloc[0]==(first if same_key else final)['application_id']
+        published=observer.execute('''SELECT s.state_id,s.previous_state_id,s.state_version,s.source_application_id,s.status,
+            a.status,a.result_state_id,s.row_count,a.current_state_rows FROM dataset_state_versions s
+            JOIN delivery_applications a ON a.application_id=s.source_application_id
+            WHERE s.dataset_id=%s ORDER BY s.state_version''', (db[3],)).fetchall()
+        applications=[first,applied,final]
+        assert len(published)==3
+        for version,(row,application) in enumerate(zip(published,applications,strict=True),1):
+            previous=applications[version-2]['result_state_id'] if version>1 else None
+            assert row==(application['result_state_id'],previous,version,application['application_id'],
+                         'PUBLISHED','SUCCESS',application['result_state_id'],2,2)
+        assert observer.execute('SELECT count(*) FROM delivery_applications WHERE dataset_id=%s', (db[3],)).fetchone()[0]==3
 
 
 def test_pg_archive_scope_and_schema(upsert_pipeline):

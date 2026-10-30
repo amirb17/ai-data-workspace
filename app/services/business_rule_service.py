@@ -8,7 +8,10 @@ from app.db.file_repository import (
     save_business_rule_for_dataset_version,
     deactivate_business_rule_for_dataset_version,
 )
-
+from app.schemas.business_rules import (
+    answer_matches_options,
+    exact_decimal_answer_config,
+)
 from app.db.dataset_repository import (
     get_dataset_version_file_by_id,
     update_dataset_version_file_status,
@@ -80,7 +83,10 @@ def convert_answer_to_rule_config(
     if rule_type == "DATA_TYPE":
         if answer == "NO":
             return None
+        exact_config = exact_decimal_answer_config(answer)
 
+        if exact_config is not None:
+            return exact_config
         if answer in {"DECIMAL", "DATETIME", "DATE"}:
             return {
                 "type": answer
@@ -162,7 +168,11 @@ def submit_business_rule_answers(
     seen = set()
     for item in answers:
         key = (item.column_name, item.rule_type)
-        if key in seen or item.answer.upper() not in valid_suggestions.get(key, []):
+        if key in seen or not answer_matches_options(
+            item.rule_type,
+            item.answer.upper(),
+            valid_suggestions.get(key, []),
+        ):
             raise ValueError("Invalid or duplicate rule answer")
         seen.add(key)
 

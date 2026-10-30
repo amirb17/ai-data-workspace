@@ -152,23 +152,93 @@ def test_response_loss_durable_success_and_retry(append_pipeline):
     assert apply(append_pipeline)['status']=='SUCCESS' and before==set(pipeline[4])
 
 
-def test_distinct_delivery_concurrency_no_lost_update(append_pipeline):
-    pipeline,_,monkeypatch=append_pipeline
-    second=second_delivery(pipeline); entered,release=Event(),Event(); original=execution.append_rows
-    def slow(*args):
-        entered.set(); assert release.wait(15); return original(*args)
-    monkeypatch.setattr(execution,'append_rows',slow)
-    with ThreadPoolExecutor(2) as pool:
-        first=pool.submit(apply,append_pipeline)
-        assert entered.wait(10)
-        try:
-            with pytest.raises(RuntimeError,match='already active'): apply(append_pipeline,second)
-        finally: release.set()
-        assert first.result()['current_state_rows']==2
-    monkeypatch.setattr(execution,'append_rows',original)
-    assert apply(append_pipeline,second)['current_state_rows']==4
+def test_distinct_delivery_concurrency_no_lost_update(
+    append_pipeline,
+):
+    pipeline, _, monkeypatch = append_pipeline
 
+    second = second_delivery(pipeline)
 
+    entered = Event()
+    release = Event()
+
+    original = execution.append_rows
+
+    def slow(*args, **kwargs):
+        entered.set()
+
+        if not release.wait(120):
+            raise TimeoutError(
+                "Concurrency test did not release APPEND worker"
+            )
+
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(
+        execution,
+        "append_rows",
+        slow,
+    )
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+
+            first = pool.submit(
+                apply,
+                append_pipeline,
+            )
+
+            try:
+                # Allow time for PostgreSQL setup and
+                # application preparation.
+                if not entered.wait(90):
+
+                    # If the worker has already failed,
+                    # surface its actual exception.
+                    if first.done():
+                        first.result()
+
+                    pytest.fail(
+                        "First APPEND did not enter append_rows "
+                        "within 90 seconds"
+                    )
+
+                # First APPEND is now deliberately blocked.
+                # Another delivery must not modify the
+                # same dataset concurrently.
+                with pytest.raises(
+                    RuntimeError,
+                    match="already active",
+                ):
+                    apply(
+                        append_pipeline,
+                        second,
+                    )
+
+            finally:
+                # Always release the background worker,
+                # even when an assertion fails.
+                release.set()
+
+            result = first.result(timeout=120)
+
+            assert result["current_state_rows"] == 2
+
+    finally:
+        monkeypatch.setattr(
+            execution,
+            "append_rows",
+            original,
+        )
+
+    # After the first application completes, the
+    # second application should proceed normally.
+    result = apply(
+        append_pipeline,
+        second,
+    )
+
+    assert result["current_state_rows"] == 4
 def test_archive_ownership_and_schema_safety(append_pipeline):
     first=apply(append_pipeline); pipeline,_,_=append_pipeline; db=pipeline[0]
     archive_delivery(pipeline[2],db[1],db[2],db[3])

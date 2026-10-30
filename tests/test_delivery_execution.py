@@ -1,7 +1,8 @@
 """Real PostgreSQL control plane and existing processors; in-memory S3 data plane."""
 import io
 from concurrent.futures import ThreadPoolExecutor
-from threading import Event
+from contextvars import Context
+from threading import get_ident
 
 import pandas as pd
 import pytest
@@ -16,6 +17,7 @@ from app.processing import silver_processor, gold_processor
 from app.services import processing_service as stages, processing_context_service as context
 from app.services.delivery_execution_service import continue_processing
 from app.services import delivery_execution_service as execution
+from app.services import delivery_lifecycle_service as lifecycle
 from app.main import app
 from app.api.identity import get_current_user
 
@@ -170,22 +172,59 @@ def test_historical_pin_executes_snapshot_after_newer_mutable_draft(pipeline):
 
 def test_concurrent_request_is_rejected_and_running_state_is_visible(pipeline, monkeypatch):
     approve_first(pipeline)
-    entered, release = Event(), Event()
+    db = pipeline[0]
+    holder_thread = get_ident()
     original = stages.process_silver
-    def slow(**kwargs):
-        entered.set()
-        assert release.wait(15)
-        return original(**kwargs)
-    monkeypatch.setattr(stages, "process_silver", slow)
-    with ThreadPoolExecutor(2) as pool:
-        first = pool.submit(execute, pipeline)
-        try:
-            assert entered.wait(10)
-            with pytest.raises(RuntimeError, match="already active"): execute(pipeline)
-            state = context.read_processing_context(pipeline[2], pipeline[0][1])
+    pids = {}
+    with db[0]() as observer, ThreadPoolExecutor(max_workers=1) as pool:
+        namespace = observer.execute("SELECT current_schema()").fetchone()[0]
+        keys = {
+            "lifecycle": f"{namespace}:datarise:upload-lifecycle:{pipeline[2]}",
+            "delivery": f"{namespace}:datarise:delivery:{pipeline[3]['dataset_version_file'][0]}",
+        }
+        for scope, service in (("lifecycle", lifecycle), ("delivery", execution)):
+            get_connection = service.get_connection
+            def observed_connection(get_connection=get_connection, scope=scope):
+                connection = get_connection()
+                pids.setdefault((scope, get_ident()), connection.info.backend_pid)
+                return connection
+            monkeypatch.setattr(service, "get_connection", observed_connection)
+
+        def assert_locks(held):
+            for scope in keys:
+                assert observer.execute(
+                    "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid=%s "
+                    "AND locktype='advisory' AND granted)", (pids[scope, holder_thread],)
+                ).fetchone()[0] is held
+
+        def overlapping_silver(**kwargs):
+            assert get_ident() == holder_thread, "Competing request reached Silver"
+            # The real callback follows the committed active-state transition.
+            # Keep the operation active until both independent requests finish.
+            assert_locks(True)
+            for key in keys.values():
+                assert not observer.execute(
+                    "SELECT pg_try_advisory_xact_lock(hashtextextended(%s, 0))", (key,)
+                ).fetchone()[0]
+            competing = pool.submit(Context().run, execute, pipeline)
+            with pytest.raises(RuntimeError, match="already active"):
+                competing.result(timeout=60)
+            contender_pids = [pid for (scope, thread), pid in pids.items()
+                              if scope == "lifecycle" and thread != holder_thread]
+            assert len(contender_pids) == 1
+            assert contender_pids[0] != pids["lifecycle", holder_thread]
+            visible = pool.submit(Context().run, context.read_processing_context,
+                                  pipeline[2], db[1])
+            state = visible.result(timeout=60)
             assert state["status"] == "SILVER_PROCESSING" and state["stages"]["silver"] == "PROCESSING"
-        finally: release.set()
-        assert first.result()["status"] == "SUCCESS"
+            assert state["latest_attempt"]["stage"] == "SILVER"
+            assert state["latest_attempt"]["status"] == "PROCESSING"
+            assert_locks(True)
+            return original(**kwargs)
+
+        monkeypatch.setattr(stages, "process_silver", overlapping_silver)
+        assert execute(pipeline)["status"] == "SUCCESS"
+        assert_locks(False)
     assert pipeline[5]["silver"] == pipeline[5]["gold"] == 1
 
 

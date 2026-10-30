@@ -8,7 +8,8 @@ from app.db.database import get_connection, repository_transaction
 from app.services.processing_context_service import validate_scope
 from app.processing.cumulative_gold import build_cumulative_gold
 from app.storage.cumulative_gold_artifacts import CumulativeGoldArtifacts
-
+import hashlib
+import json
 logger = logging.getLogger(__name__)
 
 
@@ -79,14 +80,91 @@ def publish_gold(conn, dataset_id, run, key, checksum, catalog):
         cursor.execute("UPDATE datasets SET current_gold_run_id=%s,state_analytics_status='FRESH' WHERE dataset_id=%s", (run['gold_run_id'],dataset_id))
     # Historical completion never replaces the current pointer or its freshness.
 
+def verify_legacy_gold_source(store, state):
+    """
+    Reject V2 state before legacy Gold metadata changes.
 
+    V1 manifests may omit manifest_version.
+    A missing version means V1 for backward compatibility.
+    """
+    body = store.read(
+        state["manifest_key"],
+        max_bytes=1024 * 1024,
+    )
+
+    checksum = hashlib.sha256(body).hexdigest()
+
+    if checksum != state["manifest_sha256"]:
+        raise ValueError(
+            "Trusted state manifest integrity failed"
+        )
+
+    manifest = json.loads(body)
+
+    if not isinstance(manifest, dict):
+        raise ValueError(
+            "Invalid trusted state manifest"
+        )
+
+    version = manifest.get("manifest_version", 1)
+
+    if type(version) is not int or version != 1:
+        raise RuntimeError(
+            "Exact Gold V2 cannot use legacy Gold refresh"
+        )
+
+    return manifest
 def refresh_analytics(workspace_id, dataset_id, user):
     validate_scope(user,workspace_id,dataset_id)
     started = time.monotonic()
-    with refresh_lock(workspace_id,dataset_id):
+    with refresh_lock(workspace_id, dataset_id):
+
+        # Read the current published head without
+        # holding database row locks during S3 IO.
+        with get_connection() as conn:
+            preflight_state = conn.cursor(
+                row_factory=dict_row
+            ).execute(
+                """
+                SELECT
+                    s.state_id,
+                    s.manifest_key,
+                    s.manifest_sha256
+                FROM datasets d
+                JOIN dataset_state_versions s
+                  ON s.state_id = d.current_state_id
+                 AND s.dataset_id = d.dataset_id
+                WHERE d.dataset_id = %s
+                  AND d.workspace_id = %s
+                  AND s.status = 'PUBLISHED'
+                """,
+                (dataset_id, workspace_id),
+            ).fetchone()
+
+        if preflight_state is None:
+            raise ValueError(
+                "Trusted dataset update required"
+            )
+
+        store = CumulativeGoldArtifacts()
+
+        # V2 or corrupted manifests fail before
+        # a V1 Gold run can be inserted.
+        verify_legacy_gold_source(
+            store,
+            preflight_state,
+        )
+
         with repository_transaction() as conn:
             cursor = conn.cursor(row_factory=dict_row)
             head = cursor.execute('SELECT current_state_id FROM datasets WHERE dataset_id=%s FOR UPDATE', (dataset_id,)).fetchone()
+            if (
+                head["current_state_id"]
+                != preflight_state["state_id"]
+            ):
+                raise RuntimeError(
+                    "Trusted state changed during Gold preflight"
+                )
             if not head['current_state_id']:
                 raise ValueError('Trusted dataset update required')
             state = cursor.execute("SELECT * FROM dataset_state_versions WHERE state_id=%s AND dataset_id=%s AND status='PUBLISHED'", (head['current_state_id'],dataset_id)).fetchone()
@@ -143,6 +221,10 @@ def load_pinned_state(store,state,app,policy):
     if hashlib.sha256(body).hexdigest()!=state['manifest_sha256']:
         raise ValueError('Trusted state integrity failed')
     manifest = json.loads(body)
+    if manifest.get("manifest_version", 1) != 1:
+        raise ValueError(
+            "Exact Gold V2 refresh is not enabled"
+        )
     columns = [c['name'] for c in policy['schema_columns']]
     frame = store.validate_state(state['manifest_key'],state['manifest_sha256'],app,columns,state['row_count'],manifest['effective_schema'],policy=policy)
     return state,frame

@@ -2,7 +2,12 @@ from datetime import date, datetime
 import re
 
 import pandas as pd
+from decimal import Decimal
 
+from app.processing.exact_decimal import (
+    ExactDecimalSpec,
+    parse_exact_decimal,
+)
 
 NULL_LIKE_VALUES = {
     "",
@@ -114,10 +119,110 @@ def convert_to_date(series: pd.Series) -> tuple[pd.Series, pd.Series]:
     converted = pd.Series([parse(value) for value in series], index=series.index, dtype=object)
     return converted, series.notna() & converted.isna()
 
+def exact_decimal_spec(rule_config: dict) -> ExactDecimalSpec | None:
+    """
+    Legacy DECIMAL remains unchanged.
 
+    Only a complete, explicitly opted-in contract may
+    use exact decimal conversion.
+    """
+
+    exact_fields = {
+        "mode",
+        "precision",
+        "scale",
+    }
+
+    if not exact_fields.intersection(rule_config):
+        return None
+
+    required = {
+        "type",
+        "mode",
+        "precision",
+        "scale",
+    }
+
+    if set(rule_config) != required:
+        raise ValueError(
+            "Incomplete exact decimal rule contract"
+        )
+
+    if (
+        rule_config["type"] != "DECIMAL"
+        or rule_config["mode"] != "EXACT"
+    ):
+        raise ValueError(
+            "Unsupported exact numeric rule contract"
+        )
+
+    return ExactDecimalSpec(
+        precision=rule_config["precision"],
+        scale=rule_config["scale"],
+    )
+
+
+def convert_to_exact_decimal(
+    series: pd.Series,
+    spec: ExactDecimalSpec,
+) -> tuple[pd.Series, pd.Series]:
+    """
+    Input must be original lexical source values, never
+    values converted through pandas numeric inference.
+
+    Malformed numeric rows are marked for quarantine.
+    Invalid source representation fails the entire operation.
+    """
+
+    if any(
+        not isinstance(value, str)
+        for value in series.tolist()
+    ):
+        raise ValueError(
+            "Exact decimal requires lexical source strings"
+        )
+
+    converted = []
+    invalid = []
+
+    for value in series.tolist():
+        text = value.strip()
+
+        if text.lower() in NULL_LIKE_VALUES:
+            converted.append(None)
+            invalid.append(False)
+            continue
+
+        try:
+            number = parse_exact_decimal(
+                text,
+                spec,
+            )
+
+        except ValueError:
+            converted.append(None)
+            invalid.append(True)
+
+        else:
+            converted.append(number)
+            invalid.append(False)
+
+    return (
+        pd.Series(
+            converted,
+            index=series.index,
+            dtype=object,
+        ),
+        pd.Series(
+            invalid,
+            index=series.index,
+            dtype=bool,
+        ),
+    )
 def apply_transformations(
     df: pd.DataFrame,
     rules: list,
+    lexical_frame: pd.DataFrame | None = None,
 ) -> tuple[
     pd.DataFrame,
     dict[str, pd.Series],
@@ -153,8 +258,36 @@ def apply_transformations(
 
         elif rule_type == "DATA_TYPE":
             target_type = rule_config.get("type")
+            spec = exact_decimal_spec(rule_config)
 
-            if target_type in ("INTEGER", "DECIMAL"):
+            if spec is not None:
+                if (
+                    lexical_frame is None
+                    or len(lexical_frame) != len(df)
+                    or not lexical_frame.index.equals(df.index)
+                    or column_name not in lexical_frame.columns
+                    or not lexical_frame.columns.is_unique
+                ):
+                    raise ValueError(
+                        "Exact decimal lexical source unavailable "
+                        "or structurally inconsistent"
+                    )
+
+                converted, invalid_mask = (
+                    convert_to_exact_decimal(
+                        lexical_frame[column_name],
+                        spec,
+                    )
+                )
+
+                df[column_name] = converted
+
+                transformation_errors[
+                    f"{column_name}:INVALID_NUMERIC"
+                ] = invalid_mask
+
+            elif target_type in ("INTEGER", "DECIMAL"):
+                # Existing V1 behavior must remain unchanged.
                 converted, invalid_mask = convert_to_numeric(
                     df[column_name]
                 )
@@ -164,6 +297,16 @@ def apply_transformations(
                 transformation_errors[
                     f"{column_name}:INVALID_NUMERIC"
                 ] = invalid_mask
+            # if target_type in ("INTEGER", "DECIMAL"):
+            #     converted, invalid_mask = convert_to_numeric(
+            #         df[column_name]
+            #     )
+
+                # df[column_name] = converted
+
+                # transformation_errors[
+                #     f"{column_name}:INVALID_NUMERIC"
+                # ] = invalid_mask
 
             elif target_type == "DATE":
                 converted, invalid_mask = convert_to_date(df[column_name])

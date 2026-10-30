@@ -1,6 +1,6 @@
 """Logical archive with real PostgreSQL lineage and no physical cleanup."""
 from concurrent.futures import ThreadPoolExecutor
-from threading import Event
+from threading import Event, get_ident
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,6 +11,7 @@ from tests.test_delivery_execution import pipeline, approve_first, execute, coun
 from app.services.delivery_lifecycle_service import archive_delivery, lifecycle_lock, DeliveryArchiveConflict
 from app.services import processing_context_service as contexts, dataset_processing_service as datasets
 from app.services import processing_service as stages
+from app.services import delivery_lifecycle_service as lifecycle
 from app.main import app
 from app.api.identity import get_current_user
 
@@ -73,7 +74,7 @@ def test_rules_and_ready_deliveries_removable(pipeline,ready):
         assert conn.execute('SELECT count(*) FROM dataset_version_files').fetchone()[0]>0
 
 
-def test_running_attempt_and_lifecycle_gap_block_archive(pipeline):
+def test_running_attempt_and_lifecycle_gap_block_archive(pipeline, monkeypatch):
     db=pipeline[0]
     with db[0]() as conn:
         attempt=conn.execute("INSERT INTO processing_attempts(file_id,dataset_version_file_id,attempt_number,stage,status) VALUES (%s,%s,9,'SILVER','PROCESSING') RETURNING attempt_id", (pipeline[3]['file'][0],pipeline[3]['dataset_version_file'][0])).fetchone()[0]
@@ -81,14 +82,42 @@ def test_running_attempt_and_lifecycle_gap_block_archive(pipeline):
     with db[0]() as conn:
         assert conn.execute('SELECT archived_at FROM upload_requests WHERE upload_id=%s',(pipeline[2],)).fetchone()[0] is None
         conn.execute("UPDATE processing_attempts SET status='FAILED' WHERE attempt_id=%s",(attempt,))
-    entered,release=Event(),Event()
-    def hold():
-        with lifecycle_lock(pipeline[2]):
-            entered.set(); assert release.wait(10)
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        running=executor.submit(hold); assert entered.wait(10)
-        try:
-            with pytest.raises(DeliveryArchiveConflict): archive(db,pipeline[2])
-        finally: release.set()
-        running.result()
+    connected,attempt=Event(),Event()
+    holder_thread=get_ident()
+    pids={}
+    get_connection=lifecycle.get_connection
+    def coordinated_connection():
+        connection=get_connection()
+        role='holder' if get_ident()==holder_thread else 'contender'
+        pids[role]=connection.info.backend_pid
+        if role=='contender':
+            # Archive ownership checks and connection startup precede contention.
+            connected.set()
+            if not attempt.wait(180):
+                connection.close()
+                raise AssertionError('Lifecycle lock attempt was not released by the test')
+        return connection
+
+    with db[0]() as observer, monkeypatch.context() as patch:
+        namespace=observer.execute('SELECT current_schema()').fetchone()[0]
+        key=f'{namespace}:datarise:upload-lifecycle:{pipeline[2]}'
+        patch.setattr(lifecycle,'get_connection',coordinated_connection)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            competing=executor.submit(archive,db,pipeline[2])
+            try:
+                assert connected.wait(180), 'Archive did not finish preflight and connect'
+                # The parent owns the lock until the conflict is observed; no
+                # worker timer can release it during competing database setup.
+                with lifecycle_lock(pipeline[2]):
+                    assert pids['holder']!=pids['contender']
+                    assert observer.execute("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid=%s AND locktype='advisory' AND granted)", (pids['holder'],)).fetchone()[0]
+                    assert not observer.execute('SELECT pg_try_advisory_xact_lock(hashtextextended(%s, 0))', (key,)).fetchone()[0]
+                    attempt.set()
+                    with pytest.raises(DeliveryArchiveConflict,match='Delivery processing is already active'):
+                        competing.result(timeout=30)
+                    assert observer.execute("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid=%s AND locktype='advisory' AND granted)", (pids['holder'],)).fetchone()[0]
+                    assert observer.execute('SELECT archived_at FROM upload_requests WHERE upload_id=%s', (pipeline[2],)).fetchone()[0] is None
+            finally:
+                attempt.set()
+        assert not observer.execute("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid=%s AND locktype='advisory' AND granted)", (pids['holder'],)).fetchone()[0]
     assert archive(db,pipeline[2])['archived_at']

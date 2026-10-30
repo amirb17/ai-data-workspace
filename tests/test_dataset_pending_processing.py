@@ -1,7 +1,9 @@
 """Independent delivery orchestration and zero-valid publication over real PostgreSQL."""
 import io
 from concurrent.futures import ThreadPoolExecutor
-from threading import Event
+from contextlib import ExitStack
+from contextvars import Context
+from threading import get_ident
 
 import pandas as pd
 import pytest
@@ -154,23 +156,54 @@ def test_dataset_scope_and_api_ownership(pipeline, other_workspace):
 
 def test_dataset_concurrency_refuses_duplicate_work(pipeline, monkeypatch):
     approve_first(pipeline)
-    entered, release = Event(), Event()
+    db = pipeline[0]
+    holder_thread = get_ident()
     original = stages.process_silver
-    def slow(**kwargs):
-        entered.set()
-        # Coordinate overlap, rather than requiring PostgreSQL preparation within 10s.
-        assert release.wait(60)
-        return original(**kwargs)
-    monkeypatch.setattr(stages, "process_silver", slow)
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        first = executor.submit(pending, pipeline)
-        try:
-            assert entered.wait(60)
-            with pytest.raises(RuntimeError, match="already active"):
-                pending(pipeline)
-        finally:
-            release.set()
-        assert first.result()["operation"]["successful"] == 1
+    get_connection = datasets.get_connection
+    pids = {}
+    with ExitStack() as resources, ThreadPoolExecutor(max_workers=1) as executor:
+        observer = resources.enter_context(db[0]())
+        contender = db[0]()
+        resources.callback(contender.close)
+        contender_pid = contender.info.backend_pid
+        namespace = observer.execute("SELECT current_schema()").fetchone()[0]
+        key = f"{namespace}:datarise:dataset:{db[2]}:{db[3]}"
+
+        def observed_connection():
+            role = "holder" if get_ident() == holder_thread else "contender"
+            connection = get_connection() if role == "holder" else contender
+            pids[role] = connection.info.backend_pid
+            return connection
+
+        def holder_has_lock():
+            return observer.execute(
+                "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid=%s "
+                "AND locktype='advisory' AND granted)", (pids["holder"],)
+            ).fetchone()[0]
+
+        def overlapping_silver(**kwargs):
+            assert get_ident() == holder_thread, "Competing request reached Silver"
+            # Readiness is the actual Silver callback, after real preparation and
+            # lock acquisition, rather than a deadline on all preceding DB calls.
+            assert holder_has_lock()
+            assert not observer.execute(
+                "SELECT pg_try_advisory_xact_lock(hashtextextended(%s, 0))", (key,)
+            ).fetchone()[0]
+            assert observer.execute(
+                "SELECT status FROM dataset_version_files WHERE dataset_version_file_id=%s",
+                (pipeline[3]["dataset_version_file"][0],)
+            ).fetchone()[0] == "SILVER_PROCESSING"
+            competing = executor.submit(Context().run, pending, pipeline)
+            with pytest.raises(RuntimeError, match="^Dataset processing is already active$"):
+                competing.result(timeout=60)
+            assert pids["contender"] == contender_pid != pids["holder"]
+            assert holder_has_lock()
+            return original(**kwargs)
+
+        monkeypatch.setattr(datasets, "get_connection", observed_connection)
+        monkeypatch.setattr(stages, "process_silver", overlapping_silver)
+        assert pending(pipeline)["operation"]["successful"] == 1
+        assert not holder_has_lock()
     assert pipeline[5]["silver"] == pipeline[5]["gold"] == 1
 
 

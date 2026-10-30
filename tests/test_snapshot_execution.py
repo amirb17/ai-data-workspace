@@ -177,21 +177,80 @@ def test_pg_concurrent_effective_times_serialize_and_recheck_head(snapshot_pipel
     older=next_upload(snapshot_pipeline,effective='2026-10-07T00:00:00Z')
     newer=next_upload(snapshot_pipeline,effective='2026-10-08T00:00:00Z')
     a,b=(newer,older) if newer_first else (older,newer)
-    entered,release=Event(),Event(); original=execution.snapshot_rows
+    entered = Event()
+    release = Event()
+    original = execution.snapshot_rows
+
     def slow(*args):
-        if args[3]['upload_request_id']==a: entered.set(); assert release.wait(15)
+        if args[3]["upload_request_id"] == a:
+            entered.set()
+            if not release.wait(120):
+                raise TimeoutError("Snapshot worker was not released")
         return original(*args)
-    patch.setattr(execution,'snapshot_rows',slow)
-    with ThreadPoolExecutor(2) as pool:
-        running=pool.submit(apply,snapshot_pipeline,a); assert entered.wait(10)
+
+    patch.setattr(execution, "snapshot_rows", slow)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        running = pool.submit(apply, snapshot_pipeline, a)
+
         try:
-            with pytest.raises(RuntimeError,match='already active'): apply(snapshot_pipeline,b)
-        finally: release.set()
+            if not entered.wait(120):
+                raise TimeoutError(
+                    "Snapshot worker did not reach the engine boundary"
+                )
+            # Verify that Worker A holds the actual dataset advisory lock.
+            with db[0]() as conn:
+                conn.autocommit = True
+
+                namespace = conn.execute(
+                    "SELECT current_schema()"
+                ).fetchone()[0]
+
+                key = f"{namespace}:datarise:dataset:{db[2]}:{db[3]}"
+
+                lock_held = conn.execute(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_locks
+                        WHERE locktype = 'advisory'
+                        AND granted = TRUE
+                        AND classid = (
+                            (hashtextextended(%s, 0) >> 32) & 4294967295
+                        )
+                        AND objid = (
+                            hashtextextended(%s, 0) & 4294967295
+                        )
+                        AND objsubid = 1
+                    )
+                    """,
+                    (key, key),
+                ).fetchone()[0]
+
+                assert lock_held, "Worker A must hold the dataset advisory lock"
+            with pytest.raises(
+                RuntimeError,
+                match="Dataset processing is already active"
+            ):
+                apply(snapshot_pipeline, b)
+
+        finally:
+            release.set()
+
         running.result()
-    last=apply(snapshot_pipeline,b)
-    assert last['snapshot_boundary_at']==datetime(2026,10,8,tzinfo=timezone.utc)
-    if newer_first: assert last['snapshot_outcome']=='STALE' and last['stale_rows']==2
-    assert first['snapshot_boundary_at']==datetime(2026,10,6,tzinfo=timezone.utc)
+    last = apply(snapshot_pipeline, b)
+
+    assert last["snapshot_boundary_at"] == datetime(
+        2026, 10, 8, tzinfo=timezone.utc
+    )
+
+    if newer_first:
+        assert last["snapshot_outcome"] == "STALE"
+        assert last["stale_rows"] == 2
+
+    assert first["snapshot_boundary_at"] == datetime(
+        2026, 10, 6, tzinfo=timezone.utc
+    )
 
 
 def test_pg_publication_write_then_rollback_and_immutable_declarations(snapshot_pipeline):
