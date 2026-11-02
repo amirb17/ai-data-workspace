@@ -1,0 +1,10 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+*.auto.tfvars
+terraform.tfvars
+*.tfvars.json
+# Commit .terraform.lock.hcl once init generates it and it has been reviewed.

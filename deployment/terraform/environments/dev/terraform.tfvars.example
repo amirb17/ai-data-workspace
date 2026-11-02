@@ -1,0 +1,12 @@
+# Safe default: no resources created.
+aws_region     = "ap-south-1"
+environment    = "dev"
+enable_network = false
+
+# Populate only after checking which AWS account Terraform targets.
+# Do NOT reuse old-account resource IDs in a new AWS account.
+# vpc_id = "vpc-REPLACE_WITH_TARGET_ACCOUNT_VPC"
+# private_subnets = {
+#   a = { availability_zone = "ap-south-1a", cidr_block = "172.31.48.0/24" }
+#   b = { availability_zone = "ap-south-1b", cidr_block = "172.31.49.0/24" }
+# }
