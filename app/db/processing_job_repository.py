@@ -75,6 +75,8 @@ def _transaction():
 def _source(conn, user_id, upload_id):
     # Current resource ownership is authoritative, not upload_requests.user_id.
     # SHARE locks keep admission/claim authorization stable until commit.
+    if conn.execute("SELECT to_regprocedure('task20_source(bigint,bigint)')").fetchone()[0] is not None:
+        return conn.execute('SELECT * FROM task20_source(%s,%s)', (user_id, upload_id)).fetchone()
     return conn.execute("""SELECT u.workspace_id, u.dataset_id, u.file_id
         FROM upload_requests u
         JOIN datasets d ON d.dataset_id=u.dataset_id AND d.workspace_id=u.workspace_id

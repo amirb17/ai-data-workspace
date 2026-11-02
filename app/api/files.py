@@ -177,6 +177,8 @@ def complete_upload(request: FileCompleteRequest, user: dict = Depends(get_curre
 def process_file(upload_id: int, user: dict = Depends(get_current_user), workspace_id: int | None = None, dataset_id: int | None = None):
     def operation():
         owned_upload(upload_id, user, workspace_id, dataset_id)
+        from app.api.processing_jobs import reject_managed_synchronous
+        reject_managed_synchronous(upload_id, user)
         start_processing(upload_id)
         return read_processing_context(upload_id, user, workspace_id, dataset_id)
     return _public_call(operation)
@@ -206,6 +208,8 @@ def processing_context(upload_id: int, user: dict = Depends(get_current_user), w
 
 @router.post("/uploads/{upload_id}/continue")
 def continue_file(upload_id: int, user: dict = Depends(get_current_user), workspace_id: int | None = None, dataset_id: int | None = None):
+    from app.api.processing_jobs import reject_managed_synchronous
+    reject_managed_synchronous(upload_id, user)
     return _public_call(lambda: continue_processing(upload_id, user, workspace_id, dataset_id))
 
 
@@ -217,6 +221,8 @@ def _continue_owned_association(association_id, user, workspace_id, dataset_id, 
             (context[6], context[5], context[2])).fetchone()
     if not upload:
         raise PermissionError("Completed owned delivery required")
+    from app.api.processing_jobs import reject_managed_synchronous
+    reject_managed_synchronous(upload[0], user)
     resolved = get_upload_processing_association(context[5], context[2])
     if resolved is None or resolved[0] != association_id:
         raise ValueError("Association does not match the authoritative upload context")

@@ -15,7 +15,7 @@ def _not_implemented(lease: jobs.JobLease) -> None:
 
 
 def execute_job(job_id: str, *, executor: Callable[[jobs.JobLease], None] | None = None,
-                boundary_executor=None, remaining_time_ms=None) -> None:
+                boundary_executor=None, remaining_time_ms=None, lease_observer=None) -> None:
     """Return only when this delivery may be ACKed; exceptions require retry.
 
     Use an independent context so inherited repository transactions cannot make
@@ -27,7 +27,7 @@ def execute_job(job_id: str, *, executor: Callable[[jobs.JobLease], None] | None
             raise ValueError('Boundary execution requires its own executor and invocation clock')
         from app.processing_worker.boundary import ExecutionBoundary
         def controlled(lease):
-            boundary = ExecutionBoundary(lease, remaining_time_ms)
+            boundary = ExecutionBoundary(lease, remaining_time_ms, lease_observer=lease_observer)
             boundary.checkpoint(renew=True)
             result = boundary_executor(boundary)
             # Catch even a checkpoint failure swallowed by the injected caller.

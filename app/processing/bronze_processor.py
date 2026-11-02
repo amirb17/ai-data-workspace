@@ -5,12 +5,13 @@ import pandas as pd
 from app.processing.dataset_profiler import profile_dataframe
 from app.storage.s3_service import get_s3_client, BUCKET_NAME
 from app.processing.schema_fingerprint import calculate_schema_hash
+from app.processing_worker import io_context
 
 def run_bronze_stage(
     file_id: int,
     raw_object_key: str,
 ):
-    s3 = get_s3_client()
+    s3 = io_context.current() if io_context.current() is not None else get_s3_client()
 
     response = s3.get_object(
         Bucket=BUCKET_NAME,

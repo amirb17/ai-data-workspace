@@ -1,5 +1,5 @@
 """Reuse approved answers only within the existing exact schema version."""
-from app.db.database import repository_transaction
+from app.db.database import repository_savepoint as repository_transaction
 from app.db.dataset_repository import get_dataset_version_file_by_id, get_rule_approval_context
 from app.db.dataset_repository import initialize_dataset_version_file_rules as initialize_status
 from app.db.file_repository import get_active_business_rules_for_dataset_version, get_business_rule_answers_for_dataset_version, get_dataset_profiles

@@ -16,7 +16,10 @@ from app.processing.exact_state_manifest import (
 
 class IncrementalArtifacts:
     def __init__(self,client=None):
-        self.client=client or get_boto3_session().client('s3')
+        from app.processing_worker.io_context import current
+        active = current()
+        self.client=client or (active.incremental_client if active is not None and hasattr(active,'incremental_client')
+                              else get_boto3_session().client('s3'))
 
     def read(self,key,max_bytes=None):
         if not key or '..' in key or '\\' in key or key.startswith('/'):

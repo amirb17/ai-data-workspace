@@ -1,0 +1,295 @@
+{
+  "task": 20,
+  "date": "2026-11-01",
+  "production_decision": "NO-GO",
+  "branch": "feature/lambda-processing-worker",
+  "head": "2a04884ff3cabe359745bf262dc49625e8cf397e",
+  "scope": "Local integration and isolated/offline validation only. Default execution, admission and dispatch remain disabled.",
+  "files": {
+    "modified": [
+      "app/api/files.py",
+      "app/db/artifact_publication_repository.py",
+      "app/db/database.py",
+      "app/db/processing_job_repository.py",
+      "app/main.py",
+      "app/processing/bronze_processor.py",
+      "app/processing/gold_processor.py",
+      "app/processing/silver_processor.py",
+      "app/processing_worker/boundary.py",
+      "app/processing_worker/execution.py",
+      "app/processing_worker/verification_service.py",
+      "app/processing_worker/worker.py",
+      "app/services/append_application_service.py",
+      "app/services/incremental_application_service.py",
+      "app/services/processing_service.py",
+      "app/services/rule_reuse_service.py",
+      "app/services/upload_session_service.py",
+      "app/storage/incremental_artifacts.py",
+      "docs/lambda-processing-integration-plan.md",
+      "docs/processing-jobs-foundation.md"
+    ],
+    "added": [
+      "app/api/processing_jobs.py",
+      "app/db/processing_integration_repository.py",
+      "app/lambda_worker/admission.py",
+      "app/processing_worker/dispatch.py",
+      "app/processing_worker/incremental_adapter.py",
+      "app/processing_worker/integrated_executor.py",
+      "app/processing_worker/io_context.py",
+      "app/processing_worker/runtime_security.py",
+      "app/processing_worker/sqs_transport.py",
+      "app/storage/versioned_artifacts.py",
+      "app/storage/versioned_ingestion.py",
+      "deployment/task20_runtime_privileges.sql",
+      "docs/task20-processing-integration.md",
+      "docs/task20-validation.json",
+      "migrations/0043_processing_integration.sql",
+      "tests/test_task20_adapters.py",
+      "tests/test_task20_processing_postgres.py",
+      "tests/test_task20_security_postgres.py",
+      "tests/test_task20_storage.py",
+      "tools/task20_local_tests.py"
+    ],
+    "preserved_baseline_count": 1041,
+    "missing_baseline_files": [],
+    "unrelated_preexisting_html_hash_unchanged": true
+  },
+  "runs": [
+    {
+      "artifact": "$env:TEMP/task20-foundation-regression.xml",
+      "command": "uv run --no-sync python \"$env:TEMP/run-ec2-worker-db-tests.py\" tests/test_artifact_publication_contract.py tests/test_container_worker.py tests/test_lambda_worker.py tests/test_lambda_worker_service.py tests/test_execution_boundary.py tests/test_processing_jobs_postgres.py tests/test_artifact_publication_postgres.py -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-foundation-regression.xml\"",
+      "tests": 200,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 416.38,
+      "passed": 200
+    },
+    {
+      "artifact": "$env:TEMP/task20-integration-final.xml",
+      "command": "uv run --no-sync python \"$env:TEMP/run-ec2-worker-db-tests.py\" tests/test_task20_security_postgres.py tests/test_task20_processing_postgres.py -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-integration-final.xml\"",
+      "tests": 20,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 410.185,
+      "passed": 19
+    },
+    {
+      "artifact": "$env:TEMP/task20-append-corrected.xml",
+      "command": "uv run --no-sync python \"$env:TEMP/run-ec2-worker-db-tests.py\" tests/test_task20_processing_postgres.py::test_selected_append_policy_publishes_existing_dataset_state -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-append-corrected.xml\"",
+      "tests": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 344.502,
+      "passed": 1
+    },
+    {
+      "artifact": "$env:TEMP/task20-offline-final-corrected.xml",
+      "command": "uv run --no-sync python tools/task20_local_tests.py --offline tests/test_task20_adapters.py tests/test_task20_storage.py tests/test_lambda_processing_plan.py tests/test_processing_rule_gate.py -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-offline-final-corrected.xml\"",
+      "tests": 52,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 1.187,
+      "passed": 52
+    },
+    {
+      "artifact": "$env:TEMP/task20-admission-final.xml",
+      "command": "uv run --no-sync python tools/task20_local_tests.py --offline tests/test_task20_adapters.py -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-admission-final.xml\"",
+      "tests": 19,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 0.145,
+      "passed": 19
+    },
+    {
+      "artifact": "$env:TEMP/task20-ingress-final.xml",
+      "command": "uv run --no-sync python tools/task20_local_tests.py tests/test_task20_security_postgres.py::test_durable_upload_completion_and_source_pin_rollback_together -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-ingress-final.xml\"",
+      "tests": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 10.712,
+      "passed": 1
+    },
+    {
+      "artifact": "$env:TEMP/task20-outbox-final.xml",
+      "command": "uv run --no-sync python tools/task20_local_tests.py tests/test_task20_security_postgres.py::test_outbox_tracks_renewal_and_durable_retry_without_early_dispatch -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-outbox-final.xml\"",
+      "tests": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 13.969,
+      "passed": 1
+    },
+    {
+      "artifact": "$env:TEMP/task20-final-publication.xml",
+      "command": "uv run --no-sync python tools/task20_local_tests.py tests/test_task20_security_postgres.py::test_generation_cas_and_atomic_outer_rollback tests/test_task20_processing_postgres.py::test_existing_bronze_silver_gold_algorithms_publish_immutable_receipts -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-final-publication.xml\"",
+      "tests": 2,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 261.781,
+      "passed": 2
+    },
+    {
+      "artifact": "$env:TEMP/task20-gold-pointer-final.xml",
+      "command": "uv run --no-sync python tools/task20_local_tests.py tests/test_task20_processing_postgres.py::test_existing_bronze_silver_gold_algorithms_publish_immutable_receipts -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-gold-pointer-final.xml\"",
+      "tests": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 282.588,
+      "passed": 1
+    },
+    {
+      "artifact": "$env:TEMP/task20-compatibility.xml",
+      "command": "uv run --no-sync python \"$env:TEMP/run-ec2-worker-db-tests.py\" tests/test_upload_sessions_postgres.py tests/test_unattached_upload_authorization.py tests/test_processing_rule_gate.py tests/test_delivery_execution.py tests/test_silver_source_checksum.py tests/test_append_execution.py tests/test_warehouse_reliability.py::test_discovery_registration_idempotency_and_zero_change tests/test_warehouse_reliability.py::test_gap_blocks_and_failed_candidate_not_discovered tests/test_warehouse_reliability.py::test_publication_cas_and_atomic_rollback -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-compatibility.xml\"",
+      "tests": 45,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 2068.305,
+      "passed": 45
+    },
+    {
+      "artifact": "$env:TEMP/task20-runtime-guard-final.xml",
+      "command": "uv run --no-sync python tools/task20_local_tests.py tests/test_task20_security_postgres.py::test_admission_rollback_source_pin_immutability_and_default_security -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-runtime-guard-final.xml\"",
+      "tests": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 12.198,
+      "passed": 1
+    },
+    {
+      "artifact": "$env:TEMP/task20-verifier-authority-final.xml",
+      "command": "uv run --no-sync python tools/task20_local_tests.py tests/test_task20_security_postgres.py::test_verifier_authorizes_inputs_before_any_storage_access tests/test_task20_processing_postgres.py::test_existing_bronze_silver_gold_algorithms_publish_immutable_receipts -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-verifier-authority-final.xml\"",
+      "tests": 3,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 374.326,
+      "passed": 3
+    },
+    {
+      "artifact": "$env:TEMP/task20-final-scope-fencing.xml",
+      "command": "uv run --no-sync python tools/task20_local_tests.py tests/test_task20_security_postgres.py::test_verifier_authorizes_inputs_before_any_storage_access tests/test_task20_processing_postgres.py::test_selected_append_policy_publishes_existing_dataset_state -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-final-scope-fencing.xml\"",
+      "tests": 4,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 377.705,
+      "passed": 4
+    },
+    {
+      "artifact": "$env:TEMP/task20-runner-final.xml",
+      "command": "uv run --no-sync python tools/task20_local_tests.py --offline tests/test_task20_adapters.py::test_transport_and_admission_default_disabled -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/task20-runner-final.xml\"",
+      "tests": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 0.052,
+      "passed": 1
+    }
+  ],
+  "diagnostics": [
+    {
+      "artifact": "task20-integration-initial.xml",
+      "outcome": "1 failed",
+      "cause": "Offline fixture bucket did not match configured parse_s3_uri bucket; corrected fixture."
+    },
+    {
+      "artifact": "task20-integration-second.xml",
+      "outcome": "1 failed",
+      "cause": "Bronze atomic metadata encountered nested rule-initialization transaction; explicit repository savepoint added."
+    },
+    {
+      "artifact": "task20-integration-current.xml",
+      "outcome": "1 failed",
+      "cause": "Isolated guard compared CIDR-form server address to plain loopback; corrected address parsing."
+    },
+    {
+      "artifact": "task20-faults-initial.xml",
+      "outcome": "14 passed, 1 failed",
+      "cause": "Intermediate test process retained the earlier fixture while a later fixture applied hardened admission migration. Fresh run uses durable admission consistently."
+    },
+    {
+      "artifact": "task20-integration-final.xml",
+      "outcome": "19 passed, 1 failed",
+      "cause": "Incremental fixed-key lineage guard rejected immutable Silver candidate key. Corrected using current verified receipt + pinned file/rule/DQ/hash proof; targeted case passed."
+    },
+    {
+      "artifact": "task20-offline-final.xml",
+      "outcome": "50 passed, 3 setup/teardown errors",
+      "cause": "Oversized autogenerated pytest parameter ID exceeded Windows environment-variable length. Explicit compact IDs fixed the run."
+    }
+  ],
+  "limits": [
+    "No complete repository regression. Earlier passing runs are not silently relabeled as runs of the final worktree. Targeted reruns validate subsequent changes.",
+    "No actual S3/SQS/AWS/warehouse calls; artifacts use in-memory versioned storage and warehouse fakes.",
+    "Actual least-privilege role tests blocked by explicit prohibition on role/permission changes; only PUBLIC function ACLs, runtime fail-closed gates and transaction semantics tested locally.",
+    "Separate verifier deployment, cloud IAM/versioning/queue/redrive policies, dispatch supervision, realistic resource bounds and production acceptance remain manual gates.",
+    "New-path UPSERT/SNAPSHOT have targeted acceptance coverage, but final complete-suite acceptance and Gold plan removal/reconciliation remain outstanding; Exact V2 worker execution remains unsupported/rejected.",
+    "No application/public-schema migration, role modification, dependency installation, staging, commit, push or cloud deployment."
+  ],
+  "deployment_and_rollback": "docs/task20-processing-integration.md",
+  "privilege_proposal": "deployment/task20_runtime_privileges.sql",
+  "review_findings_fixed": [
+    "Bronze rule initialization now composes through explicit savepoints without prematurely committing its outer transaction.",
+    "Immutable Silver lineage is accepted only through current verified receipt and pinned file/rule/DQ/hash checks; canonical legacy lineage assertions remain.",
+    "Opted-in physical-file creation, upload completion and source-version pinning share a transaction; rollback/retry tested.",
+    "Gold recovery advances the gold_runs base path along with catalog/receipt generation; the final pointer equality test passed.",
+    "Runtime gates reject owner/escalation-capable roles, direct table or column authority writes and shared verifier/publication authority; actual login privilege acceptance remains a release blocker.",
+    "Verifier checks lease, ownership and canonical input identities before any storage I/O; SQL also binds intent file/association and incremental application scope to the authorized job. Final validation covers forged-input zero-read behavior."
+  ],
+  "final_checks": {
+    "no_pending_validation_runs": true,
+    "unrelated_baseline_files_unchanged": true,
+    "preexisting_html_unchanged": true,
+    "migrations_0041_0042_unchanged": true,
+    "no_staged_files": false,
+    "head_unchanged": true,
+    "unexpected_baseline_changes": []
+  },
+  "warnings": [
+    "Existing Starlette TestClient HTTPX deprecation",
+    "Existing Authlib HTTPX integration deprecation",
+    "Git CRLF conversion notices; diff whitespace checks pass"
+  ],
+  "release_blocked_checks": [
+    "Separate least-privilege login acceptance (role/permission changes explicitly prohibited)",
+    "Actual cloud IAM/versioning/queue/DLQ/recovery acceptance (AWS access prohibited)",
+    "Container/verifier bootstrap, supervision, capacity and shutdown acceptance; explicit deployment approval"
+  ],
+  "manual_acceptance_followup": {
+    "date": "2026-11-02",
+    "scope": "Targeted recovery after interrupted final acceptance",
+    "results": [
+      {
+        "selection": "Unselected-policy authorization",
+        "passed": 1,
+        "failed": 0
+      },
+      {
+        "selection": "Bronze/Silver/Gold immutable publication",
+        "passed": 1,
+        "failed": 0
+      },
+      {
+        "selection": "Processing-job foundation recovery",
+        "passed": 2,
+        "failed": 0
+      },
+      {
+        "selection": "Approved-rule reuse module",
+        "passed": 12,
+        "failed": 0
+      }
+    ],
+    "qualification": "Previously failed cases passed in later sequential reruns. The complete 34-case final selection and 1506-case broad regression were not demonstrated passing as complete runs."
+  }
+}

@@ -11,7 +11,8 @@ from app.db.file_repository import get_dataset_profiles
 from app.processing.gold_planner import build_gold_plan
 from app.processing.gold_mart_builder import build_mart
 
-s3_client = get_boto3_session().client("s3")
+from app.processing_worker import io_context
+s3_client = io_context.LazyClient(lambda: get_boto3_session().client("s3"))
 
 
 SILVER_ONLY_COLUMNS = [
@@ -40,7 +41,7 @@ def _write_parquet_to_s3(
 
     buffer.seek(0)
 
-    s3_client.put_object(
+    io_context.client(s3_client).put_object(
         Bucket=bucket_name,
         Key=object_key,
         Body=buffer.getvalue(),
@@ -62,7 +63,7 @@ def process_gold(
     """
 
     # Read successful Silver output
-    response = s3_client.get_object(
+    response = io_context.client(s3_client).get_object(
         Bucket=bucket_name,
         Key=silver_key,
     )

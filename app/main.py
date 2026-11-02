@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.identity import get_current_user
 from app.db.database import get_connection
 from app.api.files import router as files_router
+from app.api.processing_jobs import router as processing_jobs_router
 from app.api.analytics import router as analytics_router
 
 from app.api.workspaces import router as workspaces_router
@@ -62,6 +63,7 @@ def current_me(user: dict = Depends(get_current_user)):
     return {**(profile(user['user_id']) if mode == 'session' else user), "identity_mode": mode}
 
 app.include_router(files_router)
+app.include_router(processing_jobs_router)
 app.include_router(workspaces_router)
 app.include_router(workspace_model_router)
 app.include_router(incremental_router)

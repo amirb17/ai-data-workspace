@@ -29,7 +29,8 @@ from app.processing.silver_transformer import (
 )
 
 
-s3_client = get_boto3_session().client("s3")
+from app.processing_worker import io_context
+s3_client = io_context.LazyClient(lambda: get_boto3_session().client("s3"))
 
 
 def _prepare_for_parquet(df: pd.DataFrame) -> pd.DataFrame:
@@ -59,7 +60,7 @@ def _write_parquet_to_s3(
 
     buffer.seek(0)
 
-    s3_client.put_object(
+    io_context.client(s3_client).put_object(
         Bucket=bucket_name,
         Key=key,
         Body=buffer.getvalue(),
@@ -85,7 +86,7 @@ def _write_exact_parquet_to_s3(
         business_columns,
     )
 
-    s3_client.put_object(
+    io_context.client(s3_client).put_object(
         Bucket=bucket_name,
         Key=key,
         Body=payload,
@@ -94,7 +95,7 @@ def _write_exact_parquet_to_s3(
 
     # Verify the actual stored bytes, not just the
     # in-memory serialized representation.
-    response = s3_client.get_object(
+    response = io_context.client(s3_client).get_object(
         Bucket=bucket_name,
         Key=key,
     )
@@ -136,7 +137,7 @@ def process_silver(
 
     # Read Bronze from S3
 
-    response = s3_client.get_object(
+    response = io_context.client(s3_client).get_object(
         Bucket=bucket_name,
         Key=bronze_key,
     )
@@ -198,7 +199,7 @@ def process_silver(
             file_id=file_id,
             physical_file=physical_file,
             bronze_frame=bronze_df,
-            client=s3_client,
+            client=io_context.client(s3_client),
             bucket=bucket_name,
         )
     # Apply DQ rules

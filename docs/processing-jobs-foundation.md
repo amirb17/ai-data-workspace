@@ -1,5 +1,12 @@
 # Durable processing jobs foundation
 
+Task 20 follow-up: the opt-in EC2 processing integration, immutable publication,
+admission/outbox and manual deployment gates are documented in
+[task20-processing-integration.md](task20-processing-integration.md). The
+historical validations below describe their original checkpoints. Execution
+and dispatch remain disabled by default; production enablement is NO-GO pending
+the listed deployment/security acceptance steps.
+
 Artifact safety review: [publication and interruption-recovery contract](artifact-publication-recovery-contract.md).
 Real processing remains NO-GO pending immutable publication, transactional
 fencing and receipt-based recovery; the new verifier is not wired to services.

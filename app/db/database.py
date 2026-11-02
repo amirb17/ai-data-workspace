@@ -48,3 +48,25 @@ def get_connection():
     if _transaction_connection.get() is not None:
         return _transaction_connection.get()
     return psycopg.connect(DATABASE_URL)
+
+
+@contextmanager
+def repository_savepoint():
+    """Explicit composable operation; repository_transaction still rejects nesting.
+
+    Borrow an existing outer transaction and roll back only this operation on
+    failure, or own/commit a connection when called independently.
+    """
+    from psycopg.pq import TransactionStatus
+    with get_connection() as connection:
+        token = None
+        if _transaction_connection.get() is None:
+            token = _transaction_connection.set(_BorrowedConnection(connection))
+        try:
+            if connection.info.transaction_status == TransactionStatus.IDLE:
+                connection.execute('BEGIN')
+            with connection.transaction():
+                yield connection
+        finally:
+            if token is not None:
+                _transaction_connection.reset(token)

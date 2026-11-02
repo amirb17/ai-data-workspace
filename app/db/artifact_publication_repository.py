@@ -14,6 +14,7 @@ from app.db import database
 from uuid import UUID
 
 from psycopg.rows import dict_row
+from psycopg.pq import TransactionStatus
 class ArtifactPublicationError(Exception):
     """Publication cannot proceed safely."""
 
@@ -28,6 +29,8 @@ class InvalidCandidateError(ArtifactPublicationError):
 def _transaction():
     """Use a local transaction or participate in an existing outer transaction."""
     with database.get_connection() as conn:
+        if conn.info.transaction_status == TransactionStatus.IDLE:
+            conn.execute('BEGIN')
         with conn.transaction():
             yield conn
 def _require_active_job_lease(conn, job_id: UUID, lease_token: UUID):
@@ -201,6 +204,7 @@ def publish_candidate(job_id: UUID, lease_token: UUID, candidate_id: UUID):
         existing = _get_existing_receipt(conn, candidate_id)
 
         if existing is not None:
+            _require_active_job_lease(conn, job_id, lease_token)
             return existing
 
         receipt = conn.execute(
@@ -258,6 +262,7 @@ def publish_candidate(job_id: UUID, lease_token: UUID, candidate_id: UUID):
             raise ArtifactPublicationError(
             "Another candidate is already authoritative for this stage scope"
         )
+        _require_active_job_lease(conn, job_id, lease_token)
         return {
             "receipt_id": receipt[0],
             "candidate_id": candidate_id,
@@ -345,4 +350,5 @@ def mark_candidate_verified(
                 "Candidate verification transition failed"
             )
 
+        _require_active_job_lease(conn, job_id, lease_token)
         return updated[0]

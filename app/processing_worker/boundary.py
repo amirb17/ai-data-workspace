@@ -11,7 +11,7 @@ class ExecutionStopped(RuntimeError):
 
 class ExecutionBoundary:
     def __init__(self, lease: jobs.JobLease, remaining_time_ms: Callable[[], int], *,
-                 reserve_ms=5000, renewal_seconds=120):
+                 reserve_ms=5000, renewal_seconds=120, lease_observer=None):
         if type(reserve_ms) is not int or reserve_ms < 0:
             raise ValueError('Invalid completion reserve')
         if type(renewal_seconds) is not int or not 1 <= renewal_seconds <= 900:
@@ -23,6 +23,7 @@ class ExecutionBoundary:
         self.reserve_ms = reserve_ms
         self.renewal_seconds = renewal_seconds
         self._stopped = False
+        self.lease_observer = lease_observer
 
     def _time(self, required_ms):
         remaining = self.remaining_time_ms()
@@ -51,6 +52,8 @@ class ExecutionBoundary:
                 if lease is None:
                     raise ExecutionStopped('Lease renewal was rejected')
                 self.lease = lease
+                if self.lease_observer is not None:
+                    self.lease_observer(lease)
             scope = jobs.get_execution_scope(self.lease.job_id, self.lease.lease_token,
                                              minimum_lease_ms=required_ms+self.reserve_ms)
             if scope is None:

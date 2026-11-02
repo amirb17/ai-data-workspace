@@ -82,6 +82,9 @@ def publish_validated_state(workspace_id,dataset_id,user,application_id):
 
 
 def _publish_metadata(conn,workspace_id,dataset_id,user,application_id):
+    from app.processing_worker.io_context import current
+    if current() is not None and hasattr(current(), 'publish_incremental'):
+        return current().publish_incremental(conn, application_id)
     cursor = conn.cursor(row_factory=dict_row)
     app = cursor.execute('SELECT * FROM delivery_applications WHERE application_id=%s AND dataset_id=%s FOR UPDATE',(application_id,dataset_id)).fetchone()
     if not app:

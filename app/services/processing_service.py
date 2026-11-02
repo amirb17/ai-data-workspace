@@ -55,6 +55,7 @@ from app.services.delivery_execution_service import guarded_delivery
 from app.db.processing_repository import get_approved_policy, get_gold_publication
 from app.db.dataset_repository import get_rule_approval_context
 from app.db.database import repository_transaction
+from app.processing_worker import io_context
 
 from app.services.delivery_lifecycle_service import active_delivery
 
@@ -68,6 +69,7 @@ def start_processing(upload_id: int):
         )
 
     file_id = upload_request[2]
+    io_context.require_legacy_source(file_id)
     workspace_id = upload_request[3]
     dataset_id = upload_request[4]
 
@@ -96,7 +98,7 @@ def start_processing(upload_id: int):
     # Reuse its physical/schema metadata instead of running
     # Bronze again for another workspace/dataset context.
     # ---------------------------------------------------------
-    if schema_hash:
+    if schema_hash and io_context.current() is None:
         dataset_version = resolve_dataset_version_by_id(
             workspace_id=workspace_id,
             dataset_id=dataset_id,
@@ -152,14 +154,16 @@ def start_processing(upload_id: int):
 
     attempt_number = get_next_attempt_number(file_id)
 
-    attempt = create_processing_attempt(
-        file_id=file_id,
-        attempt_number=attempt_number,
-        stage="BRONZE",
-        status="PROCESSING",
-    )
+    with io_context.attempt_transaction():
+        attempt = create_processing_attempt(
+            file_id=file_id,
+            attempt_number=attempt_number,
+            stage="BRONZE",
+            status="PROCESSING",
+        )
 
-    attempt_id = attempt[0]
+        attempt_id = attempt[0]
+        io_context.attempt_created(attempt_id)
 
     raw_object_key = parse_s3_uri(storage_path)
 
@@ -169,62 +173,65 @@ def start_processing(upload_id: int):
             raw_object_key=raw_object_key,
         )
 
-        update_physical_file_schema_hash(
-            file_id=file_id,
-            schema_hash=bronze_result["schema_hash"],
-        )
+        bronze_result = io_context.result(bronze_result)
 
-        save_dataset_profiles(
-            file_id=file_id,
-            profiles=bronze_result["profiles"],
-        )
-
-        save_dataset_profile_summary(
-            file_id=file_id,
-            total_rows=bronze_result["row_count"],
-            total_columns=len(
-                bronze_result["column_names"]
-            ),
-        )
-
-        dataset_version = resolve_dataset_version_by_id(
-            workspace_id=workspace_id,
-            dataset_id=dataset_id,
-            schema_hash=bronze_result["schema_hash"],
-        )
-
-        dataset_version_file = (
-            assign_physical_file_to_dataset_version(
+        with io_context.publication(bronze=True):
+            update_physical_file_schema_hash(
                 file_id=file_id,
-                dataset_version_id=dataset_version[
-                    "dataset_version_id"
-                ],
-            )
-        )
-
-        if dataset_version_file is None:
-            raise RuntimeError(
-                "Failed to resolve dataset-version-file association"
+                schema_hash=bronze_result["schema_hash"],
             )
 
-        dataset_version_file = (
-            initialize_dataset_version_file_rules(
-                dataset_version_file_id=dataset_version_file[0],
+            save_dataset_profiles(
+                file_id=file_id,
+                profiles=bronze_result["profiles"],
             )
-        )
 
-        completed_attempt = complete_processing_attempt(
-            attempt_id=attempt_id,
-            status="SUCCESS",
-        )
+            save_dataset_profile_summary(
+                file_id=file_id,
+                total_rows=bronze_result["row_count"],
+                total_columns=len(
+                    bronze_result["column_names"]
+                ),
+            )
 
-        # Physical file remains physically available.
-        # AWAITING_RULES belongs to dataset_version_files,
-        # not to the shared physical file.
-        update_physical_file_status(
-            file_id=file_id,
-            status="UPLOADED",
-        )
+            dataset_version = resolve_dataset_version_by_id(
+                workspace_id=workspace_id,
+                dataset_id=dataset_id,
+                schema_hash=bronze_result["schema_hash"],
+            )
+
+            dataset_version_file = (
+                assign_physical_file_to_dataset_version(
+                    file_id=file_id,
+                    dataset_version_id=dataset_version[
+                        "dataset_version_id"
+                    ],
+                )
+            )
+
+            if dataset_version_file is None:
+                raise RuntimeError(
+                    "Failed to resolve dataset-version-file association"
+                )
+
+            dataset_version_file = (
+                initialize_dataset_version_file_rules(
+                    dataset_version_file_id=dataset_version_file[0],
+                )
+            )
+
+            completed_attempt = complete_processing_attempt(
+                attempt_id=attempt_id,
+                status="SUCCESS",
+            )
+
+            # Physical file remains physically available.
+            # AWAITING_RULES belongs to dataset_version_files,
+            # not to the shared physical file.
+            update_physical_file_status(
+                file_id=file_id,
+                status="UPLOADED",
+            )
 
         return {
             "file": get_physical_file_by_id(file_id),
@@ -241,16 +248,17 @@ def start_processing(upload_id: int):
         }
 
     except Exception as exc:
-        complete_processing_attempt(
-            attempt_id=attempt_id,
-            status="FAILED",
-            error_message=str(exc),
-        )
+        with io_context.failure(bronze=True):
+            complete_processing_attempt(
+                attempt_id=attempt_id,
+                status="FAILED",
+                error_message=str(exc),
+            )
 
-        update_physical_file_status(
-            file_id=file_id,
-            status="FAILED",
-        )
+            update_physical_file_status(
+                file_id=file_id,
+                status="FAILED",
+            )
 
         raise RuntimeError(
             f"Bronze processing failed: {exc}"
@@ -275,6 +283,7 @@ def run_silver_processing(
 
     dataset_version_id = context[1]
     file_id = context[2]
+    io_context.require_legacy_source(file_id)
     status = context[3]
 
     # ---------------------------------------------------------
@@ -308,7 +317,7 @@ def run_silver_processing(
         )
     )
 
-    if latest_dq_run is not None:
+    if latest_dq_run is not None and io_context.current() is None:
         silver_rule_version = latest_dq_run[3]
 
         if silver_rule_version == current_rule_version:
@@ -372,6 +381,7 @@ def run_silver_processing(
         )
 
         attempt_id = attempt[0]
+        io_context.attempt_created(attempt_id)
 
         # ---------------------------------------------------------
         # 8. Mark only THIS DVF as processing
@@ -402,6 +412,8 @@ def run_silver_processing(
         )
 
         silver_sha256 = None
+        if io_context.current() is not None:
+            silver_sha256 = io_context.current().objects['data'].sha256
 
         if exact_silver:
             response = silver_processor.s3_client.get_object(
@@ -426,7 +438,8 @@ def run_silver_processing(
         # -----------------------------------------------------
         # 10. Persist DQ run with DVF lineage
         # -----------------------------------------------------
-        with repository_transaction():
+        result = io_context.result(result)
+        with io_context.publication():
             dq_run = save_data_quality_run(
                 file_id=file_id,
                 attempt_id=attempt_id,
@@ -494,7 +507,7 @@ def run_silver_processing(
         }
 
     except Exception as exc:
-        with repository_transaction():
+        with io_context.failure():
             complete_processing_attempt(attempt_id, "FAILED", str(exc))
             # Failure belongs to this delivery, never the shared physical file.
             update_dataset_version_file_status(dataset_version_file_id, "SILVER_FAILED")
@@ -665,6 +678,7 @@ def run_gold_processing(
 
     dataset_version_id = context[1]
     file_id = context[2]
+    io_context.require_legacy_source(file_id)
     status = context[3]
 
     # ---------------------------------------------------------
@@ -693,7 +707,7 @@ def run_gold_processing(
 
     if dq_run[5] == 0:
         from app.db.processing_repository import record_gold_skip, GOLD_SKIP_REASON
-        with repository_transaction():
+        with io_context.publication():
             record_gold_skip(dataset_version_file_id)
         return {"already_processed": status == "SUCCESS_WITH_WARNINGS", "status": "SUCCESS_WITH_WARNINGS",
                 "gold_skipped": True, "reason": GOLD_SKIP_REASON, "source_dq_run_id": dq_run_id}
@@ -726,7 +740,7 @@ def run_gold_processing(
         )
     )
 
-    if existing_gold_run is not None:
+    if existing_gold_run is not None and io_context.current() is None:
 
         existing_gold_run_id = (
             existing_gold_run[0]
@@ -861,6 +875,7 @@ def run_gold_processing(
         )
 
         attempt_id = attempt[0]
+        io_context.attempt_created(attempt_id)
 
         update_dataset_version_file_status(
             dataset_version_file_id=
@@ -885,13 +900,14 @@ def run_gold_processing(
         # -----------------------------------------------------
         # 8. Persist Gold lineage
         # -----------------------------------------------------
-        with repository_transaction():
+        result = io_context.result(result)
+        with io_context.publication():
             if recovery_gold_run is not None:
                 gold_run = recovery_gold_run
                 from app.db.database import get_connection
                 with get_connection() as conn:
-                    conn.execute("UPDATE gold_runs SET attempt_id=%s, row_count=%s WHERE gold_run_id=%s",
-                                 (attempt_id, result["row_count"], gold_run[0]))
+                    conn.execute("UPDATE gold_runs SET attempt_id=%s, row_count=%s, gold_path=%s WHERE gold_run_id=%s",
+                                 (attempt_id, result["row_count"], result["gold_key"], gold_run[0]))
             else:
                 gold_run = save_gold_run(
                     file_id=file_id,
@@ -1037,7 +1053,7 @@ def run_gold_processing(
         }
 
     except Exception as exc:
-        with repository_transaction():
+        with io_context.failure():
             complete_processing_attempt(attempt_id, "FAILED", str(exc))
             update_dataset_version_file_status(dataset_version_file_id, "GOLD_FAILED")
 

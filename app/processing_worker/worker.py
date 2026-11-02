@@ -69,8 +69,10 @@ class SerialWorker:
                     return max(0, int((deadline-self.clock())*1000))
                 try:
                     job_id = parse_job_message(message.body)
+                    renew = getattr(self.transport, 'renew', None)
                     execution.execute_job(job_id, boundary_executor=self.boundary_executor,
-                                          remaining_time_ms=remaining_time_ms)
+                                          remaining_time_ms=remaining_time_ms,
+                                          lease_observer=(lambda lease: renew(message, lease)) if renew else None)
                 except Exception:
                     # Do not log message bodies, receipts or raw processing/driver errors.
                     logger.warning('Worker delivery deferred')

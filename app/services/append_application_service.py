@@ -40,6 +40,12 @@ def artifact_key(path):
     prefix=f's3://{S3_BUCKET_NAME}/'
     if path.startswith(prefix): return path[len(prefix):]
     if path.startswith('silver/') and '..' not in path and '\\' not in path: return path
+    if path.startswith('artifact-candidates/') and '..' not in path and '\\' not in path:
+        parts = path.split('/')
+        if len(parts) == 3 and parts[2] == 'data.parquet':
+            from uuid import UUID
+            UUID(parts[1])
+            return path
     raise ValueError('Silver object outside configured data plane')
 def pinned_exact_rules(application, policy):
     """Resolve exactness only from the immutable approved snapshot."""
@@ -203,7 +209,11 @@ def delivery_manifest(
     )
 
     if source_key != expected:
-        raise ValueError("Silver artifact lineage differs")
+        from app.processing_worker.io_context import current
+        guard = current()
+        if guard is None or not hasattr(guard, 'authorize_silver_source'):
+            raise ValueError("Silver artifact lineage differs")
+        guard.authorize_silver_source(source_key, application, dq, file_id)
 
     source_bytes = store.read(source_key)
     source_hash = hashlib.sha256(source_bytes).hexdigest()
@@ -593,6 +603,9 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
             return result
         except Exception as exc:
             with repository_transaction() as conn:
+                from app.processing_worker.io_context import current
+                if current() is not None and hasattr(current(), 'fence'):
+                    current().fence(conn)
                 committed=conn.execute("SELECT status FROM delivery_applications WHERE application_id=%s",(application['application_id'],)).fetchone()[0]=='SUCCESS'
                 conn.execute("UPDATE delivery_applications SET status='FAILED',failure_code='APPLICATION_FAILED',completed_at=NOW() WHERE application_id=%s AND status <> 'SUCCESS'",(application['application_id'],))
             if committed:

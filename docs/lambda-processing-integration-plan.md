@@ -1,5 +1,11 @@
 # Lambda processing integration plan
 
+Task 20 now provides an opt-in local implementation of immutable stage
+publication and the EC2 adapter. See
+[task20-processing-integration.md](task20-processing-integration.md) for the
+implemented boundaries, validation and remaining NO-GO deployment gates.
+The default Lambda processing executor remains disabled.
+
 Architecture update: [heavy processing now belongs to the EC2 container worker](container-processing-worker.md).
 The storage, fencing and recovery findings below still apply. Lambda-specific
 runtime placement recommendations are superseded by this architecture decision.
