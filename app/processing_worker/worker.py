@@ -1,6 +1,6 @@
 """Serial container-worker entry point with injected transport; no AWS SDK."""
 import logging
-import signal
+import signal  # Compatibility for existing callers/tests patching this module.
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from threading import Event
@@ -69,13 +69,22 @@ class SerialWorker:
                     return max(0, int((deadline-self.clock())*1000))
                 try:
                     job_id = parse_job_message(message.body)
+                except (ValueError, TypeError, RecursionError):
+                    logger.warning('Worker delivery deferred (MALFORMED_MESSAGE)')
+                    self.transport.retry(message)
+                    continue
+                try:
                     renew = getattr(self.transport, 'renew', None)
                     execution.execute_job(job_id, boundary_executor=self.boundary_executor,
                                           remaining_time_ms=remaining_time_ms,
                                           lease_observer=(lambda lease: renew(message, lease)) if renew else None)
+                except execution.JobRetryRequired as error:
+                    reason = error.args[0] if error.args and isinstance(error.args[0], str) and error.args[0] in {'BUSY', 'NOT_DUE', 'NOT_FOUND'} else 'RETRY_REQUIRED'
+                    logger.warning('Worker delivery deferred (%s)', reason)
+                    self.transport.retry(message)
                 except Exception:
                     # Do not log message bodies, receipts or raw processing/driver errors.
-                    logger.warning('Worker delivery deferred')
+                    logger.warning('Worker delivery deferred (EXECUTION_FAILED)')
                     self.transport.retry(message)
                 else:
                     # Completion already committed. ACK failure must not rerun execution here.
@@ -95,18 +104,10 @@ def main(transport: QueueTransport | None = None, *, boundary_executor=None,
         logger.error('Worker disabled: no queue transport configured')
         return 2
     stop = stop if stop is not None else Event()
-    previous = {}
-    running = False
-    try:
-        for signum in (signal.SIGTERM, signal.SIGINT):
-            previous[signum] = signal.signal(signum, lambda *_: stop.set())
-        running = True
-        SerialWorker(transport, stop=stop, boundary_executor=boundary_executor).run()
-    finally:
-        try:
-            if not running:
-                transport.close()
-        finally:
-            for signum, handler in previous.items():
-                signal.signal(signum, handler)
-    return 0
+    return run_worker(SerialWorker(transport, stop=stop, boundary_executor=boundary_executor))
+
+
+def run_worker(worker: SerialWorker) -> int:
+    """Run a configured worker with cooperative, restored process signal handlers."""
+    from app.processing_worker.process_lifecycle import run_with_signals
+    return run_with_signals(worker.run, worker.stop, worker.transport.close)

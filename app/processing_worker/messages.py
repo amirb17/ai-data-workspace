@@ -3,10 +3,16 @@ import json
 from uuid import UUID
 
 
+def _job_object(pairs):
+    if len(pairs) != 1 or pairs[0][0] != 'job_id':
+        raise ValueError('Job body must contain only one job_id')
+    return dict(pairs)
+
+
 def parse_job_message(body: str) -> str:
-    if not isinstance(body, str):
+    if not isinstance(body, str) or len(body) > 1024:
         raise ValueError('Job body must be a JSON string')
-    payload = json.loads(body)
+    payload = json.loads(body, object_pairs_hook=_job_object)
     if not isinstance(payload, dict) or set(payload) != {'job_id'}:
         raise ValueError('Job body must contain only job_id')
     job_id = payload['job_id']

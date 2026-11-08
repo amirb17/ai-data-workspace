@@ -38,3 +38,9 @@ def require_runtime(conn, purpose, *, isolated_test=False):
         raise PermissionError('Verifier authority must be isolated from other runtimes')
     if purpose != 'worker' and conn.execute("SELECT has_function_privilege(current_user,'task20_publish(uuid,uuid,uuid)','EXECUTE')").fetchone()[0]:
         raise PermissionError('Publication authority must be isolated from other runtimes')
+    if purpose != 'dispatch' and conn.execute("SELECT has_function_privilege(current_user,'task20_claim_dispatch()','EXECUTE')").fetchone()[0]:
+        raise PermissionError('Dispatch authority must be isolated from other runtimes')
+    if purpose == 'dispatch' and conn.execute("SELECT has_table_privilege(current_user,'processing_jobs','INSERT,UPDATE,DELETE') OR has_any_column_privilege(current_user,'processing_jobs','INSERT,UPDATE')").fetchone()[0]:
+        raise PermissionError('Dispatcher cannot directly mutate jobs')
+    if purpose == 'dispatch' and not conn.execute("SELECT has_function_privilege(current_user,'task20_dispatched(uuid,uuid)','EXECUTE')").fetchone()[0]:
+        raise PermissionError('Dispatcher completion authority is unavailable')
