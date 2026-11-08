@@ -19,53 +19,248 @@ from app.warehouse.serving_materialization import (
     materialization_identity,
 )
 import json
-
+from app.warehouse.providers.sydney_binding import SydneyBinding
 
 class ProviderService:
-    def __init__(self, workspace_id, model_id, version_id, user, *, target_factory=None):
-        self.reliability = ReliabilityService(workspace_id, model_id, version_id, user)
+    def __init__(
+        self,
+        workspace_id,
+        model_id,
+        version_id,
+        user,
+        *,
+        target_factory=None,
+        sydney_registry=None,
+        sydney_expected_approval=None,
+    ):
+        self.reliability = ReliabilityService(
+            workspace_id,
+            model_id,
+            version_id,
+            user,
+        )
         self.target_factory = target_factory
 
+        # Independently reviewed configuration.
+        # Never reconstruct these from PostgreSQL approval rows.
+        self.sydney_registry = sydney_registry
+        self.sydney_expected_approval = sydney_expected_approval
     def _target(self, binding):
-        # Resolve policy/credentials only after current ownership and scope checks.
+        from app.warehouse.providers.sydney_binding import (
+            SydneyBinding,
+        )
+        from app.warehouse.providers.sydney_policy import (
+            SydneyPolicy,
+        )
+
+        # E2.4: Sydney production has no live activation path.
+        # Only an explicitly injected test factory may receive
+        # a disabled Sydney policy for offline simulation.
+        if isinstance(binding, SydneyBinding):
+            if self.target_factory is None:
+                raise ProviderError(ErrorCode.DISABLED)
+
+            policy = SydneyPolicy(
+                project=binding.project,
+                enabled=False,
+            )
+
+            return self.target_factory(policy, binding)
+
+        # Preserve existing Mumbai development behavior.
         policy = Policy.from_environment()
+
         if self.target_factory:
             return self.target_factory(policy, binding)
+
         from app.warehouse.providers.bigquery import BigQueryTarget
+
         return BigQueryTarget(policy, binding)
+
+
 
     def _resolve(self, conn, config, settings, resource_id):
         w, m, v = self.reliability.scope
+        # 1. Verify model configuration and ownership.
         check_configuration(conn, w, m, v)
-        model, _ = owned_version(conn, w, m, v, self.reliability.user, True)
-        resource = metadata.resource(conn, w, m, v, resource_id)
-        if not resource or resource['status'] != 'REGISTERED' or resource['environment'] != settings.environment:
-            raise ProviderError(ErrorCode.RESOURCE_NOT_FOUND)
-        reference = resource['physical_reference']
-        binding = Binding(reference['project'], w, m, v, resource_id, resource['generation'],
-                          resource['environment'], resource['location'])
-        if reference != dict(reference_version=1, project=binding.project, dataset=binding.serving, table=binding.table):
-            raise ProviderError(ErrorCode.SCHEMA_MISMATCH)
+
+        model, _ = owned_version(
+            conn,
+            w,
+            m,
+            v,
+            self.reliability.user,
+            True,
+        )
+
+        # 2. Resolve the registered resource in the owned scope.
+        resource = metadata.resource(
+            conn,
+            w,
+            m,
+            v,
+            resource_id,
+        )
+
+        if (
+            not resource
+            or resource["status"] != "REGISTERED"
+            or resource["environment"] != settings.environment
+        ):
+            raise ProviderError(
+                ErrorCode.RESOURCE_NOT_FOUND
+            )
+
+        # 3. E2.4: Validate independent Sydney authorization
+        # BEFORE constructing the physical BigQuery binding.
+        if (
+            resource["environment"] == "production"
+            and resource["location"] == "australia-southeast1"
+        ):
+            from app.warehouse.sydney_binding import Registry
+
+            if (
+                not isinstance(self.sydney_registry, Registry)
+                or not isinstance(
+                    self.sydney_expected_approval,
+                    str,
+                )
+            ):
+                raise ProviderError(
+                    ErrorCode.PERMISSION_DENIED
+                )
+
+            approval_id = resource.get("sydney_approval_id")
+
+            if (
+                type(approval_id) is not int
+                or approval_id <= 0
+            ):
+                raise ProviderError(
+                    ErrorCode.PERMISSION_DENIED
+                )
+
+            # Approval must come from the persisted resource.
+            # Never accept a caller-selected approval ID.
+            approval = db.one(
+                conn,
+                """
+                SELECT
+                    approval_id,
+                    workspace_id,
+                    project,
+                    aws_region,
+                    location,
+                    loader_identity,
+                    query_identity,
+                    approval_revision
+                FROM warehouse_sydney_approvals
+                WHERE approval_id = %s
+                  AND workspace_id = %s
+                FOR SHARE
+                """,
+                (approval_id, w),
+            )
+
+            if approval is None:
+                raise ProviderError(
+                    ErrorCode.PERMISSION_DENIED
+                )
+
+            try:
+                verified = (
+                    self.sydney_registry.verify_persisted(
+                        w,
+                        approval,
+                        expected_fingerprint=(
+                            self.sydney_expected_approval
+                        ),
+                    )
+                )
+            except (PermissionError, ValueError) as exc:
+                raise ProviderError(
+                    ErrorCode.PERMISSION_DENIED
+                ) from exc
+
+            if verified["approval_id"] != approval_id:
+                raise ProviderError(
+                    ErrorCode.PERMISSION_DENIED
+                )
+
+        # 4. Construct and verify the physical warehouse binding.
+        # Existing binding rules remain unchanged.
+
+        # 4. Construct an environment-specific physical binding.
+        # The Sydney branch is reachable only after the independent
+        # approval verification above has succeeded.
+        reference = resource["physical_reference"]
+        is_sydney = (
+            resource["environment"] == "production"
+            and resource["location"] == "australia-southeast1"
+        )
+
+        if is_sydney:
+            binding = SydneyBinding(
+                project=reference["project"],
+                workspace_id=w,
+                model_id=m,
+                version_id=v,
+                resource_id=resource_id,
+                generation=resource["generation"],
+                approval_sha256=verified["approval_sha256"],
+            )
+        else:
+            # Preserve the existing development-only behavior.
+            binding = Binding(
+                reference["project"],
+                w,
+                m,
+                v,
+                resource_id,
+                resource["generation"],
+                resource["environment"],
+                resource["location"],
+            )
+
+        expected_reference = {
+            "reference_version": 1,
+            "project": binding.project,
+            "dataset": binding.serving,
+            "table": binding.table,
+        }
+
+        if reference != expected_reference:
+            raise ProviderError(
+                ErrorCode.SCHEMA_MISMATCH
+            )
+
+        if reference != expected_reference:
+            raise ProviderError(
+                ErrorCode.SCHEMA_MISMATCH
+            )
+
+        # 5. Validate the approved model configuration.
         typed = ADAPTER.validate_python(
-            config['configuration']
+            config["configuration"]
         )
 
         source_schema = SourceSchema.model_validate(
-            config['source_schema']
+            config["source_schema"]
         )
 
         source_contract = SourceContractPin(
-            config['source_dataset_id'],
-            config['source_dataset_version_id'],
-            config['source_policy_id'],
-            config['source_rule_version'],
+            config["source_dataset_id"],
+            config["source_dataset_version_id"],
+            config["source_policy_id"],
+            config["source_rule_version"],
         )
 
         namespace = UUID(
-            str(model['key_namespace'])
+            str(model["key_namespace"])
         )
 
-        if typed.model_type == 'FACT':
+        # 6. Build the model-specific execution context.
+        if typed.model_type == "FACT":
             context = FactContext(
                 m,
                 v,
@@ -74,8 +269,8 @@ class ProviderService:
                 source_schema,
                 source_contract,
                 configuration_sha256=digest(
-                config["configuration"]
-            ),
+                    config["configuration"]
+                ),
             )
         else:
             context = ModelContext(
@@ -339,6 +534,16 @@ class ProviderService:
         from app.warehouse.providers.bigquery import Batch
         with self.reliability.transaction() as (conn, source, config, settings):
             op, intent = self.reliability._writer(conn, operation_id, run_id, fence, settings)
+
+            # E2.4: Validate current Gold before any provider access.
+            self.reliability._verify_sydney_gold_pins(
+                conn,
+                source,
+                config,
+                intent,
+                settings,
+            )
+
             binding, context = self._resolve(conn, config, settings, intent['resource_id'])
             manifests = [db.one(conn, 'SELECT body FROM warehouse_accepted_manifests WHERE manifest_id=%s',
                                 (m['id'],))['body'] for m in intent['body']['manifests']]
@@ -377,9 +582,37 @@ class ProviderService:
             self.reliability.plan(operation_id, run_id, fence)
         elif status != TokenState.APPLIED:
             raise ProviderError(ErrorCode.TARGET_INCONSISTENT, uncertain=True)
-        with self.reliability.transaction() as (conn, source, config, settings):
-            self.reliability._writer(conn, operation_id, run_id, fence, settings)
-            current_binding, _ = self._resolve(conn, config, settings, intent['resource_id'])
+
+        with self.reliability.transaction() as (
+            conn,
+            source,
+            config,
+            settings,):
+            _, current_intent = self.reliability._writer(
+                conn,
+                operation_id,
+                run_id,
+                fence,
+                settings,
+            )
+
+            # Revalidate after provider lookup and before
+            # any target apply/reconcile operation.
+            self.reliability._verify_sydney_gold_pins(
+                conn,
+                source,
+                config,
+                current_intent,
+                settings,
+            )
+
+            current_binding, _ = self._resolve(
+                conn,
+                config,
+                settings,
+                intent["resource_id"],
+            )
+
             if current_binding != binding:
                 raise ProviderError(ErrorCode.TARGET_INCONSISTENT)
             if status == TokenState.APPLIED:

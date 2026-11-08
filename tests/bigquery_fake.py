@@ -23,7 +23,14 @@ class Job:
 class Client:
     project = 'synthetic-project'
 
-    def __init__(self):
+    def __init__(self, location="asia-south1"):
+        if location not in (
+            "asia-south1",
+            "australia-southeast1",
+        ):
+            raise ValueError("Unsupported synthetic BigQuery location")
+
+        self.location = location
         self.datasets, self.tables, self.rows, self.jobs = {}, {}, {}, {}
         self.calls = []
         self.estimate = 128
@@ -46,7 +53,11 @@ class Client:
 
     def create_table(self, table, **kwargs):
         name = '.'.join((table.project, table.dataset_id, table.table_id))
-        table._properties.update(location='asia-south1', type='TABLE', id=name.replace('.', ':', 1))
+        table._properties.update(
+            location=self.location,
+            type="TABLE",
+            id=name.replace(".", ":", 1),
+        )
         self.tables[name] = deepcopy(table)
         self.rows[name] = []
         return table
@@ -65,7 +76,7 @@ class Client:
         job_config,
         **kwargs,
     ):
-        assert kwargs["location"] == "asia-south1"
+        assert kwargs["location"] == self.location
         assert kwargs["project"] == "synthetic-project"
         assert kwargs["num_retries"] == 0
         assert kwargs["timeout"] > 0
@@ -78,7 +89,11 @@ class Client:
         assert job_config.create_disposition == 'CREATE_NEVER'
         self.calls.append(('load', destination, job_config))
         self.rows[destination] = deepcopy(rows)
-        self.jobs[job_id] = Job(job_id, labels=job_config.labels)
+        self.jobs[job_id] = Job(
+            job_id,
+            labels=job_config.labels,
+            location=self.location,
+        )
         self.jobs[job_id].job_type = 'load'
         self.jobs[job_id].destination = bigquery.TableReference.from_string(destination)
         if self.lose_load_response:
@@ -88,7 +103,8 @@ class Client:
 
     def query(self, sql, *, job_config, job_id=None, job_id_prefix=None, **kwargs):
         import re
-        assert kwargs['location'] == 'asia-south1' and kwargs['retry'] is None
+        assert kwargs["location"] == self.location
+        assert kwargs["retry"] is None
         assert not job_config.use_legacy_sql and not job_config.use_query_cache
         assert job_config.maximum_bytes_billed > 0
         self.calls.append(('dry' if job_config.dry_run else 'query', sql, job_config))
@@ -114,11 +130,22 @@ class Client:
         else:
             raise AssertionError('Unexpected execution SQL')
         key = job_id or job_id_prefix + str(len(self.calls))
-        job = Job(key, result, labels=job_config.labels)
+
+        job = Job(
+            key,
+            result,
+            labels=job_config.labels,
+            location=self.location,
+        )
+
         self.jobs[key] = job
-        if sql.startswith('BEGIN TRANSACTION') and self.lose_response:
+
+        if sql.startswith("BEGIN TRANSACTION") and self.lose_response:
             self.lose_response = False
-            raise ConnectionError('synthetic lost response after committed transaction')
+            raise ConnectionError(
+                "synthetic lost response after committed transaction"
+            )
+
         return job
 
     def delete_table(self, name, **kwargs):

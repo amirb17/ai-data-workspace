@@ -118,78 +118,499 @@ class ReliabilityService:
                 return old['body']
             db.register(conn, self.scope, mapping, source['source_dataset_id'], body, known[-1]['manifest_id'] if known else None)
             return body
+    def create_intent(
+        self,
+        resource_id,
+        kind,
+        manifest_ids,
+        request_key,
+        *,
+        expected,
+        historical_range=None,
+    ):
+        if kind not in (
+            "INITIAL_LOAD",
+            "INCREMENTAL",
+            "REPLAY",
+            "BACKFILL",
+            "REBUILD",
+        ):
+            raise ValueError("Unknown operation kind")
 
-    def create_intent(self, resource_id, kind, manifest_ids, request_key, *, expected, historical_range=None):
-        if kind not in ('INITIAL_LOAD', 'INCREMENTAL', 'REPLAY', 'BACKFILL', 'REBUILD'):
-            raise ValueError('Unknown operation kind')
-        if not isinstance(expected, Result) or not manifest_ids or len(manifest_ids) > 1000 or len(set(manifest_ids)) != len(manifest_ids):
-            raise ValueError('Explicit bounded evidence and expected logical result required')
-        if not isinstance(request_key, str) or not 1 <= len(request_key) <= 120:
-            raise ValueError('Explicit bounded intent idempotency key required')
-        if kind == 'BACKFILL' and (not isinstance(historical_range, list) or len(historical_range) != 2
-                                  or any(type(x) is not int or x < 1 for x in historical_range)
-                                  or historical_range[0] > historical_range[1]):
-            raise ValueError('Explicit ordered historical range required')
-        with self.transaction() as (conn, source, config, settings):
-            resource = metadata.resource(conn, *self.scope, resource_id)
-            if not resource or resource['status'] != 'REGISTERED' or resource['environment'] != settings.environment:
+        if (
+            not isinstance(expected, Result)
+            or not manifest_ids
+            or len(manifest_ids) > 1000
+            or len(set(manifest_ids)) != len(manifest_ids)
+        ):
+            raise ValueError(
+                "Explicit bounded evidence and expected logical result required"
+            )
+
+        if (
+            not isinstance(request_key, str)
+            or not 1 <= len(request_key) <= 120
+        ):
+            raise ValueError(
+                "Explicit bounded intent idempotency key required"
+            )
+
+        if kind == "BACKFILL" and (
+            not isinstance(historical_range, list)
+            or len(historical_range) != 2
+            or any(
+                type(x) is not int or x < 1
+                for x in historical_range
+            )
+            or historical_range[0] > historical_range[1]
+        ):
+            raise ValueError(
+                "Explicit ordered historical range required"
+            )
+
+        # All database reads, Gold verification and intent creation
+        # occur in the same authorized transaction.
+        with self.transaction() as (
+            conn,
+            source,
+            config,
+            settings,
+        ):
+            # 1. Resolve and validate the registered resource.
+            resource = metadata.resource(
+                conn,
+                *self.scope,
+                resource_id,
+            )
+
+            if (
+                not resource
+                or resource["status"] != "REGISTERED"
+                or resource["environment"] != settings.environment
+            ):
                 raise ProtocolError(Decision.RESOURCE_DRIFT)
-            dispatch_key = digest(['datarise-dispatch', 1, list(self.scope), resource_id, resource['generation'],
-                                   kind, sorted(manifest_ids), request_key if kind in ('REPLAY','BACKFILL') else None])
-            old = db.one(conn, '''SELECT * FROM warehouse_execution_intents WHERE workspace_id=%s AND warehouse_model_id=%s
-                AND warehouse_model_version_id=%s AND resource_id=%s AND (request_key=%s OR dispatch_key=%s)''',
-                (*self.scope, resource_id, request_key, dispatch_key))
+
+            # 2. Production Sydney requires current verified Gold.
+            # Local import avoids a circular module dependency.
+            gold = None
+
+            if (
+                resource["environment"] == "production"
+                and resource["location"] == "australia-southeast1"
+            ):
+                from app.services.sydney_gold_eligibility_service import (
+                    resolve_gold_in_transaction,
+                )
+
+                gold = resolve_gold_in_transaction(
+                    conn,
+                    self.scope[0],
+                    source,
+                    config,
+                    self.user,
+                )
+
+            # 3. Build the deterministic dispatch identity.
+            dispatch_key = digest([
+                "datarise-dispatch",
+                1,
+                list(self.scope),
+                resource_id,
+                resource["generation"],
+                kind,
+                sorted(manifest_ids),
+                request_key if kind in ("REPLAY", "BACKFILL") else None,
+            ])
+
+            # 4. Check for an existing immutable intent.
+            old = db.one(
+                conn,
+                """
+                SELECT *
+                FROM warehouse_execution_intents
+                WHERE workspace_id = %s
+                  AND warehouse_model_id = %s
+                  AND warehouse_model_version_id = %s
+                  AND resource_id = %s
+                  AND (
+                      request_key = %s
+                      OR dispatch_key = %s
+                  )
+                """,
+                (
+                    *self.scope,
+                    resource_id,
+                    request_key,
+                    dispatch_key,
+                ),
+            )
+
             if old:
-                b = old['body']
-                if (set(manifest_ids) != {x['id'] for x in b['manifests']} or b['kind'] != kind
-                        or b['expected'] != expected.model_dump(mode='json') or b['historical_range'] != historical_range):
-                    raise ValueError('Intent idempotency conflict')
+                body = old["body"]
+
+                if (
+                    set(manifest_ids)
+                    != {x["id"] for x in body["manifests"]}
+                    or body["kind"] != kind
+                    or body["expected"]
+                    != expected.model_dump(mode="json")
+                    or body["historical_range"] != historical_range
+                ):
+                    raise ValueError("Intent idempotency conflict")
+
+                # Sydney retries must match current verified Gold.
+                if gold is not None:
+                    if (
+                        old["gold_verification_id"]
+                        != gold.verification_id
+                        or old["gold_run_id"]
+                        != gold.gold_run_id
+                        or old["gold_source_fingerprint"]
+                        != gold.source_fingerprint
+                    ):
+                        raise ValueError(
+                            "Intent idempotency conflict: "
+                            "Gold verification drift"
+                        )
+
                 return old
-            rows = db.all_rows(conn, '''SELECT m.* FROM warehouse_accepted_manifests m JOIN warehouse_outbox o USING(manifest_id)
-                WHERE m.workspace_id=%s AND m.source_mapping_id=%s AND m.manifest_id=ANY(%s) ORDER BY m.position''',
-                (self.scope[0], source['source_mapping_id'], list(manifest_ids)))
+
+            # 5. Resolve the explicitly pinned source manifests.
+            rows = db.all_rows(
+                conn,
+                """
+                SELECT m.*
+                FROM warehouse_accepted_manifests m
+                JOIN warehouse_outbox o USING (manifest_id)
+                WHERE m.workspace_id = %s
+                  AND m.source_mapping_id = %s
+                  AND m.manifest_id = ANY(%s)
+                ORDER BY m.position
+                """,
+                (
+                    self.scope[0],
+                    source["source_mapping_id"],
+                    list(manifest_ids),
+                ),
+            )
+
             if len(rows) != len(manifest_ids):
                 raise ProtocolError(Decision.SOURCE_DRIFT)
-            if any(r['body']['configuration_sha256'] != digest(config['configuration']) for r in rows):
+
+            configuration_sha256 = digest(
+                config["configuration"]
+            )
+
+            if any(
+                row["body"]["configuration_sha256"]
+                != configuration_sha256
+                for row in rows
+            ):
                 raise ProtocolError(Decision.MODEL_DRIFT)
-            positions = [r['position'] for r in rows]
-            if kind == 'BACKFILL' and historical_range != [positions[0], positions[-1]]:
-                raise ValueError('Backfill bounds must match the pinned source publication range')
-            if expected.manifests != len(rows) or expected.events != sum(r['body']['event_count'] for r in rows):
-                raise ValueError('Expected result must cover every pinned manifest/event')
-            if positions != list(range(positions[0], positions[-1] + 1)):
+
+            positions = [row["position"] for row in rows]
+
+            if (
+                kind == "BACKFILL"
+                and historical_range
+                != [positions[0], positions[-1]]
+            ):
+                raise ValueError(
+                    "Backfill bounds must match the pinned "
+                    "source publication range"
+                )
+
+            if (
+                expected.manifests != len(rows)
+                or expected.events
+                != sum(
+                    row["body"]["event_count"]
+                    for row in rows
+                )
+            ):
+                raise ValueError(
+                    "Expected result must cover every "
+                    "pinned manifest/event"
+                )
+
+            if positions != list(
+                range(positions[0], positions[-1] + 1)
+            ):
                 raise ProtocolError(Decision.SOURCE_GAP)
-            cp = db.checkpoint(conn, resource_id, source['source_mapping_id'])
-            cp_position = cp['position'] if cp else 0
-            if kind == 'REBUILD' and cp_position != 0:
-                raise ValueError('Rebuild requires an unconsumed resource generation')
-            if kind == 'REPLAY' and positions[-1] > cp_position:
+
+            # 6. Validate checkpoint and publication position.
+            cp = db.checkpoint(
+                conn,
+                resource_id,
+                source["source_mapping_id"],
+            )
+
+            cp_position = cp["position"] if cp else 0
+
+            if kind == "REBUILD" and cp_position != 0:
+                raise ValueError(
+                    "Rebuild requires an unconsumed "
+                    "resource generation"
+                )
+
+            if (
+                kind == "REPLAY"
+                and positions[-1] > cp_position
+            ):
                 raise ProtocolError(Decision.SOURCE_GAP)
-            if kind in ('INITIAL_LOAD', 'INCREMENTAL') and positions[0] != cp_position + 1:
+
+            if (
+                kind in ("INITIAL_LOAD", "INCREMENTAL")
+                and positions[0] != cp_position + 1
+            ):
                 raise ProtocolError(Decision.SOURCE_GAP)
-            if kind in ('INITIAL_LOAD', 'REBUILD') and positions[0] != 1:
+
+            if (
+                kind in ("INITIAL_LOAD", "REBUILD")
+                and positions[0] != 1
+            ):
                 raise ProtocolError(Decision.SOURCE_GAP)
+
+            # 7. Sydney currently supports one verified
+            # current Gold source state per intent.
+            if gold is not None:
+                if (
+                    len(rows) != 1
+                    or rows[0]["source_state_id"]
+                    != gold.source_state_id
+                ):
+                    raise ProtocolError(Decision.SOURCE_DRIFT)
+
+            # 8. Pin the current publication predecessor.
             head = db.head(conn, resource_id)
-            body = dict(manifests=[dict(id=r['manifest_id'], checksum=r['checksum'], position=r['position']) for r in rows],
-                        source_mapping_id=source['source_mapping_id'], source_dataset_id=source['source_dataset_id'],
-                        configuration_sha256=digest(config['configuration']), expected=expected.model_dump(mode='json'),
-                        prior_position=cp_position, prior_checkpoint_version=cp['version'] if cp else 0,
-                        prior_head=head['publication_id'] if head else None, prior_revision=head['revision'] if head else 0,
-                        historical_range=historical_range, kind=kind)
-            token = application_token([*self.scope, resource_id, resource['generation']], kind, body['manifests'], request_key)
-            checksum = digest(['datarise-execution-intent', 1, body, token])
-            op = metadata.create_operation(conn, *self.scope, settings.environment, self.user['user_id'],
-                                           OperationCreate(resource_id=resource_id, operation_type=kind, reason='Pinned reliability intent: ' + request_key))
-            return db.one(conn, '''INSERT INTO warehouse_execution_intents(operation_id,workspace_id,warehouse_model_id,
-                warehouse_model_version_id,resource_id,generation,request_key,application_token,dispatch_key,intent_sha256,body)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *''',
-                (op['operation_id'], *self.scope, resource_id, resource['generation'], request_key, token, dispatch_key, checksum, Jsonb(body)))
+
+            body = dict(
+                manifests=[
+                    dict(
+                        id=row["manifest_id"],
+                        checksum=row["checksum"],
+                        position=row["position"],
+                    )
+                    for row in rows
+                ],
+                source_mapping_id=source["source_mapping_id"],
+                source_dataset_id=source["source_dataset_id"],
+                configuration_sha256=configuration_sha256,
+                expected=expected.model_dump(mode="json"),
+                prior_position=cp_position,
+                prior_checkpoint_version=(
+                    cp["version"] if cp else 0
+                ),
+                prior_head=(
+                    head["publication_id"] if head else None
+                ),
+                prior_revision=(
+                    head["revision"] if head else 0
+                ),
+                historical_range=historical_range,
+                kind=kind,
+            )
+
+            # 9. Bind verified Gold evidence to the immutable body.
+            if gold is not None:
+                body["gold_verification"] = {
+                    "verification_id": gold.verification_id,
+                    "gold_run_id": gold.gold_run_id,
+                    "source_fingerprint": (
+                        gold.source_fingerprint
+                    ),
+                }
+
+            # 10. Compute deterministic identity and checksum.
+            token = application_token(
+                [
+                    *self.scope,
+                    resource_id,
+                    resource["generation"],
+                ],
+                kind,
+                body["manifests"],
+                request_key,
+            )
+
+            checksum = digest([
+                "datarise-execution-intent",
+                1,
+                body,
+                token,
+            ])
+
+            # 11. Register the operation and intent atomically.
+            op = metadata.create_operation(
+                conn,
+                *self.scope,
+                settings.environment,
+                self.user["user_id"],
+                OperationCreate(
+                    resource_id=resource_id,
+                    operation_type=kind,
+                    reason=(
+                        "Pinned reliability intent: "
+                        + request_key
+                    ),
+                ),
+            )
+
+            return db.one(
+                conn,
+                """
+                INSERT INTO warehouse_execution_intents (
+                    operation_id,
+                    workspace_id,
+                    warehouse_model_id,
+                    warehouse_model_version_id,
+                    resource_id,
+                    generation,
+                    request_key,
+                    application_token,
+                    dispatch_key,
+                    intent_sha256,
+                    body,
+                    gold_verification_id,
+                    gold_source_fingerprint,
+                    gold_run_id
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s
+                )
+                RETURNING *
+                """,
+                (
+                    op["operation_id"],
+                    *self.scope,
+                    resource_id,
+                    resource["generation"],
+                    request_key,
+                    token,
+                    dispatch_key,
+                    checksum,
+                    Jsonb(body),
+                    (
+                        gold.verification_id
+                        if gold is not None
+                        else None
+                    ),
+                    (
+                        gold.source_fingerprint
+                        if gold is not None
+                        else None
+                    ),
+                    (
+                        gold.gold_run_id
+                        if gold is not None
+                        else None
+                    ),
+                ),
+            )
+
+    def _verify_sydney_gold_pins(
+    self,
+        conn,
+        source,
+        config,
+        intent,
+        settings,
+    ):
+        """Fail closed if production Sydney Gold pins are stale."""
+
+        resource = metadata.resource(
+            conn,
+            *self.scope,
+            intent["resource_id"],
+        )
+
+        if not resource:
+            raise ProtocolError(Decision.RESOURCE_DRIFT)
+
+        if (
+            resource["environment"] != "production"
+            or resource["location"] != "australia-southeast1"
+        ):
+            return
+
+        if settings.environment != "production":
+            raise ProtocolError(Decision.RESOURCE_DRIFT)
+
+        from app.services.sydney_gold_eligibility_service import (
+            resolve_gold_in_transaction,
+        )
+        from app.warehouse.gold_intent_eligibility import (
+            GoldEligibilityRejected,
+        )
+
+        try:
+            gold = resolve_gold_in_transaction(
+                conn,
+                self.scope[0],
+                source,
+                config,
+                self.user,
+            )
+        except GoldEligibilityRejected as exc:
+            raise ProtocolError(
+                Decision.SOURCE_DRIFT
+            ) from exc
+
+        # Compare current verified Gold with all persisted pins.
+        persisted = (
+            intent["gold_verification_id"],
+            intent["gold_run_id"],
+            intent["gold_source_fingerprint"],
+        )
+
+        current = (
+            gold.verification_id,
+            gold.gold_run_id,
+            gold.source_fingerprint,
+        )
+
+        if persisted != current:
+            raise ProtocolError(Decision.SOURCE_DRIFT)
+
+        # The immutable body must agree with the SQL columns.
+        expected_body = {
+            "verification_id": gold.verification_id,
+            "gold_run_id": gold.gold_run_id,
+            "source_fingerprint": gold.source_fingerprint,
+        }
+
+        if intent["body"].get("gold_verification") != expected_body:
+            raise ProtocolError(Decision.SOURCE_DRIFT)
+
+        # Reject tampering with the stored intent body.
+        expected_checksum = digest([
+            "datarise-execution-intent",
+            1,
+            intent["body"],
+            intent["application_token"],
+        ])
+
+        if intent["intent_sha256"] != expected_checksum:
+            raise ProtocolError(Decision.SOURCE_DRIFT)
+
 
     def claim(self, operation_id, worker, *, lease_seconds=60):
         if not isinstance(worker, str) or not 1 <= len(worker) <= 120 or not 1 <= lease_seconds <= 900:
             raise ValueError('Bounded worker and lease duration required')
         with self.transaction() as (conn, source, config, settings):
             op, intent = self._operation(conn, operation_id, settings)
+
+            # Verify Sydney Gold before acquiring a writer lease
+            # or creating an execution attempt.
+            self._verify_sydney_gold_pins(
+                conn,
+                source,
+                config,
+                intent,
+                settings,
+            )
+
             if db.one(conn, 'SELECT 1 FROM warehouse_publications WHERE operation_id=%s', (operation_id,)):
                 raise ValueError('Completed operation cannot be retried')
             blocked = db.one(conn, '''SELECT evidence FROM warehouse_run_journal j JOIN warehouse_runs r USING(warehouse_run_id)
@@ -243,6 +664,17 @@ class ReliabilityService:
     def plan(self, operation_id, run_id, fence):
         with self.transaction() as (conn, source, config, settings):
             op, intent = self._writer(conn, operation_id, run_id, fence, settings)
+
+            # E2.3C: Revalidate the immutable Sydney Gold pins
+            # before recording an executable plan.
+            self._verify_sydney_gold_pins(
+                conn,
+                source,
+                config,
+                intent,
+                settings,
+            )
+
             last = db.latest_stage(conn, operation_id)
             decision = Decision.RETRY_SAFE if not last else recover(Receipt.model_validate(last['evidence']) if last['stage'] == 'TARGET_RECEIPT' else None)
             if decision != Decision.RETRY_SAFE:
@@ -293,6 +725,15 @@ class ReliabilityService:
     def publish(self, operation_id, run_id, fence, reconciliation_id):
         with self.transaction() as (conn, source, config, settings):
             op, intent = self._writer(conn, operation_id, run_id, fence, settings)
+
+            self._verify_sydney_gold_pins(
+                conn,
+                source,
+                config,
+                intent,
+                settings,
+            )
+
             r = db.one(conn, '''SELECT * FROM warehouse_reconciliations WHERE reconciliation_id=%s AND operation_id=%s
                 AND warehouse_run_id=%s AND fence=%s AND passed''', (reconciliation_id, operation_id, run_id, fence))
             if not r:

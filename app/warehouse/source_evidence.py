@@ -28,7 +28,7 @@ def classify_bootstrap(*, exact_chain, artifacts_verified, current_state_verifie
     return 'EXPLICIT_REBUILD_REQUIRED'
 
 
-def extract(store, state, application, policy, delivery, previous, columns, workspace_id, rule_hash):
+def extract(store, state, application, policy, delivery, previous, columns, workspace_id, rule_hash, *, verify_only=False):
     """Caller supplies DB-verified published rows and historical pinned policy.
 
     Recompute with the SAME existing engine and compare immutable artifacts and
@@ -99,6 +99,11 @@ def extract(store, state, application, policy, delivery, previous, columns, work
                     coverage=application.get('snapshot_coverage'), snapshot_outcome=application.get('snapshot_outcome'),
                     snapshot_effective_at=application.get('snapshot_effective_at'), delivery_kind=application.get('delivery_kind'),
                     accepted_at=state['published_at'])
+    if verify_only:
+        # Reuse the complete existing engine/artifact/outcome verification for
+        # dataset Gold without minting a warehouse projection or accepting a
+        # float as an exact event value. Normal warehouse registration is unchanged.
+        return pin, ()
     events = []
 
     def projected(row):

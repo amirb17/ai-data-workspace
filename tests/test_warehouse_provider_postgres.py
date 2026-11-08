@@ -39,6 +39,30 @@ def provider_pg(modeling_pg, monkeypatch):
                 'migrations/0034_warehouse_serving_materialization.sql'
             ).read_text()
         )
+
+        # Legacy development fixture compatibility with E2.3C.
+        #
+        # Migration 0047 adds these nullable columns together
+        # with Sydney-specific constraints and guards.
+        #
+        # This older fixture does not install the complete
+        # Sydney migration chain. Add only the nullable columns
+        # needed by the shared create_intent() insert.
+        #
+        # Production schema validation remains covered by
+        # the dedicated migration 0047 tests.
+        conn.execute(
+            """
+            ALTER TABLE warehouse_execution_intents
+                ADD COLUMN IF NOT EXISTS
+                    gold_verification_id BIGINT,
+                ADD COLUMN IF NOT EXISTS
+                    gold_source_fingerprint CHAR(64),
+                ADD COLUMN IF NOT EXISTS
+                    gold_run_id BIGINT
+            """
+        )
+
     monkeypatch.setenv('BIGQUERY_ENABLED', 'true')
     monkeypatch.setenv('BIGQUERY_PROJECT_ID', 'synthetic-project')
     cloud = Client()
@@ -165,6 +189,18 @@ def fact_provider_pg(
                 'migrations/0031_warehouse_reliability.sql'
             ).read_text()
         )
+
+        # E2.3C compatibility for the legacy FACT provider fixture.
+        # Development warehouse intents do not carry Sydney Gold pins.
+        conn.execute(
+            """
+            ALTER TABLE warehouse_execution_intents
+                ADD COLUMN IF NOT EXISTS gold_verification_id BIGINT,
+                ADD COLUMN IF NOT EXISTS gold_source_fingerprint CHAR(64),
+                ADD COLUMN IF NOT EXISTS gold_run_id BIGINT
+            """
+        )
+
         conn.execute(
             Path(
                 'migrations/0034_warehouse_serving_materialization.sql'
