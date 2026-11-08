@@ -13,6 +13,8 @@ def initiate_upload_session(user_id: int, workspace_id: int, dataset_id: int, fi
     if workspace_id is None or dataset_id is None:
         raise ValueError("Workspace and dataset are required for an upload session")
     validate_upload_context(user_id, workspace_id, dataset_id)
+    if isinstance(file_name, str) and file_name.lower().endswith('.xlsx'):
+        raise ValueError('XLSX filename is not supported: an approved parser and sheet-to-dataset mapping are required')
     if not file_name.lower().endswith('.csv') or any(char in file_name for char in ('/', '\\', '\x00')) or '..' in file_name:
         raise ValueError("A plain CSV filename is required")
     if file_size <= 0:

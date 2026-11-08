@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.identity import get_current_user
 from app.db.database import get_connection
 from app.api.files import router as files_router
+from app.api.product_preview import router as product_preview_router
 from app.api.processing_jobs import router as processing_jobs_router
 from app.api.analytics import router as analytics_router
 
@@ -62,6 +63,8 @@ app.include_router(google_router)
 async def safe_validation(request, exc):
     if request.url.path.startswith('/auth/'):
         return JSONResponse({'detail': 'Check the fields and password confirmation. Passwords must contain 12–128 characters.'}, status_code=422)
+    if request.url.path.startswith('/workspaces/') and '/product/' in request.url.path:
+        return JSONResponse({'detail':'Invalid product request fields'},status_code=422)
     return await request_validation_exception_handler(request, exc)
 
 @app.get("/me")
@@ -70,6 +73,7 @@ def current_me(user: dict = Depends(get_current_user)):
     return {**(profile(user['user_id']) if mode == 'session' else user), "identity_mode": mode}
 
 app.include_router(files_router)
+app.include_router(product_preview_router)
 app.include_router(processing_jobs_router)
 app.include_router(workspaces_router)
 app.include_router(workspace_model_router)

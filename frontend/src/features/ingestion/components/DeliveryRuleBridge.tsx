@@ -5,12 +5,12 @@ import { executionAction } from "../processingState"
 import { IngestionBatchCard, type BatchPresentation } from "./IngestionBatchCard"
 import { SnapshotDelivery } from "./SnapshotDelivery"
 
-export function DeliveryRuleBridge({ batch, workspaceId, datasetId, context, reload, datasetBusy, onRequestActivity }: { batch: BatchPresentation; workspaceId: string; datasetId: string; context: ProcessingContext; reload: () => void; datasetBusy: boolean; onRequestActivity?: (started: boolean) => void }) {
+export function DeliveryRuleBridge({ batch, workspaceId, datasetId, context, reload, datasetBusy, onRequestActivity, executionDisabled = false }: { batch: BatchPresentation; workspaceId: string; datasetId: string; context: ProcessingContext; reload: () => void; datasetBusy: boolean; executionDisabled?: boolean; onRequestActivity?: (started: boolean) => void }) {
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState("")
   const active = useRef(false)
   const retry = async (bronze = false) => {
-    if (active.current || datasetBusy) return
+    if (active.current || datasetBusy || executionDisabled) return
     active.current = true; setBusy(true); setActionError("")
     onRequestActivity?.(true)
     try { await (bronze ? startBronze : continueProcessing)(workspaceId, datasetId, context.upload_request_id); reload() }
@@ -33,8 +33,8 @@ export function DeliveryRuleBridge({ batch, workspaceId, datasetId, context, rel
     {actionError && <p role="alert" className="break-words text-sm text-red-700">{actionError}</p>}
     <div className="flex flex-wrap gap-2 text-sm">
       {context.status === "AWAITING_RULES" && context.dataset_version_file_id && <Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 font-medium text-white" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/rules?upload=${context.upload_request_id}`}>Review Rules</Link>}
-      {context.status === "BRONZE_FAILED" && <button className="min-h-11 rounded-lg bg-indigo-600 px-4 font-medium text-white disabled:opacity-50" disabled={busy || datasetBusy} onClick={() => void retry(true)}>{busy ? "Retrying…" : "Retry Bronze"}</button>}
-      {action && <button className="min-h-11 rounded-lg bg-indigo-600 px-4 font-medium text-white disabled:opacity-50" disabled={busy || datasetBusy} onClick={() => void retry()}>{busy ? "Processing request active…" : action}</button>}
+      {context.status === "BRONZE_FAILED" && <button className="min-h-11 rounded-lg bg-indigo-600 px-4 font-medium text-white disabled:opacity-50" disabled={busy || datasetBusy || executionDisabled} onClick={() => void retry(true)}>{busy ? "Retrying…" : "Retry Bronze"}</button>}
+      {action && <button className="min-h-11 rounded-lg bg-indigo-600 px-4 font-medium text-white disabled:opacity-50" disabled={busy || datasetBusy || executionDisabled} onClick={() => void retry()}>{busy ? "Processing request active…" : action}</button>}
       {context.status === "DATASET_UPDATE_BLOCKED" && <Link className="inline-flex min-h-11 items-center rounded-lg border px-4" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/contract`}>Review Contract</Link>}
       {(context.rejected_rows ?? 0) > 0 && <Link className="inline-flex min-h-11 items-center rounded-lg border border-amber-200 px-4 font-medium text-amber-900" to={qualityHref}>View Data Quality</Link>}
     </div>

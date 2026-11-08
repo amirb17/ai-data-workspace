@@ -30,16 +30,18 @@ import { DatasetDataQualityPage } from "./pages/Dataset/DataQuality/DatasetDataQ
 import { DatasetAnalyticsPage } from "./pages/Dataset/Analytics/DatasetAnalyticsPage"
 import { DatasetHistoryPage } from "./pages/Dataset/History/DatasetHistoryPage"
 import { DatasetProfilePage } from "./pages/Dataset/Profile/DatasetProfilePage"
+import { DatasetReadinessPage } from "./pages/Dataset/Readiness/DatasetReadinessPage"
 import { DatasetUnderstandingPage } from "./pages/Dataset/Understanding/DatasetUnderstandingPage"
 
 import { IdentityBootstrap } from "./components/layout/IdentityBootstrap"
+import { PublicLaunchPolicy } from "./components/layout/PublicLaunchPolicy"
 import { NotFoundPage } from "./components/ui/NotFoundPage"
 const SqlPage=lazy(()=>import('./features/workspaces/sql/SqlPage').then(module=>({default:module.SqlPage})))
 const WorkspaceModelPage=lazy(()=>import('./features/workspaces/model/WorkspaceModelPage').then(module=>({default:module.WorkspaceModelPage})))
 
 export default function AppLayout() {
   return (
-    <IdentityBootstrap><AppShell>
+    <PublicLaunchPolicy><IdentityBootstrap><AppShell>
       <Routes>
         <Route
           index
@@ -91,6 +93,7 @@ export default function AppLayout() {
 
       <Route path="contract" element={<DatasetContractPage />} />
       <Route path="profile" element={<DatasetProfilePage />} />
+      <Route path="readiness" element={<DatasetReadinessPage />} />
       <Route path="understanding" element={<DatasetUnderstandingPage />} />
 
       <Route
@@ -150,6 +153,6 @@ export default function AppLayout() {
       </Route>
         <Route path="*" element={<NotFoundPage />} />
             </Routes>
-    </AppShell></IdentityBootstrap>
+    </AppShell></IdentityBootstrap></PublicLaunchPolicy>
   )
 }

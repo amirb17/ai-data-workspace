@@ -8,6 +8,7 @@ already-exact Decimal value. Precision/scale validation never rounds.
 
 from dataclasses import dataclass
 from decimal import (
+    Context,
     Decimal,
     InvalidOperation,
     localcontext,
@@ -114,18 +115,14 @@ def parse_exact_decimal(
             "Exact decimal must be finite"
         )
 
-    quantum = Decimal(1).scaleb(
-        -spec.scale
-    )
+    # Construct the exponent directly: scaleb obeys the caller's context and
+    # can silently clamp a valid scale before our controlled context begins.
+    quantum = Decimal((0, (1,), -spec.scale))
 
     try:
         # Large enough for the complete supported BIGNUMERIC envelope.
-        with localcontext() as context:
-            context.prec = (
-                MAX_BIGNUMERIC_PRECISION
-                + MAX_BIGNUMERIC_SCALE
-                + 8
-            )
+        precision = MAX_BIGNUMERIC_PRECISION + MAX_BIGNUMERIC_SCALE + 8
+        with localcontext(Context(prec=precision, Emin=-precision, Emax=precision)):
 
             quantized = number.quantize(
                 quantum

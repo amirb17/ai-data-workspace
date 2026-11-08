@@ -11,11 +11,12 @@ import type { WorkspaceListItem } from "../../features/workspaces/types"
 const tabs = [
   { label: "Overview", to: "", end: true }, { label: "Files", to: "files" },
   { label: "Contract", to: "contract" }, { label: "Rules", to: "rules" },
+  { label: "Readiness", to: "readiness" },
   { label: "Processing", to: "processing" }, { label: "Data Quality", to: "data-quality" },
   { label: "Analytics", to: "analytics" }, { label: "Data Profile", to: "profile" }, { label: "Description", to: "understanding" }, { label: "History", to: "history" },
 ]
 const primary: SectionLink[] = [{label:"Overview",path:""},{label:"Files",path:"files"},{label:"Schema",path:"profile",sections:["profile","contract"]},{label:"Quality",path:"data-quality"},{label:"Settings",path:"rules"}]
-const advanced: SectionLink[] = [{label:"Processing",path:"processing"},{label:"Analytics",path:"analytics"},{label:"Description",path:"understanding"},{label:"History",path:"history"}]
+const advanced: SectionLink[] = [{label:"Readiness & previews",path:"readiness"},{label:"Processing",path:"processing"},{label:"Analytics",path:"analytics"},{label:"Description",path:"understanding"},{label:"History",path:"history"}]
 
 export function DatasetDetailPage() {
   const { workspaceId = "", datasetId = "" } = useParams()
