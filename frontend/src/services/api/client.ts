@@ -1,4 +1,9 @@
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/+$/, "")
+import {resolveApiBase} from './apiOrigin'
+const apiConfiguration = (() => {
+  try { return {base:resolveApiBase(import.meta.env.VITE_API_BASE_URL, Boolean(import.meta.env.PROD)),valid:true} }
+  catch { return {base:'',valid:false} }
+})()
+export const API_BASE_URL = apiConfiguration.base
 
 export class ApiError extends Error {
   readonly status: number
@@ -23,6 +28,7 @@ async function csrfToken() {
 }
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (!apiConfiguration.valid) throw new ApiError('The public API connection is not configured safely. Contact the site operator.',503)
   let response: Response
   try {
     const token = identityMode === 'session' && !['GET', 'HEAD', 'OPTIONS'].includes((options.method || 'GET').toUpperCase()) ? await csrfToken() : undefined

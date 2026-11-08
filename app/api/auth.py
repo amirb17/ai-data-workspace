@@ -33,9 +33,12 @@ def set_session(response, token):
 @router.get('/config')
 def configuration():
     settings = config()
+    from app.security.public_launch import launch_settings, MODE
+    launch = launch_settings()
     return {'google_available': bool(settings.mode == 'session' and len(settings.secret.encode()) >= 32
                                     and os.getenv('GOOGLE_CLIENT_ID') and os.getenv('GOOGLE_CLIENT_SECRET')),
-            'identity_mode': settings.mode}
+            'identity_mode': settings.mode,
+            'public_launch_mode': MODE if launch.enabled else 'off'}
 
 
 @router.get('/csrf')

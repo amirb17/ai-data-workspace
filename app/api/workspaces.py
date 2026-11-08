@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from app.api.identity import get_current_user
 from app.db.workspace_repository import create_workspace, get_workspace_by_id, list_workspaces_by_owner
@@ -76,15 +76,20 @@ def create_dataset_endpoint(workspace_id: int, request: DatasetCreateRequest, us
 
 
 @router.get("/{workspace_id}/datasets")
-def list_datasets_endpoint(workspace_id: int, user: dict = Depends(get_current_user)):
+def list_datasets_endpoint(request: Request, workspace_id: int, user: dict = Depends(get_current_user)):
     owned_workspace(workspace_id, user)
-    return {"workspace_id": workspace_id, "datasets": [dataset_payload(row) for row in get_datasets_by_workspace(workspace_id=workspace_id)]}
+    rows = get_datasets_by_workspace(workspace_id=workspace_id)
+    if request.scope.get('datarise.public_launch'):
+        rows = [row for row in rows if row[3] == user['owner_key'] and row[4] == 'ACTIVE']
+    return {"workspace_id": workspace_id, "datasets": [dataset_payload(row) for row in rows]}
 
 
 @router.get("/{workspace_id}/datasets/{dataset_id}")
-def get_dataset_endpoint(workspace_id: int, dataset_id: int, user: dict = Depends(get_current_user)):
+def get_dataset_endpoint(request: Request, workspace_id: int, dataset_id: int, user: dict = Depends(get_current_user)):
     owned_workspace(workspace_id, user)
     dataset = get_dataset_by_workspace(workspace_id=workspace_id, dataset_id=dataset_id)
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found in workspace")
+    if request.scope.get('datarise.public_launch') and (dataset[3] != user['owner_key'] or dataset[4] != 'ACTIVE'):
+        raise HTTPException(404, 'Dataset unavailable')
     return dataset_payload(dataset)

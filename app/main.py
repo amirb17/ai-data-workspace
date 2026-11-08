@@ -30,9 +30,15 @@ from app.auth.middleware import AuthBoundary, RedactAuthQuery
 from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.responses import JSONResponse
+from app.security.public_launch import launch_settings, PublicLaunchBoundary, launch_authority
+public_launch = launch_settings()
 app = FastAPI(
     title="AI Data Workspace",
-    version="0.1.0"
+    version="0.1.0",
+    dependencies=[Depends(launch_authority)],
+    docs_url=None if public_launch.enabled else '/docs',
+    redoc_url=None if public_launch.enabled else '/redoc',
+    openapi_url=None if public_launch.enabled else '/openapi.json',
 )
 settings = config()
 app.add_middleware(SessionMiddleware, secret_key=settings.secret or secrets.token_urlsafe(32),
@@ -44,6 +50,7 @@ if settings.mode == 'development':
     origins = list(dict.fromkeys(origins + ['http://localhost:5173', 'http://127.0.0.1:5173']))
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "X-CSRF-Token"])
+app.add_middleware(PublicLaunchBoundary, settings=public_launch, routes=app.router.routes)
 logging.getLogger('uvicorn.access').addFilter(RedactAuthQuery())
 for sensitive_logger in ('authlib', 'httpx', 'httpcore'):
     logging.getLogger(sensitive_logger).setLevel(logging.WARNING)

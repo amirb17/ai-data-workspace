@@ -11,7 +11,7 @@ export function safeReturn(value: string | null) {
   } catch {return '/app'}
 }
 export async function authConfig() {
-  const result=await request<{google_available: boolean; identity_mode: 'session'|'development'}>('/auth/config')
+  const result=await request<{google_available: boolean; identity_mode: 'session'|'development'; public_launch_mode?:'off'|'csv-readonly'}>('/auth/config')
   setIdentityMode(result.identity_mode)
   return result
 }
