@@ -1,0 +1,40 @@
+
+ARG WORKER_BASE_IMAGE
+FROM ${WORKER_BASE_IMAGE}
+ARG WORKER_BASE_IMAGE
+ARG SOURCE_REVISION
+ARG RUNTIME_LOCK_SHA
+LABEL org.opencontainers.image.revision=${SOURCE_REVISION} \
+      io.datarise.base-image=${WORKER_BASE_IMAGE} \
+      io.datarise.requirements-sha256=${RUNTIME_LOCK_SHA}
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PYTHON_DOTENV_DISABLED=1 \
+    DATARISE_PROCESSING_DEPLOYMENT_APPROVED=false \
+    DATARISE_PROCESSING_READERS=false \
+    DATARISE_DISPATCH_APPROVED=false \
+    OPENBLAS_NUM_THREADS=1 \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1
+
+WORKDIR /app
+# Public Amazon RDS CA bundle for PostgreSQL TLS verification.
+COPY deployment/docker/certs/global-bundle.pem /app/certs/global-bundle.pem
+
+ENV PGSSLMODE=verify-full \
+    PGSSLROOTCERT=/app/certs/global-bundle.pem
+COPY pyproject.toml uv.lock README.md ./
+COPY deployment/docker/requirements.lock deployment/docker/verify_lock.py ./deployment/docker/
+COPY app ./app
+
+RUN python -c "import sys,tomllib; assert sys.version_info[:2] == (3,13); p=tomllib.load(open('pyproject.toml','rb')); assert p['project']['dependencies']" \
+    && python deployment/docker/verify_lock.py --base "$WORKER_BASE_IMAGE" --revision "$SOURCE_REVISION" --requirements-hash "$RUNTIME_LOCK_SHA" \
+    && python -m pip install --no-cache-dir --no-deps --only-binary=:all: --require-hashes -r deployment/docker/requirements.lock
+
+RUN useradd --create-home --uid 10001 worker
+USER worker
+
+CMD ["python", "-m", "app.processing_worker.container_entrypoint"]

@@ -1,0 +1,27 @@
+# Default-deny context: only inputs used by these Dockerfiles are admitted.
+**
+!app/
+!app/**
+!pyproject.toml
+!uv.lock
+!README.md
+!deployment/
+!deployment/docker/
+!deployment/docker/Dockerfile.worker
+!deployment/docker/Dockerfile.verifier
+!deployment/docker/verify_lock.py
+!deployment/docker/requirements.lock
+!deployment/docker/certs/
+.git
+.venv
+**/__pycache__
+**/node_modules
+.env*
+**/.env*
+.aws
+**/.aws
+**/credentials
+**/*.key
+**/*.pem
+**/*.p12
+!deployment/docker/certs/global-bundle.pem

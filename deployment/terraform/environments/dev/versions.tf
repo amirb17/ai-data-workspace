@@ -12,6 +12,7 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
-  # No credentials or account numbers are stored in Terraform files.
+  region              = var.aws_region
+  profile             = "datarise"
+  allowed_account_ids = ["202064056386"]
 }

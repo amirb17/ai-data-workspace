@@ -1,0 +1,13 @@
+{
+  "account": "202064056386",
+  "region": "ap-southeast-2",
+  "instance_id": "i-0767c7345ef16d395",
+  "observed_at": null,
+  "status_checks_healthy": null,
+  "management_path": "unverified",
+  "management_approved": false,
+  "graceful_stop_verified": false,
+  "worker_service_active": null,
+  "worker_service_enabled": null,
+  "worker_image_digest": null
+}

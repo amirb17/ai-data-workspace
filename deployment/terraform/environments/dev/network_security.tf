@@ -63,3 +63,16 @@ resource "aws_db_subnet_group" "private" {
     }
   }
 }
+
+resource "aws_vpc_security_group_egress_rule" "worker_https" {
+  count = var.enable_network ? 1 : 0
+
+  security_group_id = aws_security_group.worker[0].id
+
+  ip_protocol = "tcp"
+  from_port   = 443
+  to_port     = 443
+  cidr_ipv4   = "0.0.0.0/0"
+
+  description = "Outbound HTTPS for approved AWS service APIs and ECR"
+}

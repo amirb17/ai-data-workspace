@@ -1,0 +1,90 @@
+﻿#!/bin/bash
+set -euo pipefail
+
+# Amazon Linux 2023 bootstrap. The processing service stays disabled.
+dnf install -y docker
+
+if ! command -v aws >/dev/null 2>&1; then
+    echo "AWS CLI is missing from the selected AMI" >&2
+    exit 1
+fi
+
+systemctl enable --now docker
+
+mkdir -p /etc/ai-workspace
+chmod 700 /etc/ai-workspace
+
+cat > /etc/ai-workspace/worker.env <<'ENVFILE'
+AWS_DEFAULT_REGION=${aws_region}
+DATARISE_PROCESSING_DEPLOYMENT_APPROVED=false
+DATARISE_PROCESSING_READERS=false
+DATARISE_ARTIFACT_BUCKET=${artifact_bucket}
+DATARISE_PROCESSING_QUEUE_URL=${queue_url}
+DATARISE_VERIFIER_FUNCTION_NAME=${verifier_function_name}
+DATARISE_WORKER_DB_SECRET_ARN=${worker_secret_arn}
+ENVFILE
+chmod 600 /etc/ai-workspace/worker.env
+
+cat > /usr/local/bin/ai-workspace-worker-start <<'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+
+IMAGE_URI="${image_uri}"
+REGISTRY="${registry_host}"
+REGION="${aws_region}"
+
+# Refuse before ECR authentication/pull, and avoid restart loops when disabled.
+if ! grep -Fxq 'DATARISE_PROCESSING_DEPLOYMENT_APPROVED=true' /etc/ai-workspace/worker.env || \
+   ! grep -Fxq 'DATARISE_PROCESSING_READERS=true' /etc/ai-workspace/worker.env; then
+    echo "Processing worker is disabled" >&2
+    exit 78
+fi
+
+aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+docker pull "$IMAGE_URI"
+
+exec docker run --rm \
+  --name ai-workspace-worker \
+  --init \
+  --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=128m \
+  --cap-drop=ALL \
+  --security-opt=no-new-privileges \
+  --pids-limit=128 \
+  --memory=512m --memory-swap=512m --cpus=1 \
+  --stop-timeout=90 \
+  --log-driver=json-file --log-opt=max-size=10m --log-opt=max-file=3 \
+  --env-file /etc/ai-workspace/worker.env \
+  "$IMAGE_URI"
+SCRIPT
+chmod 700 /usr/local/bin/ai-workspace-worker-start
+
+cat > /etc/systemd/system/ai-workspace-worker.service <<'UNIT'
+[Unit]
+Description=AI Data Workspace Processing Worker
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ai-workspace-worker-start
+ExecStop=-/usr/bin/docker stop -t 90 ai-workspace-worker
+RuntimeDirectory=ai-workspace-worker-login
+RuntimeDirectoryMode=0700
+Environment=DOCKER_CONFIG=/run/ai-workspace-worker-login
+Restart=on-failure
+RestartPreventExitStatus=78
+RestartSec=15
+TimeoutStartSec=300
+TimeoutStopSec=105
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+
+# Intentionally not enabled or started. Runtime deployment approval is pending.

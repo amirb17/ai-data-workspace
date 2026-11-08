@@ -8,3 +8,4 @@ crash.*.log
 terraform.tfvars
 *.tfvars.json
 # Commit .terraform.lock.hcl once init generates it and it has been reviewed.
+*.tfvars

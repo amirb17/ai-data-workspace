@@ -1,0 +1,8 @@
+{
+  "account": "202064056386",
+  "region": "ap-southeast-2",
+  "instance_id": "i-0767c7345ef16d395",
+  "worker_digest": "sha256:9509828f4007a63e7d1cc7594515df9c7a4295d9a1d3e93c14bbc5cca93d24cf",
+  "processing_deployment_approved": false,
+  "processing_readers": false
+}
