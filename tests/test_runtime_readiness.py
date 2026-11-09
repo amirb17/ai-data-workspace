@@ -17,6 +17,34 @@ from app.processing_worker.secure_db_connection import secure_conninfo
 from app.processing_worker.verifier_client import LambdaVerifierClient, RemoteVerificationError
 
 
+
+@pytest.fixture(autouse=True)
+def restore_runtime_environment():
+    """Prevent synthetic bootstrap configuration leaking between tests."""
+    import os
+
+    names = (
+        "DATABASE_URL",
+        "AWS_REGION",
+        "AWS_DEFAULT_REGION",
+        "S3_BUCKET_NAME",
+        "PYTHON_DOTENV_DISABLED",
+        "DATARISE_PROCESSING_DEPLOYMENT_APPROVED",
+        "DATARISE_PROCESSING_READERS",
+    )
+
+    original = {name: os.environ.get(name) for name in names}
+
+    try:
+        yield
+    finally:
+        for name, value in original.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
 def secret(**overrides):
     return json.dumps(dict(username='datarise_worker',password='synthetic-only',
         host='db.example.test',port=5432,dbname='workspace',**overrides))
@@ -134,6 +162,9 @@ def test_container_rejects_conflicting_legacy_configuration(monkeypatch,name,val
 
 
 def test_database_initialization_preflights_role_and_removes_environment_copy(monkeypatch):
+    # Restore the runner's DATABASE_URL after testing credential removal.
+    # initialize_database() intentionally pops it from os.environ.
+    monkeypatch.setenv('DATABASE_URL', entry.os.environ.get('DATABASE_URL', ''))
     from app.processing_worker import secure_db_connection
     monkeypatch.delitem(sys.modules,'app.db.database',raising=False)
     monkeypatch.delitem(sys.modules,'app.config',raising=False)
