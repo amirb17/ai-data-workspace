@@ -24,7 +24,15 @@ USER = {"user_id": 1, "owner_key": "dev:test"}
 @pytest.fixture
 def scope(monkeypatch):
     app.dependency_overrides[get_current_user] = lambda: USER
+    # Keep processing-context API tests isolated from the
+    # incremental application repository.
+    from app.db import incremental_repository
 
+    monkeypatch.setattr(
+        incremental_repository,
+        "application_context",
+        lambda result: result,
+    )
     monkeypatch.setattr(
         context,
         "validate_upload_context",
