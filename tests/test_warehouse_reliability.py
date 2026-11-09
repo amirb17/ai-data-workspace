@@ -231,6 +231,42 @@ def reliability_pg(modeling_pg, request):
         assert all(x in conn.execute("""SELECT c.relname,i.relname,pg_get_indexdef(i.oid) FROM pg_index x
             JOIN pg_class c ON c.oid=x.indrelid JOIN pg_class i ON i.oid=x.indexrelid
             WHERE c.relnamespace=current_schema()::regnamespace""").fetchall() for x in old_objects)
+            # Bring the disposable reliability schema up to the current
+    # service contract after checking migration 0031 preservation.
+    # Earlier fixtures already apply 0030, 0031, and 0033.
+    with p["connect"]() as conn:
+        migration_dir = ROOT / "migrations"
+
+        for migration in sorted(migration_dir.glob("*.sql")):
+            number = int(migration.name.split("_", 1)[0])
+
+            if number == 32 or 34 <= number <= 47:
+                conn.execute(
+                    migration.read_text(encoding="utf-8")
+                )
+
+        columns = {
+            row[0]
+            for row in conn.execute(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = 'warehouse_execution_intents'
+                  AND column_name IN (
+                      'gold_verification_id',
+                      'gold_source_fingerprint',
+                      'gold_run_id'
+                  )
+                """
+            ).fetchall()
+        }
+
+        assert columns == {
+            "gold_verification_id",
+            "gold_source_fingerprint",
+            "gold_run_id",
+        }
     f = SimpleNamespace(pg=p, service=ReliabilityService(p['workspace'],m,v,p['owner']), model=m, version=v,
                         resource=r['resource_id'], store=IncrementalArtifacts(Objects()), mode=mode, frame=None, state=None)
     return f
