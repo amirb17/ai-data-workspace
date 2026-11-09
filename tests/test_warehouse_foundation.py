@@ -156,7 +156,21 @@ def test_no_cloud_import_execution_hooks_or_api_routes():
                     'app.processing.append_engine', 'app.processing.upsert_engine',
                     'app.processing.snapshot_engine'):
                     continue
-                assert not (node.module or '').startswith(('google', 'app.storage', 'app.processing'))
+
+                # Gold projection reuses only the pure scalar conversion helper.
+                # No other processing imports are permitted in this module.
+                if (
+                    path == ROOT/'app/warehouse/gold_projection.py'
+                    and node.module == 'app.processing.append_engine'
+                    and len(node.names) == 1
+                    and node.names[0].name == 'scalar'
+                    and node.names[0].asname is None
+                ):
+                    continue
+
+                assert not (node.module or '').startswith(
+                    ('google', 'app.storage', 'app.processing')
+                )
     for filename in ('append_application_service.py', 'incremental_application_service.py',
                      'delivery_execution_service.py', 'dataset_analytics_service.py'):
         tree = ast.parse((ROOT/'app/services'/filename).read_text(encoding='utf-8'))
