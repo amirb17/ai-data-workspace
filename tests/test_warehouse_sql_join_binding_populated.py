@@ -165,7 +165,12 @@ def test_advancing_either_head_invalidates_old_source_pin(two_published_models,a
     later=NOW+timedelta(days=180)
     # A successful new publication advances the selected resource's head
     # before its new serving materialization can be independently recorded.
-    publication(side,[row("B",at=later)],key="second",at=later)
+    # FACT grain identity is the source "line" column. A second INSERT
+    # needs a new line identity; changing only "id" would collide with
+    # the already-published FACT identity (line=1).
+    next_record = (row("B",value=2,at=later) if advance_side=="fact"
+                   else row("B",at=later))
+    publication(side,[next_record],key="second",at=later)
     with pytest.raises((HTTPException,ValueError)):
         bind(f,dim,rid,fact_state,dimension_state)
     side.provider.materialize_current_publication(side.resource)
