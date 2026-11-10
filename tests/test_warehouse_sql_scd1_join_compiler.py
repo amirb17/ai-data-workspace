@@ -88,9 +88,9 @@ def test_missing_or_wrong_scope_fails_closed(change):
 
 def test_unreviewed_key_change_is_rejected():
     d,b,r,f,dim=pair()
-    different=replace(r,key_pairs=(
+    different=r.model_copy(update={"key_pairs":(
         type(r.key_pairs[0])(fact_column="amount",dimension_column="product_id"),
-    ))
+    )})
     with pytest.raises(Exception):
         compile_with(relationship=different)
 
