@@ -25,8 +25,8 @@ from app.warehouse.sql_claimed_reservation_guard import (
 from app.warehouse.sql_physical_binding import InternalDraftBinding
 
 _TABLE_PIN = re.compile(
-    r"^[a-z][a-z0-9-]*[a-z0-9]\\.dr_dev_w(?P<workspace>[1-9][0-9]*)"
-    r"\\.m(?P<model>[1-9][0-9]*)_v(?P<version>[1-9][0-9]*)"
+    r"^[a-z][a-z0-9-]*[a-z0-9]\.dr_dev_w(?P<workspace>[1-9][0-9]*)"
+    r"\.m(?P<model>[1-9][0-9]*)_v(?P<version>[1-9][0-9]*)"
     r"_g(?P<generation>[1-9][0-9]*)_p(?P<publication>[1-9][0-9]*)"
     r"_r(?P<revision>[1-9][0-9]*)$"
 )
