@@ -7,6 +7,8 @@ not row contents, publication freshness, or query execution authorization.
 """
 from dataclasses import dataclass
 from typing import Protocol
+from google.api_core import exceptions as google_errors
+from google.auth.exceptions import DefaultCredentialsError, RefreshError
 
 from app.warehouse.providers.base import Binding, ErrorCode, ProviderError
 from app.warehouse.sql_physical_binding import InternalDraftBinding
@@ -77,14 +79,40 @@ def verify_serving_table_metadata(
             raise ValueError("Complete typed physical schema required")
         try:
             found=client.get_table(expected_table,retry=None,timeout=10)
-        except Exception:
-            # Never expose provider exception text, credentials or names.
-            raise ProviderError(ErrorCode.RESOURCE_NOT_FOUND,uncertain=True) from None
+        except Exception as error:
+            # The read cannot be trusted. Preserve provider error categories,
+            # but never disclose exception details or resource identifiers.
+            reasons={
+                item.get("reason") for item in (getattr(error,"errors",None) or ())
+                if isinstance(item,dict)
+            }
+            if isinstance(error,(DefaultCredentialsError,RefreshError,
+                                 google_errors.Unauthorized)):
+                code=ErrorCode.AUTHENTICATION_FAILED
+            elif reasons & {"rateLimitExceeded","jobRateLimitExceeded"} or isinstance(
+                    error,google_errors.TooManyRequests):
+                code=ErrorCode.RATE_LIMITED
+            elif reasons & {"quotaExceeded","billingTierLimitExceeded"}:
+                code=ErrorCode.QUOTA_EXCEEDED
+            elif reasons & {"billingNotEnabled","accessDenied"} or isinstance(
+                    error,google_errors.Forbidden):
+                code=ErrorCode.PERMISSION_DENIED
+            elif isinstance(error,google_errors.NotFound):
+                code=ErrorCode.RESOURCE_NOT_FOUND
+            elif isinstance(error,(google_errors.ServerError,TimeoutError,ConnectionError)):
+                code=ErrorCode.RETRYABLE_PROVIDER_ERROR
+            else:
+                code=ErrorCode.PERMANENT_PROVIDER_ERROR
+            raise ProviderError(code,uncertain=True) from None
 
-        actual_schema=tuple(
-            (str(field.name),str(field.field_type),str(field.mode))
-            for field in found.schema
-        )
+        try:
+            actual_schema=tuple(
+                (str(field.name),str(field.field_type),str(field.mode))
+                for field in found.schema
+            )
+        except (AttributeError,TypeError,ValueError):
+            # A broken SDK response is not verified metadata.
+            raise ProviderError(ErrorCode.SCHEMA_MISMATCH,uncertain=True) from None
         expected_schema=tuple(
             (name,{"INTEGER":"INT64","BOOLEAN":"BOOL"}.get(kind,kind),mode)
             for name,kind,mode in schema
@@ -110,7 +138,8 @@ def verify_serving_table_metadata(
                 or getattr(found,"clustering_fields",None) is not None
                 or bool(getattr(found,"require_partition_filter",False))
                 or getattr(found,"expires",None) is not None
-                or any(getattr(found,"labels",{}).get(k)!=v for k,v in labels.items())):
+                or not isinstance(getattr(found,"labels",None),dict)
+                or any(found.labels.get(k)!=v for k,v in labels.items())):
             raise ProviderError(ErrorCode.SCHEMA_MISMATCH)
         attestations.append(MetadataAttestation(
             model.model_id,model.model_version_id,model.resource_id,
