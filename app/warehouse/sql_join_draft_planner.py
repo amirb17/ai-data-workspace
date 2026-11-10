@@ -127,7 +127,7 @@ def plan_join_draft(sql_text: str, *, workspace_id: int, catalog: dict,
         expected.append((left,right))
     seen=[]
     for left,right in _equalities(join.args.get("on")):
-        if (left.table,left.name)==("f",left.name) and (right.table,right.name)==("d",right.name):
+        if left.table=="f" and right.table=="d":
             seen.append((left.name,right.name))
         elif left.table=="d" and right.table=="f":
             seen.append((right.name,left.name))
