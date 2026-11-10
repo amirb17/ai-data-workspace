@@ -8,6 +8,7 @@ from app.schemas.warehouse import SourceMapping
 from app.schemas.warehouse_modeling import ModelingRequest
 from app.services import warehouse_model_service as models
 from app.services import warehouse_modeling_service as modeling
+from tests.test_warehouse_foundation import pg
 from tests.test_warehouse_modeling import modeling_pg, configured, dimension
 
 ROOT = Path(__file__).resolve().parents[1]
