@@ -3,6 +3,8 @@ from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
+from google.api_core import exceptions as google_errors
+from google.auth.exceptions import DefaultCredentialsError
 from app.warehouse.providers.base import ErrorCode, ProviderError
 from app.warehouse.sql_physical_binding import (
     InternalColumnBinding,InternalModelBinding,InternalDraftBinding,
@@ -110,6 +112,35 @@ def test_missing_table_or_provider_error_fails_closed():
         verify(client=Fake(error=RuntimeError("provider secret")))
     assert caught.value.uncertain
     assert "provider secret" not in str(caught.value)
+
+
+@pytest.mark.parametrize("failure,code",[
+    (google_errors.NotFound("absent"),ErrorCode.RESOURCE_NOT_FOUND),
+    (google_errors.Forbidden("denied"),ErrorCode.PERMISSION_DENIED),
+    (google_errors.TooManyRequests("slow"),ErrorCode.RATE_LIMITED),
+    (google_errors.ServiceUnavailable("down"),ErrorCode.RETRYABLE_PROVIDER_ERROR),
+    (TimeoutError("timeout"),ErrorCode.RETRYABLE_PROVIDER_ERROR),
+    (DefaultCredentialsError("no creds"),ErrorCode.AUTHENTICATION_FAILED),
+    (RuntimeError("not provider-specific"),ErrorCode.PERMANENT_PROVIDER_ERROR),
+])
+def test_get_table_failures_classified_without_leaking_details(failure,code):
+    with pytest.raises(ProviderError) as caught:
+        verify(client=Fake(error=failure))
+    assert caught.value.code==code
+    assert caught.value.uncertain is True
+    assert str(failure) not in str(caught.value)
+
+
+@pytest.mark.parametrize("bad",[
+    metadata(schema=None),
+    metadata(schema=[None]),
+    metadata(labels=None),
+    metadata(schema=[SimpleNamespace(name="c0",field_type="STRING")]),
+])
+def test_malformed_provider_metadata_fails_closed(bad):
+    with pytest.raises(ProviderError) as caught:
+        verify(client=Fake(table=bad))
+    assert caught.value.code==ErrorCode.SCHEMA_MISMATCH
 
 
 def test_receipt_cannot_substitute_for_actual_provider_read():
