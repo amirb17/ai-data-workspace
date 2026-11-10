@@ -4,7 +4,6 @@ The warehouse provider fixture uses a fake in-memory cloud. It creates real
 PostgreSQL publication and materialization evidence but NEVER runs analytical
 BigQuery queries or uses external cloud credentials.
 """
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -158,10 +157,12 @@ def test_precompiled_wrong_intent_does_not_authorize(genuinely_served_query):
 
 
 def test_positive_fixture_uses_fake_provider_only():
-    source=(ROOT/"tests/test_warehouse_sql_trusted_recompilation_414d4e.py"
-            ).read_text(encoding="utf-8")
-    assert "fact_provider_pg" in source
-    assert "materialize_current_publication" in source
-    assert "QueryEstimate" in source
-    assert "provider.execute(" not in source
-    assert "client.query(" not in source
+    test_source=(ROOT/"tests/test_warehouse_sql_trusted_recompilation_414d4e.py"
+                 ).read_text(encoding="utf-8")
+    production_source=(ROOT/"app/services/warehouse_sql_trusted_recompilation_service.py"
+                       ).read_text(encoding="utf-8")
+    assert "fact_provider_pg" in test_source
+    assert "materialize_current_publication" in test_source
+    assert "QueryEstimate" in test_source
+    assert "provider.execute(" not in production_source
+    assert "client.query(" not in production_source
