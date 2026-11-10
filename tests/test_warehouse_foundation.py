@@ -177,7 +177,10 @@ def test_no_cloud_import_execution_hooks_or_api_routes():
         assert not any(isinstance(n, ast.ImportFrom) and (n.module or '').startswith('app.warehouse')
                        for n in ast.walk(tree))
     from app.main import app
-    assert not any('warehouse' in path for path in app.openapi()['paths'])
+    assert '/workspaces/{workspace_id}/warehouse/catalog' in app.openapi()['paths']
+    # Warehouse mutation/execution remain backend-only.
+    assert not any('warehouse' in path and path != '/workspaces/{workspace_id}/warehouse/catalog'
+                   for path in app.openapi()['paths'])
 
 
 def test_model_names_versions_draft_mapping_and_atomic_approval(pg):
