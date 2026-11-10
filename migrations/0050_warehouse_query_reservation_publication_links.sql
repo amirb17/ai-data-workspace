@@ -85,7 +85,7 @@ END $$;
 -- Once an attempt is linked to a reservation, forbid adding extra pinned
 -- models: the pin set used to establish authorization must stay fixed.
 CREATE FUNCTION warehouse_query_linked_pin_insert_guard()
-RETURNS trigger LANGUAGE plpgsql AS $
+RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     PERFORM 1 FROM warehouse_query_attempt_registry
       WHERE attempt_id=NEW.attempt_id FOR UPDATE;
@@ -96,7 +96,7 @@ BEGIN
         RAISE EXCEPTION 'Linked publication pin set is immutable';
     END IF;
     RETURN NEW;
-END $;
+END $$;
 
 CREATE TRIGGER warehouse_query_linked_pin_insert_validate
 BEFORE INSERT ON warehouse_query_attempt_publication_pins
@@ -115,7 +115,7 @@ FOR EACH STATEMENT EXECUTE FUNCTION query_governance_no_truncate();
 -- a future atomic cleanup fence; this function DOES NOT authorize deletion.
 CREATE FUNCTION warehouse_query_publication_dependency_present(
     target_resource_id BIGINT, target_publication_id BIGINT
-) RETURNS BOOLEAN LANGUAGE sql VOLATILE AS $
+) RETURNS BOOLEAN LANGUAGE sql VOLATILE AS $$
     SELECT EXISTS (
         SELECT 1
         FROM warehouse_query_attempt_publication_pins p
