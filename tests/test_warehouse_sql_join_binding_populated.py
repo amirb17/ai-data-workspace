@@ -31,12 +31,46 @@ from app.warehouse.sql_scd2_draft_planner import Scd2SqlDraft
 def two_published_models(provider_pg):
     dim=provider_pg
     pg=dim.pg
+    # FACT and DIMENSION need distinct dataset state heads; an isolated state
+    # machine cannot publish onto the other model's existing dataset head.
+    with pg["connect"]() as conn:
+        fact_dataset=conn.execute(
+            """INSERT INTO datasets(dataset_name,workspace_id,owner)
+               VALUES ('FACT source',%s,%s) RETURNING dataset_id""",
+            (pg["workspace"],pg["owner"]["owner_key"]),
+        ).fetchone()[0]
+        source_version=conn.execute(
+            """INSERT INTO dataset_versions(dataset_id,version_number,schema_hash)
+               SELECT %s,version_number,schema_hash
+               FROM dataset_versions WHERE dataset_version_id=%s
+               RETURNING dataset_version_id""",
+            (fact_dataset,pg["source_version"]),
+        ).fetchone()[0]
+        conn.execute(
+            """INSERT INTO approved_rule_policies(dataset_version_id,rule_version,rules)
+               SELECT %s,rule_version,rules
+               FROM approved_rule_policies WHERE dataset_version_id=%s""",
+            (source_version,pg["source_version"]),
+        )
+        fact_policy=conn.execute(
+            """INSERT INTO dataset_load_policies(
+                   dataset_id,dataset_version_id,policy_version,load_strategy,
+                   business_keys,schema_columns,schema_hash,
+                   schema_evolution_policy,created_by)
+               SELECT %s,%s,policy_version,load_strategy,
+                      business_keys,schema_columns,schema_hash,
+                      schema_evolution_policy,created_by
+               FROM dataset_load_policies WHERE policy_id=%s
+               RETURNING policy_id""",
+            (fact_dataset,source_version,pg["policy"]),
+        ).fetchone()[0]
+    fact_pg=dict(pg,dataset=fact_dataset,source_version=source_version,policy=fact_policy)
     fact_cfg=fact(
         grain={"description":"One event line","identity_columns":["line"]},
         attributes=["id"],
         event_time={"column":"effective","interpretation":"UTC"},
     )
-    mid,vid,_,_=configured(pg,fact_cfg,"FACT for joined serving")
+    mid,vid,_,_=configured(fact_pg,fact_cfg,"FACT for joined serving")
     models.approve_version(pg["workspace"],mid,vid,pg["owner"])
     r=resources.register_resource(
         pg["workspace"],mid,vid,pg["owner"],
@@ -64,7 +98,7 @@ def two_published_models(provider_pg):
     provider=ProviderService(pg["workspace"],mid,vid,pg["owner"],
                              target_factory=dim.factory)
     f=SimpleNamespace(
-        pg=pg,model=mid,version=vid,resource=r["resource_id"],
+        pg=fact_pg,model=mid,version=vid,resource=r["resource_id"],
         mode="APPEND",store=IncrementalArtifacts(Objects()),
         frame=None,state=None,
         service=ReliabilityService(pg["workspace"],mid,vid,pg["owner"]),
