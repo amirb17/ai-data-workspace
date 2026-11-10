@@ -136,7 +136,16 @@ def test_review_required_is_not_reserved(governance_pg):
 
 def test_cross_workspace_dry_run_is_rejected_before_db(governance_pg):
     original=dry()
-    changed=replace(original,query=replace(original.query,workspace_id=8))
+    other_table=original.query.physical_tables[0].replace(
+        "dr_dev_w1.","dr_dev_w8.")
+    foreign_query=replace(
+        original.query,
+        workspace_id=8,
+        physical_tables=(other_table,),
+        sql=original.query.sql.replace(
+            original.query.physical_tables[0],other_table),
+    )
+    changed=replace(original,query=foreign_query)
     with pytest.raises(ValueError,match="workspace"):
         admit(governance_pg,run=changed)
 
