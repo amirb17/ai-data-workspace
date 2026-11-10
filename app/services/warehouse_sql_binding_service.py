@@ -35,13 +35,13 @@ def resolve_single_draft(
     expose it through an HTTP endpoint. Still not evidence of a live BigQuery
     table, and does not grant query permissions.
     """
-    require_enabled()
     if (type(workspace_id) is not int or workspace_id < 1
             or type(source_dataset_id) is not int or source_dataset_id < 1
             or type(source_state_id) is not int or source_state_id < 1):
         raise ValueError("Positive warehouse, source dataset and state IDs are required")
     if type(draft) is not WarehouseSqlDraft or draft.executable is not False:
         raise ValueError("A non-executable single-model SQL draft is required")
+    require_enabled()
 
     with repository_transaction() as conn:
         owned_workspace(conn, workspace_id, user)
