@@ -3,7 +3,6 @@
 Only isolated PostgreSQL metadata; no external cloud query, cleanup or
 execution permission is created by these tests.
 """
-from dataclasses import replace
 from pathlib import Path
 
 import psycopg
@@ -175,7 +174,7 @@ def test_dependency_view_is_non_authorizing_read_only():
     sql=(ROOT/"migrations/0050_warehouse_query_reservation_publication_links.sql").read_text(
         encoding="utf-8",
     )
-    assert "RETURNS BOOLEAN LANGUAGE sql STABLE" in sql
+    assert "RETURNS BOOLEAN LANGUAGE sql VOLATILE" in sql
     assert "r.status='EXECUTING'" in sql
     assert "r.status='ACTIVE'" in sql
     assert "FOR SHARE OF h" in sql
