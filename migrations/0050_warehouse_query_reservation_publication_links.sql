@@ -115,7 +115,7 @@ FOR EACH STATEMENT EXECUTE FUNCTION query_governance_no_truncate();
 -- a future atomic cleanup fence; this function DOES NOT authorize deletion.
 CREATE FUNCTION warehouse_query_publication_dependency_present(
     target_resource_id BIGINT, target_publication_id BIGINT
-) RETURNS BOOLEAN LANGUAGE sql STABLE AS $$
+) RETURNS BOOLEAN LANGUAGE sql VOLATILE AS $
     SELECT EXISTS (
         SELECT 1
         FROM warehouse_query_attempt_publication_pins p
