@@ -44,7 +44,7 @@ def resolve_single_draft(
         raise ValueError("A non-executable single-model SQL draft is required")
 
     with repository_transaction() as conn:
-        owned_workspace(conn, workspace_id)
+        owned_workspace(conn, workspace_id, user)
         model, version = owned_version(
             conn, workspace_id, draft.model_id, draft.model_version_id, user
         )
