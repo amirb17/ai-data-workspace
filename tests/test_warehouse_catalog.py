@@ -159,7 +159,13 @@ def test_disabled_feature_does_not_open_database(monkeypatch):
         service.snapshot(4, {"owner_key": "owner:4"})
 
 
-def test_api_route_is_read_only():
+def test_api_route_is_read_only(monkeypatch):
+    monkeypatch.setenv('APP_ENV', 'development')
+    monkeypatch.setenv('AUTH_MODE', 'session')
+    monkeypatch.setenv('AUTH_COOKIE_SECURE', 'false')
+    monkeypatch.setenv('AUTH_FRONTEND_URL', 'http://localhost:5173')
+    monkeypatch.setenv('AUTH_BACKEND_URL', 'http://localhost:8000')
+    monkeypatch.setenv('DATARISE_PUBLIC_LAUNCH_MODE', 'off')
     from app.main import app
     path = "/workspaces/{workspace_id}/warehouse/catalog"
     methods = app.openapi()["paths"][path]
