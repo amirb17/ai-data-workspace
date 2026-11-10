@@ -95,7 +95,12 @@ def verify_serving_table_metadata(
         )
         labels={"datarise":"warehouse","environment":"development",
                 "workspace":str(workspace_id),"model":str(model.model_id),
-                "generation":str(model.generation)}
+                "generation":str(model.generation),
+                # The provider writes the approved physical schema hash as
+                # a 63-character BigQuery label; it is NOT a serving-state hash.
+                "contract":model.schema_sha256[:63],
+                "publication":str(model.publication_id),
+                "revision":str(model.publication_revision)}
         if (getattr(found,"full_table_id",None) != expected_table.replace(".",":",1)
                 or getattr(found,"table_type",None) != "TABLE"
                 or getattr(found,"location",None) != location
