@@ -5,29 +5,32 @@ A positive publication/retention race suite is required in 414C2 before
 dispatch can be contemplated.
 """
 from pathlib import Path
-import ast
 
 import psycopg
 import pytest
 
 from app.services.warehouse_query_attempt_service import create_or_resume_warehouse_attempt
-from tests.test_query_governance_postgres import governance_pg
-from tests.test_warehouse_foundation import pg, draft
-from app.db import warehouse_repository
-from app.schemas.warehouse import ResourceRegistration
+from tests.test_warehouse_modeling import modeling_pg, configured
+from tests.test_warehouse_foundation import pg, resource
+from app.services import warehouse_model_service as models
 from tests.test_warehouse_sql_admission_postgres import service
 
 ROOT=Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture
-def pin_pg(governance_pg):
-    with governance_pg["connect"]() as conn:
-        conn.execute((ROOT/"migrations/0048_warehouse_query_attempt_registry.sql").read_text(
-            encoding="utf-8"))
-        conn.execute((ROOT/"migrations/0049_warehouse_query_attempt_publication_pins.sql").read_text(
-            encoding="utf-8"))
-    return governance_pg
+def pin_pg(modeling_pg):
+    # Reuse the real, approved FACT/DIMENSION modeling fixture instead of
+    # fabricating a resource that the database rightly refuses to register.
+    with modeling_pg["connect"]() as conn:
+        for name in (
+            "0031_warehouse_reliability.sql",
+            "0032_query_governance.sql",
+            "0048_warehouse_query_attempt_registry.sql",
+            "0049_warehouse_query_attempt_publication_pins.sql",
+        ):
+            conn.execute((ROOT/"migrations"/name).read_text(encoding="utf-8"))
+    return modeling_pg
 
 
 def test_pin_table_created_empty_and_does_not_admit_queries(pin_pg):
@@ -58,22 +61,11 @@ def test_unregistered_resource_is_rejected_without_persisting(pin_pg):
 
 
 def test_registered_resource_without_publication_head_fails_closed(pin_pg):
-    # This is a *database trigger* negative test, not an approval test.
-    # Insert a structurally valid synthetic REGISTERED resource directly in
-    # the disposable schema; production service approval remains mandatory.
-    mid,version=draft(pin_pg)
-    registration=ResourceRegistration(
-        environment="development",location="asia-south1",generation=1,
-        physical_reference=dict(
-            project="synthetic-project",dataset="synthetic_dataset",
-            table="synthetic_generation_1",
-        ),
-    )
-    with pin_pg["connect"]() as conn:
-        res=warehouse_repository.register_resource(
-            conn,pin_pg["workspace"],mid,version,
-            pin_pg["owner"]["user_id"],registration,
-        )
+    # Create a genuinely configured and approved model; use the ordinary
+    # registration service so all PostgreSQL approval guards stay enforced.
+    mid,version,_,_=configured(pin_pg)
+    models.approve_version(pin_pg["workspace"],mid,version,pin_pg["owner"])
+    res=resource(pin_pg,mid,version)
     attempt=create_or_resume_warehouse_attempt(
         governance=service(pin_pg),logical_intent_sha256="a"*64)
     with pytest.raises(psycopg.Error,match="Current warehouse publication head required"):
