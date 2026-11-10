@@ -22,7 +22,7 @@ BEGIN
         RAISE EXCEPTION 'Warehouse query reservation link is immutable';
     END IF;
     SELECT * INTO a FROM warehouse_query_attempt_registry
-        WHERE attempt_id=NEW.attempt_id FOR SHARE;
+        WHERE attempt_id=NEW.attempt_id FOR UPDATE;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Registered warehouse attempt required';
     END IF;
@@ -54,6 +54,16 @@ BEGIN
 
     -- A publication advancing before link registration invalidates this
     -- candidate. Lock heads for the duration of this transaction.
+    -- Lock first, THEN validate. Checking freshness before taking the
+    -- lock would leave a TOCTOU window while waiting for the writer.
+    PERFORM h.resource_id
+    FROM warehouse_publication_heads h
+    JOIN warehouse_query_attempt_publication_pins p
+      ON p.resource_id=h.resource_id
+    WHERE p.attempt_id=a.attempt_id
+    ORDER BY h.resource_id
+    FOR SHARE OF h;
+
     SELECT count(*) INTO valid_count
     FROM warehouse_query_attempt_publication_pins p
     JOIN warehouse_publication_heads h
@@ -69,18 +79,28 @@ BEGIN
         RAISE EXCEPTION 'Current publication pin set required';
     END IF;
 
-    -- Locks current head rows, so writer transactions cannot commit a head
-    -- change during link registration. No provider-side retention implied.
-    PERFORM h.resource_id
-    FROM warehouse_publication_heads h
-    JOIN warehouse_query_attempt_publication_pins p
-      ON p.resource_id=h.resource_id
-    WHERE p.attempt_id=a.attempt_id
-    ORDER BY h.resource_id
-    FOR SHARE OF h;
-
     RETURN NEW;
 END $$;
+
+-- Once an attempt is linked to a reservation, forbid adding extra pinned
+-- models: the pin set used to establish authorization must stay fixed.
+CREATE FUNCTION warehouse_query_linked_pin_insert_guard()
+RETURNS trigger LANGUAGE plpgsql AS $
+BEGIN
+    PERFORM 1 FROM warehouse_query_attempt_registry
+      WHERE attempt_id=NEW.attempt_id FOR UPDATE;
+    IF EXISTS (
+        SELECT 1 FROM warehouse_query_attempt_reservation_links
+        WHERE attempt_id=NEW.attempt_id
+    ) THEN
+        RAISE EXCEPTION 'Linked publication pin set is immutable';
+    END IF;
+    RETURN NEW;
+END $;
+
+CREATE TRIGGER warehouse_query_linked_pin_insert_validate
+BEFORE INSERT ON warehouse_query_attempt_publication_pins
+FOR EACH ROW EXECUTE FUNCTION warehouse_query_linked_pin_insert_guard();
 
 CREATE TRIGGER warehouse_query_attempt_reservation_link_validate
 BEFORE INSERT OR UPDATE OR DELETE
