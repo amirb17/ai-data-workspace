@@ -96,7 +96,17 @@ def test_public_launch_does_not_allow_warehouse_endpoints(client_context):
         route for route in http_routes(app.router.routes)
         if getattr(route, "path", "").endswith(("/warehouse/catalog", "/warehouse/relationships"))
     ]
-    assert len(endpoints) == 2
+    expected = {
+        ("GET", "/workspaces/{workspace_id}/warehouse/catalog"),
+        ("GET", "/workspaces/{workspace_id}/warehouse/relationships"),
+        ("POST", "/workspaces/{workspace_id}/warehouse/relationships"),
+    }
+    actual = {
+        (method, route.path)
+        for route in endpoints
+        for method in route.methods
+    }
+    assert actual == expected
     for route in endpoints:
-        for method in ("GET", "POST", "PATCH", "DELETE"):
+        for method in route.methods:
             assert not permitted(route, method)
