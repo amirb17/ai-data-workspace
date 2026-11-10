@@ -5,6 +5,8 @@ const ts=require('typescript')
 
 for (const relative of [
   'src/features/workspaces/model/WarehouseModelPage.tsx',
+  'src/features/workspaces/model/WarehouseGraph.tsx',
+  'src/features/workspaces/model/warehouseGraphView.ts',
   'src/features/workspaces/model/WorkspaceModelPage.tsx',
   'src/services/api/warehouseCatalog.ts',
 ]) {
@@ -31,9 +33,23 @@ assert.match(warehouse,/Serving not verified/)
 assert.match(warehouse,/selected\.columns\.map/)
 assert.match(warehouse,/selected\.sources\.map/)
 assert.match(warehouse,/getWarehouseRelationships/)
+assert.match(warehouse,/<WarehouseGraph/)
+assert.match(warehouse,/currentWarehouseRelationships/)
+assert.match(warehouse,/Selected warehouse relationship/)
 assert.match(warehouse,/fact\.model_version_id===relation\.fact_model_version_id/)
 assert.match(warehouse,/dimension\.model_version_id===relation\.dimension_model_version_id/)
 assert.match(api,/\/warehouse\/catalog/)
 assert.match(api,/result\.workspace_id !== workspaceId/)
 assert.match(api,/queryable: false/)
 console.log('Warehouse model switch, typed catalog, guarded statuses and dataset graph preservation checks passed')
+
+const graph=fs.readFileSync(path.join(__dirname,'../src/features/workspaces/model/WarehouseGraph.tsx'),'utf8')
+const view=fs.readFileSync(path.join(__dirname,'../src/features/workspaces/model/warehouseGraphView.ts'),'utf8')
+assert.match(graph,/onEdgeClick/)
+assert.match(graph,/onNodeClick/)
+assert.match(graph,/nodesConnectable={false}/)
+assert.match(graph,/onKeyDownCapture/)
+assert.match(view,/relation\.workspace_id===workspaceId/)
+assert.match(view,/fact\.model_version_id===relation\.fact_model_version_id/)
+assert.match(view,/dimension\.model_version_id===relation\.dimension_model_version_id/)
+assert.match(view,/relationships\.filter/)
