@@ -332,7 +332,8 @@ with patch('google.auth.default', side_effect=AssertionError('Unexpected ADC loo
         assert client.get('/health').status_code == 200
     paths = app.openapi()['paths']
     assert '/workspaces/{workspace_id}/warehouse/catalog' in paths
-    assert not any('warehouse' in path and path != '/workspaces/{workspace_id}/warehouse/catalog' for path in paths)
+    allowed = {'/workspaces/{workspace_id}/warehouse/catalog', '/workspaces/{workspace_id}/warehouse/relationships'}
+    assert not any('warehouse' in path and path not in allowed for path in paths)
 print('disabled startup passed without ADC or cloud requests')
 '''
     result = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, timeout=30)
