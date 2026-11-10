@@ -140,7 +140,7 @@ def test_configuration_contract_is_versioned_and_strict():
                              physical_reference=dict(project='synthetic-project', dataset='d', table='t', secret='no'))
 
 
-def test_no_cloud_import_execution_hooks_or_api_routes():
+def test_no_cloud_import_execution_hooks_or_api_routes(monkeypatch):
     import ast
     paths = [*ROOT.joinpath('app/warehouse').glob('*.py'), ROOT/'app/schemas/warehouse.py',
              ROOT/'app/db/warehouse_repository.py', *ROOT.joinpath('app/services').glob('warehouse_*_service.py')]
@@ -176,6 +176,12 @@ def test_no_cloud_import_execution_hooks_or_api_routes():
         tree = ast.parse((ROOT/'app/services'/filename).read_text(encoding='utf-8'))
         assert not any(isinstance(n, ast.ImportFrom) and (n.module or '').startswith('app.warehouse')
                        for n in ast.walk(tree))
+    monkeypatch.setenv('APP_ENV', 'development')
+    monkeypatch.setenv('AUTH_MODE', 'session')
+    monkeypatch.setenv('AUTH_COOKIE_SECURE', 'false')
+    monkeypatch.setenv('AUTH_FRONTEND_URL', 'http://localhost:5173')
+    monkeypatch.setenv('AUTH_BACKEND_URL', 'http://localhost:8000')
+    monkeypatch.setenv('DATARISE_PUBLIC_LAUNCH_MODE', 'off')
     from app.main import app
     assert '/workspaces/{workspace_id}/warehouse/catalog' in app.openapi()['paths']
     # Warehouse mutation/execution remain backend-only.
