@@ -72,6 +72,25 @@ def test_publication_changes_before_claim_no_state_transition(governance_pg):
     assert service(governance_pg).reservation(booking.reservation_id)["status"]=="ACTIVE"
 
 
+@pytest.mark.parametrize(("pin","changed_value"),[
+    ("model_id",99),
+    ("model_version_id",99),
+    ("generation",99),
+    ("publication_id",99),
+    ("publication_revision",99),
+])
+def test_physical_publication_pin_mismatch_fails_before_claim(
+    governance_pg,pin,changed_value,
+):
+    booking,preclaim,bound,template,evidence=context(governance_pg)
+    altered=replace(bound,models=(
+        replace(bound.models[0],**{pin:changed_value}),))
+    with pytest.raises(ValueError,match="publication"):
+        rehearse(governance_pg,booking,preclaim,altered,template,evidence)
+    assert service(governance_pg).reservation(
+        booking.reservation_id)["status"]=="ACTIVE"
+
+
 def test_change_after_claim_requires_recovery_and_keeps_budget(governance_pg):
     booking,preclaim,bound,template,evidence=context(governance_pg)
     calls=[]
