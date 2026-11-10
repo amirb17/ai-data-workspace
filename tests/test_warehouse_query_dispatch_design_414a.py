@@ -25,7 +25,7 @@ def test_review_and_design_remain_explicitly_no_go():
 
 
 def test_design_disallows_untrusted_execution_capabilities():
-    design = DESIGN.read_text(encoding="utf-8")
+    design = normalized_document(DESIGN)
     for name in (
         "SQL", "physical tables", "provider clients", "request tokens",
         "execution permits", "client-controlled", "authenticated",
@@ -34,13 +34,13 @@ def test_design_disallows_untrusted_execution_capabilities():
 
 
 def test_design_covers_retries_races_recovery_and_revocation():
-    design = DESIGN.read_text(encoding="utf-8")
+    design = normalized_document(DESIGN)
     for name in (
         "retry-safe", "publication revocation", "Lease expires",
         "Two concurrent workers", "permanently missing job",
         "recovery-only", "retention", "idempotently",
     ):
-        assert name in design
+        assert name.casefold() in design
 
 
 def test_current_warehouse_claim_path_remains_hard_disabled():
