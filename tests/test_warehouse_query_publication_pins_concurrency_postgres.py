@@ -9,6 +9,9 @@ import psycopg
 import pytest
 
 from app.services.warehouse_query_attempt_service import create_or_resume_warehouse_attempt
+# Imported fixture dependencies must be discoverable in this test module.
+from tests.test_warehouse_foundation import pg
+from tests.test_warehouse_modeling import modeling_pg
 from tests.test_warehouse_reliability import (
     reliability_pg, registered, intent, execute, publish_source,
 )
