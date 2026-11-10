@@ -12,7 +12,9 @@ import pytest
 
 from app.services.warehouse_query_attempt_service import create_or_resume_warehouse_attempt
 from tests.test_query_governance_postgres import governance_pg
-from tests.test_warehouse_foundation import pg, approved, resource
+from tests.test_warehouse_foundation import pg, draft
+from app.db import warehouse_repository
+from app.schemas.warehouse import ResourceRegistration
 from tests.test_warehouse_sql_admission_postgres import service
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -56,8 +58,22 @@ def test_unregistered_resource_is_rejected_without_persisting(pin_pg):
 
 
 def test_registered_resource_without_publication_head_fails_closed(pin_pg):
-    mid,version=approved(pin_pg)
-    res=resource(pin_pg,mid,version)
+    # This is a *database trigger* negative test, not an approval test.
+    # Insert a structurally valid synthetic REGISTERED resource directly in
+    # the disposable schema; production service approval remains mandatory.
+    mid,version=draft(pin_pg)
+    registration=ResourceRegistration(
+        environment="development",location="asia-south1",generation=1,
+        physical_reference=dict(
+            project="synthetic-project",dataset="synthetic_dataset",
+            table="synthetic_generation_1",
+        ),
+    )
+    with pin_pg["connect"]() as conn:
+        res=warehouse_repository.register_resource(
+            conn,pin_pg["workspace"],mid,version,
+            pin_pg["owner"]["user_id"],registration,
+        )
     attempt=create_or_resume_warehouse_attempt(
         governance=service(pin_pg),logical_intent_sha256="a"*64)
     with pytest.raises(psycopg.Error,match="Current warehouse publication head required"):
