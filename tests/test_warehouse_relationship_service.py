@@ -83,11 +83,7 @@ def test_outdated_version_relationship_is_hidden(modeling_pg):
     assert len(service.list_current(pg["workspace"], pg["owner"])) == 1
     # Existing approved version stays current until a new version is approved.
     # Deactivation of old joins is tested after the new version can be configured.
-    with pg["connect"]() as conn:
-        conn.execute(
-            "UPDATE warehouse_models SET status='ARCHIVED', archived_at=NOW() WHERE warehouse_model_id=%s",
-            (relation.fact_model_id,),
-        )
+    models.archive_model(pg["workspace"], relation.fact_model_id, pg["owner"])
     assert service.list_current(pg["workspace"], pg["owner"]) == []
 
 
