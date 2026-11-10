@@ -82,6 +82,10 @@ def bind_draft(
     """
     if not isinstance(draft,(WarehouseSqlDraft,WarehouseJoinDraft,Scd2SqlDraft)) or draft.executable is not False:
         raise ValueError("A non-executable reviewed SQL draft is required")
+    if type(fact) is not MetricWarehouseSource:
+        raise ValueError("A typed, independently resolved warehouse source is required")
+    if dimension is not None and type(dimension) is not MetricWarehouseSource:
+        raise ValueError("A typed dimension publication binding is required")
     if isinstance(draft,WarehouseSqlDraft):
         if dimension is not None:
             raise ValueError("Single-table draft cannot bind a dimension")
