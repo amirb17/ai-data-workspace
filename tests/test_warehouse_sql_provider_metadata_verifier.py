@@ -34,7 +34,8 @@ def metadata(**changes):
         time_partitioning=None,range_partitioning=None,clustering_fields=None,
         require_partition_filter=False,expires=None,
         labels={"datarise":"warehouse","environment":"development",
-                "workspace":"7","model":"12","generation":"1"},
+                "workspace":"7","model":"12","generation":"1",
+                "contract":"a"*63,"publication":"77","revision":"2"},
     )
     values.update(changes)
     return SimpleNamespace(**values)
@@ -88,6 +89,15 @@ def test_live_metadata_required_and_no_query_is_executed():
     {"expires":"tomorrow"},
     {"labels":{"datarise":"warehouse","environment":"development",
                "workspace":"8","model":"12","generation":"1"}},
+    {"labels":{"datarise":"warehouse","environment":"development",
+               "workspace":"7","model":"12","generation":"1",
+               "contract":"b"*63,"publication":"77","revision":"2"}},
+    {"labels":{"datarise":"warehouse","environment":"development",
+               "workspace":"7","model":"12","generation":"1",
+               "contract":"a"*63,"publication":"78","revision":"2"}},
+    {"labels":{"datarise":"warehouse","environment":"development",
+               "workspace":"7","model":"12","generation":"1",
+               "contract":"a"*63,"publication":"77","revision":"3"}},
 ])
 def test_physical_provider_metadata_drift_is_rejected(changed):
     with pytest.raises(ProviderError) as caught:
