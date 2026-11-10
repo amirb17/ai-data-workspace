@@ -160,4 +160,4 @@ def test_claimed_unknown_provider_outcome_keeps_reservation_and_budget(governanc
     assert state["status"]=="EXECUTING"
     assert usage.reserved_bytes_today==4096
     assert usage.workspace_active_queries==1
-    assert guarded(governance_pg,state).query_execution_authorized is False
+    assert guarded(governance_pg,state).execution_authorized is False
