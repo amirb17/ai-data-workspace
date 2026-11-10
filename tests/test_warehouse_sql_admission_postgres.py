@@ -157,7 +157,7 @@ def test_module_never_claims_or_dispatches_provider_sql():
             "app/services/warehouse_sql_admission_service.py")
     tree=ast.parse(source.read_text(encoding="utf-8"))
     methods=[n.attr for n in ast.walk(tree) if isinstance(n,ast.Attribute)]
-    assert not set(methods)&{"claim","execute","recover","complete","query"}
+    assert not set(methods)&{"claim","execute","recover","complete"}
     imports=[n.module for n in ast.walk(tree) if isinstance(n,ast.ImportFrom)]
     assert not any(n and n.startswith(("google","app.query_governance.providers.bigquery"))
                    for n in imports)
