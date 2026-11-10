@@ -3,6 +3,7 @@ from dataclasses import replace
 from datetime import timedelta
 
 import pytest
+from fastapi import HTTPException
 
 from app.services.warehouse_sql_fresh_metadata_service import (
     verify_current_publication_metadata,
@@ -102,9 +103,10 @@ def test_actual_post_read_publication_head_change_is_rejected(two_published_mode
                 publication(f,[row("B",value=2,at=later)],
                             key="second",at=later)
             return found
-    with pytest.raises(ValueError):
+    with pytest.raises(HTTPException) as caught:
         verify_current_publication_metadata(
             resolve_current=lambda:bind(f,dim,rid,fs,ds),
             workspace_id=f.pg["workspace"],expected_schemas=schemas,
             client=AdvancingClient(),project="synthetic-project",
         )
+    assert caught.value.status_code == 409
