@@ -69,7 +69,7 @@ class Cursor:
             assert "m.status = 'APPROVED'" in sql
             return [row(1, FACT), row(2, DIMENSION)]
         if "FROM warehouse_model_sources s" in sql:
-            assert self.args == ("owner:4", 4)
+            assert self.args == (4,)
             return self.datasets
         if "FROM warehouse_resources" in sql:
             assert self.args == (4,)
@@ -90,8 +90,8 @@ def setup(monkeypatch, datasets=None):
     calls = []
     if datasets is None:
         datasets = [
-            {"warehouse_model_version_id": 10, "source_dataset_id": 91, "dataset_name": "Orders", "purpose": "PRIMARY"},
-            {"warehouse_model_version_id": 20, "source_dataset_id": 92, "dataset_name": "Products", "purpose": "PRIMARY"},
+            {"warehouse_model_version_id": 10, "source_dataset_id": 91, "dataset_name": "Orders", "purpose": "PRIMARY", "dataset_workspace_id": 4, "dataset_owner": "owner:4", "dataset_status": "ACTIVE"},
+            {"warehouse_model_version_id": 20, "source_dataset_id": 92, "dataset_name": "Products", "purpose": "PRIMARY", "dataset_workspace_id": 4, "dataset_owner": "owner:4", "dataset_status": "ACTIVE"},
         ]
 
     @contextmanager
@@ -131,9 +131,36 @@ def test_catalog_projects_approved_fact_and_scd2_metadata(monkeypatch):
 
 def test_catalog_does_not_display_unowned_or_missing_primary_source(monkeypatch):
     setup(monkeypatch, datasets=[
-        {"warehouse_model_version_id": 20, "source_dataset_id": 92, "dataset_name": "Products", "purpose": "DEPENDENCY"}
+        {"warehouse_model_version_id": 20, "source_dataset_id": 92, "dataset_name": "Products", "purpose": "DEPENDENCY", "dataset_workspace_id": 4, "dataset_owner": "owner:4", "dataset_status": "ACTIVE"}
     ])
     assert service.snapshot(4, {"owner_key": "owner:4"})["models"] == []
+
+
+@pytest.mark.parametrize("bad_field,bad_value", [
+    ("dataset_status", "ARCHIVED"),
+    ("dataset_owner", "owner:other"),
+    ("dataset_workspace_id", 99),
+])
+def test_catalog_rejects_model_with_invalid_dependency(monkeypatch, bad_field, bad_value):
+    primary = {
+        "warehouse_model_version_id": 10,
+        "source_dataset_id": 91,
+        "dataset_name": "Orders",
+        "purpose": "PRIMARY",
+        "dataset_workspace_id": 4,
+        "dataset_owner": "owner:4",
+        "dataset_status": "ACTIVE",
+    }
+    dependency = {
+        **primary,
+        "source_dataset_id": 93,
+        "dataset_name": "Dependent dataset",
+        "purpose": "DEPENDENCY",
+        bad_field: bad_value,
+    }
+    setup(monkeypatch, datasets=[primary, dependency])
+    result = service.snapshot(4, {"owner_key": "owner:4"})
+    assert all(model["model_id"] != 1 for model in result["models"])
 
 
 def test_denied_scope_prevents_any_metadata_queries(monkeypatch):
