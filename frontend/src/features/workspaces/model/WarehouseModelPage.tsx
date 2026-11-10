@@ -3,6 +3,8 @@ import {Database, GitBranch, RefreshCw} from 'lucide-react'
 import {ApiFeedback} from '../../../components/ui/ApiFeedback'
 import {getWarehouseCatalog, getWarehouseRelationships, type WarehouseCatalog, type WarehouseModel, type WarehouseRelationship} from '../../../services/api/warehouseCatalog'
 import {useApiResource} from '../../../services/api/useApiResource'
+import {WarehouseGraph} from './WarehouseGraph'
+import {currentWarehouseRelationships} from './warehouseGraphView'
 
 export function WarehouseModelPage({workspace}:{workspace:string}) {
   const load=useCallback(async(signal:AbortSignal)=>{
@@ -30,17 +32,15 @@ function ModelCard({model,selected,onSelect}:{model:WarehouseModel;selected:bool
 
 export function WarehouseModelContent({catalog,relationships=[],reload}:{catalog:WarehouseCatalog;relationships?:WarehouseRelationship[];reload:()=>void}) {
   const [selectedId,setSelectedId]=useState<number|null>(null)
+  const [selectedRelationId,setSelectedRelationId]=useState<number|null>(null)
   const [search,setSearch]=useState('')
   const models=catalog.models.filter(model=>model.name.toLowerCase().includes(search.trim().toLowerCase()))
   const facts=models.filter(model=>model.model_type==='FACT')
   const dimensions=models.filter(model=>model.model_type==='DIMENSION')
   const selected=catalog.models.find(model=>model.model_id===selectedId)
   const current=new Map(catalog.models.map(model=>[model.model_id,model]))
-  const verified=relationships.filter(relation=>{
-    const fact=current.get(relation.fact_model_id),dimension=current.get(relation.dimension_model_id)
-    return relation.workspace_id===catalog.workspace_id && fact?.model_type==='FACT' && dimension?.model_type==='DIMENSION'
-      && fact.model_version_id===relation.fact_model_version_id && dimension.model_version_id===relation.dimension_model_version_id
-  }).filter(relation=>models.some(model=>model.model_id===relation.fact_model_id) && models.some(model=>model.model_id===relation.dimension_model_id))
+  const verified=currentWarehouseRelationships(catalog.workspace_id,models,relationships)
+  const selectedRelation=verified.find(relation=>relation.relationship_id===selectedRelationId)
   return <section className="min-w-0 space-y-5">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div>
@@ -71,6 +71,17 @@ export function WarehouseModelContent({catalog,relationships=[],reload}:{catalog
         {!dimensions.length&&<p className="text-sm text-slate-500">No approved dimensions</p>}
       </section>
     </div>}
+    {!!models.length&&<WarehouseGraph models={models} relationships={verified} selected={selectedId}
+      onSelect={id=>{setSelectedId(id);setSelectedRelationId(null)}}
+      onInspectRelationship={id=>{setSelectedRelationId(id);setSelectedId(null)}}/>}
+    {selectedRelation&&<section aria-label="Selected warehouse relationship" className="rounded-xl border border-indigo-300 bg-white p-4 text-sm">
+      <div className="flex justify-between gap-2"><strong>{selectedRelation.name}</strong>
+        <button type="button" className="min-h-11 rounded-lg border px-3" onClick={()=>setSelectedRelationId(null)}>Close relationship</button>
+      </div>
+      <p className="mt-2">FACT {current.get(selectedRelation.fact_model_id)?.name} → DIMENSION {current.get(selectedRelation.dimension_model_id)?.name}</p>
+      <p className="mt-1 text-slate-600">{selectedRelation.key_pairs.map(pair=>pair.fact_column+' = '+pair.dimension_column).join(', ')}</p>
+      <p className="mt-1 text-slate-600">{selectedRelation.temporal_policy==='EVENT_TIME_AS_OF'?'SCD2 historical as-of join':'Current-member join'} · Approved versions only</p>
+    </section>}
     {!!verified.length&&<section className="rounded-xl border border-slate-200 bg-white p-4" aria-label="Reviewed warehouse relationships">
       <h2 className="text-base font-semibold text-slate-900">Reviewed FACT-to-DIMENSION relationships ({verified.length})</h2>
       <ul className="mt-3 space-y-3">{verified.map(relation=><li key={relation.relationship_id} className="rounded-lg border border-slate-200 p-3 text-sm">
