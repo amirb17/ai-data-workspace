@@ -101,6 +101,19 @@ def test_wrong_publication_labels_fail_closed(two_published_models):
     assert error.value.code==ErrorCode.SCHEMA_MISMATCH
 
 
+@pytest.mark.parametrize("label",["publication","revision","contract"])
+@pytest.mark.parametrize("side",["fact","dimension"])
+def test_stateful_provider_rejects_publication_contract_label_drift(two_published_models,side,label):
+    f,dim,rid=two_published_models
+    bound,schemas=verified_inputs(f,dim,rid)
+    selected=bound.models[0 if side=="fact" else 1]
+    table=f.cloud.tables[selected.physical_table]
+    table.labels={**table.labels,label:"invalid"}
+    with pytest.raises(ProviderError) as error:
+        inspect(f,bound,schemas)
+    assert error.value.code==ErrorCode.SCHEMA_MISMATCH
+
+
 def test_get_table_only_no_query_execution(two_published_models,monkeypatch):
     f,dim,rid=two_published_models
     bound,schemas=verified_inputs(f,dim,rid)
