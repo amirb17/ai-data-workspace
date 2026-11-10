@@ -103,9 +103,10 @@ def materialize(f,records=None,*,key="first",at=NOW):
 def test_two_independent_current_receipts_bind_as_one_nonexecutable_join(two_published_models):
     f,dim,rid=two_published_models
     p1,receipt1,fs=materialize(f,[row("A")])
-    # Publishing this separate DIMENSION model changes the dataset's source
-    # state but does not change the FACT's immutable publication head.
-    p2,receipt2,ds=materialize(dim,[row("A")])
+    # The same join business key uses a distinct record payload to avoid
+    # the fixture's globally unique physical-file checksum collision.
+    # This new source state does not advance the FACT publication head.
+    p2,receipt2,ds=materialize(dim,[row("A",value=2)])
     result=bind(f,dim,rid,fs,ds)
     assert result.executable is False
     assert len(result.models)==2
@@ -123,7 +124,7 @@ def test_two_independent_current_receipts_bind_as_one_nonexecutable_join(two_pub
 def test_advancing_either_head_invalidates_old_source_pin(two_published_models,advance_side):
     f,dim,rid=two_published_models
     _,_,fact_state=materialize(f,[row("A")])
-    _,_,dimension_state=materialize(dim,[row("A")])
+    _,_,dimension_state=materialize(dim,[row("A",value=2)])
     assert bind(f,dim,rid,fact_state,dimension_state).executable is False
 
     side=f if advance_side=="fact" else dim
@@ -151,7 +152,7 @@ def test_no_second_publication_may_be_silently_inferred(two_published_models):
 def test_workspace_owner_is_checked_before_join_publication_resolution(two_published_models):
     f,dim,rid=two_published_models
     _,_,fact_state=materialize(f,[row("A")])
-    _,_,dimension_state=materialize(dim,[row("A")])
+    _,_,dimension_state=materialize(dim,[row("A",value=2)])
     with pytest.raises(HTTPException) as exc:
         resolve_join_draft(
             f.pg["workspace"],f.pg["other"],draft(f,dim),
