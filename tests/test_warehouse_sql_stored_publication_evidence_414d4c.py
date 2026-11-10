@@ -27,11 +27,17 @@ ROOT=Path(__file__).resolve().parents[1]
 @pytest.fixture
 def evidence_pg(linked_pg):
     f,publication=linked_pg
+    # linked_pg installs 0048-0050. The shared publication inspector
+    # requires the retirement-fence relation introduced in 0051.
+    # reliability_pg already installs 0034's serving-receipt table.
     with f.pg["connect"]() as conn:
-        conn.execute(
-            (ROOT/"migrations/0052_warehouse_query_attempt_logical_drafts.sql")
-            .read_text(encoding="utf-8")
-        )
+        for name in (
+            "0051_warehouse_query_publication_retirement_fences.sql",
+            "0052_warehouse_query_attempt_logical_drafts.sql",
+        ):
+            conn.execute(
+                (ROOT/"migrations"/name).read_text(encoding="utf-8")
+            )
     sql=f"SELECT id FROM model_{f.model} LIMIT 5"
     reviewed=plan_draft(
         sql,workspace_id=f.pg["workspace"],
