@@ -172,6 +172,64 @@ def test_foreign_owner_cannot_settle(governance_pg):
     assert provider.calls==[]
 
 
+@pytest.mark.parametrize("state",[
+    RecoveryState.SUCCEEDED,
+    RecoveryState.FAILED,
+    RecoveryState.NOT_FOUND,
+])
+def test_unrelated_provider_job_identity_never_settles_or_releases(
+    governance_pg,state,
+):
+    booking,svc=claimed(governance_pg)
+
+    class WrongJobProvider(RecoveryProvider):
+        def recover(self,query,permit):
+            observed=super().recover(query,permit)
+            other_job=f"dr_query_w{query.workspace_id}_r999_{query.request_token[:32]}"
+            if observed.state==RecoveryState.SUCCEEDED:
+                return replace(observed,provider_job_id=other_job,
+                               result=replace(observed.result,provider_job_id=other_job))
+            return replace(observed,provider_job_id=other_job)
+
+    provider=WrongJobProvider(state)
+    with pytest.raises(QueryRecoveryRequired):
+        settle(booking,svc,provider)
+    assert len(provider.calls)==1
+    assert svc.reservation(booking.reservation_id)["status"]=="EXECUTING"
+    assert svc.usage().reserved_bytes_today==10*MIB
+    assert svc.usage().committed_bytes_today==0
+    with governance_pg["connect"]() as conn:
+        count=conn.execute(
+            "SELECT count(*) FROM query_governance_usage WHERE reservation_id=%s",
+            (booking.reservation_id,),
+        ).fetchone()[0]
+    assert count==0
+
+
+@pytest.mark.parametrize("state",[
+    RecoveryState.SUCCEEDED,
+    RecoveryState.FAILED,
+])
+def test_foreign_attempt_token_in_recovered_job_never_settles(
+    governance_pg,state,
+):
+    booking,svc=claimed(governance_pg)
+
+    class WrongTokenProvider(RecoveryProvider):
+        def recover(self,query,permit):
+            observed=super().recover(query,permit)
+            wrong=f"dr_query_w{query.workspace_id}_r{permit.reservation_id}_{'f'*32}"
+            if observed.state==RecoveryState.SUCCEEDED:
+                return replace(observed,provider_job_id=wrong,
+                               result=replace(observed.result,provider_job_id=wrong))
+            return replace(observed,provider_job_id=wrong)
+
+    with pytest.raises(QueryRecoveryRequired):
+        settle(booking,svc,WrongTokenProvider(state))
+    assert svc.reservation(booking.reservation_id)["status"]=="EXECUTING"
+    assert svc.usage().committed_bytes_today==0
+
+
 def test_settlement_service_never_calls_dispatch_or_reservation_release():
     path=(Path(__file__).parents[1]/
           "app/services/warehouse_sql_recovery_settlement_service.py")
