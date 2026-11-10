@@ -319,6 +319,12 @@ import os
 from unittest.mock import patch
 os.environ['WAREHOUSE_ENABLED']='false'
 os.environ['BIGQUERY_ENABLED']='false'
+os.environ['APP_ENV']='development'
+os.environ['AUTH_MODE']='session'
+os.environ['AUTH_COOKIE_SECURE']='false'
+os.environ['AUTH_FRONTEND_URL']='http://localhost:5173'
+os.environ['AUTH_BACKEND_URL']='http://localhost:8000'
+os.environ['DATARISE_PUBLIC_LAUNCH_MODE']='off'
 with patch('google.auth.default', side_effect=AssertionError('Unexpected ADC lookup')), patch('botocore.client.BaseClient._make_api_call', side_effect=AssertionError('Unexpected cloud API')):
     from app.main import app
     from fastapi.testclient import TestClient
