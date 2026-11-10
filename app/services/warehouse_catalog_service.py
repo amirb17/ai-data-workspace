@@ -117,17 +117,16 @@ def snapshot(workspace_id: int, user: dict) -> dict:
         sources = cursor.execute(
             """
             SELECT s.warehouse_model_version_id,
-                   s.source_dataset_id, s.purpose, d.dataset_name
+                   s.source_dataset_id, s.purpose, d.dataset_name,
+                   d.workspace_id AS dataset_workspace_id,
+                   d.owner AS dataset_owner, d.status AS dataset_status
             FROM warehouse_model_sources s
-            JOIN datasets d
+            LEFT JOIN datasets d
               ON d.dataset_id = s.source_dataset_id
-             AND d.workspace_id = s.workspace_id
-             AND d.owner = %s
-             AND d.status = 'ACTIVE'
             WHERE s.workspace_id = %s
             ORDER BY s.warehouse_model_version_id, s.source_mapping_id
             """,
-            (user["owner_key"], workspace_id),
+            (workspace_id,),
         ).fetchall()
 
         resource_rows = cursor.execute(
@@ -149,7 +148,15 @@ def snapshot(workspace_id: int, user: dict) -> dict:
         version_id = row["warehouse_model_version_id"]
         mappings = by_version[version_id]
         # Source membership must remain current; never show a partial contract.
-        if not any(m["purpose"] == "PRIMARY" for m in mappings):
+        if (
+            not any(m["purpose"] == "PRIMARY" for m in mappings)
+            or any(
+                m["dataset_workspace_id"] != workspace_id
+                or m["dataset_owner"] != user["owner_key"]
+                or m["dataset_status"] != "ACTIVE"
+                for m in mappings
+            )
+        ):
             continue
         models.append(_project(row, mappings, counts.get(version_id, 0)))
 
