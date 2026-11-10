@@ -10,11 +10,51 @@ This is an internal recovery-only entry point, not a dispatch authorization.
 from dataclasses import dataclass
 from enum import StrEnum
 
-from app.query_governance.providers.base import CompiledQuery
+from app.query_governance.providers.base import (
+    CompiledQuery, ExecutionPermit, QueryRecovery, RecoveryState,
+)
 from app.services.governed_query_service import (
     QueryRecoveryRequired, RecoveredQueryFailed, recover_governed_query,
 )
 from app.services.query_governance_service import QueryGovernanceService
+
+
+def _expected_job_id(query: CompiledQuery, reservation_id: int) -> str:
+    # Mirrors the stable job naming contract of BigQueryReadProvider._job_id.
+    # The reservation ID plus server-issued request token identify one job.
+    return (
+        f"dr_query_w{query.workspace_id}_r{reservation_id}_"
+        f"{query.request_token[:32]}"
+    )
+
+
+class _VerifiedRecoveryProvider:
+    """Only expose recover(), validating job identity before any settlement."""
+
+    identity = "BIGQUERY"
+
+    def __init__(self, provider):
+        self._provider = provider
+
+    def recover(self, query: CompiledQuery, permit: ExecutionPermit) -> QueryRecovery:
+        # Fail before provider IO if the claimed permit differs.
+        permit.authorize(query, provider=self.identity)
+        observed = self._provider.recover(query, permit)
+        expected_id = _expected_job_id(query, permit.reservation_id)
+        if (
+            type(observed) is not QueryRecovery
+            or observed.provider_job_id != expected_id
+            or type(observed.state) is not RecoveryState
+            or (
+                observed.state == RecoveryState.SUCCEEDED
+                and (
+                    observed.result is None
+                    or observed.result.provider_job_id != expected_id
+                )
+            )
+        ):
+            raise ValueError("WAREHOUSE_RECOVERY_JOB_IDENTITY_MISMATCH")
+        return observed
 
 
 class WarehouseSettlementState(StrEnum):
@@ -60,7 +100,7 @@ def settle_claimed_warehouse_query(
     # and atomically finalizes through QueryGovernanceService.complete/fail.
     try:
         result = recover_governed_query(
-            governance=governance,provider=provider,query=query,
+            governance=governance,provider=_VerifiedRecoveryProvider(provider),query=query,
             consumer="SQL",reservation_id=reservation_id,
         )
     except RecoveredQueryFailed:
