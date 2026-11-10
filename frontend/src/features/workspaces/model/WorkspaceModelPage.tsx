@@ -6,10 +6,24 @@ import { getRelationships } from '../../../services/api/relationships'
 import { useApiResource } from '../../../services/api/useApiResource'
 import { ModelGraph } from './ModelGraph'
 import { ModelDetails } from './ModelDetails'
+import { WarehouseModelPage } from './WarehouseModelPage'
 import { currentMeaning, currentProfile, description, modelRelationships, relationshipsNeedRefresh, relationshipText, type ModelDataset, type ModelRelationship } from './modelView'
 
 export function WorkspaceModelPage() {
   const {workspaceId=''}=useParams()
+  const [surface,setSurface]=useState<'dataset'|'warehouse'>('dataset')
+  return <div className="space-y-5">
+    <nav aria-label="Model type" className="inline-flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1">
+      <button type="button" aria-pressed={surface==='dataset'} onClick={()=>setSurface('dataset')} className={`min-h-11 rounded-md px-4 text-sm font-medium ${surface==='dataset'?'bg-white text-indigo-700 shadow':'text-slate-600'}`}>Dataset relationships</button>
+      <button type="button" aria-pressed={surface==='warehouse'} onClick={()=>setSurface('warehouse')} className={`min-h-11 rounded-md px-4 text-sm font-medium ${surface==='warehouse'?'bg-white text-indigo-700 shadow':'text-slate-600'}`}>Data warehouse</button>
+    </nav>
+    {surface==='dataset'
+      ? <DatasetModelPage key={workspaceId} workspaceId={workspaceId}/>
+      : <WarehouseModelPage key={workspaceId} workspace={workspaceId}/>}
+  </div>
+}
+
+function DatasetModelPage({workspaceId}:{workspaceId:string}) {
   const load=useCallback(async(signal:AbortSignal)=>{
     const [values,relationships]=await Promise.all([getWorkspaceModel(workspaceId,signal),getRelationships(workspaceId,signal)])
     return {values,relationships}
