@@ -15,6 +15,10 @@ from app.services.metric_warehouse_binding_service import _context
 from app.warehouse.providers import model_adapter
 from app.warehouse.providers.base import ProviderError, ErrorCode
 from app.warehouse.sql_provider_metadata_verifier import verify_serving_table_metadata
+# Imported pytest fixtures must be registered in this test module as well.
+from tests.test_warehouse_foundation import pg
+from tests.test_warehouse_modeling import modeling_pg
+from tests.test_warehouse_provider_postgres import provider_pg
 from tests.test_warehouse_sql_join_binding_populated import (
     two_published_models, materialize, bind, row,
 )
