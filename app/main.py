@@ -18,6 +18,7 @@ from app.api.dataset_understanding import router as dataset_understanding_router
 from app.api.workspace_understanding import router as workspace_understanding_router
 from app.api.relationships import router as relationships_router
 from app.api.workspace_model import router as workspace_model_router
+from app.api.warehouse_catalog import router as warehouse_catalog_router
 from app.api.metrics import router as metrics_router
 from app.api.workspace_analytics import router as workspace_analytics_router
 from app.api.workspace_questions import router as workspace_questions_router
@@ -77,6 +78,7 @@ app.include_router(product_preview_router)
 app.include_router(processing_jobs_router)
 app.include_router(workspaces_router)
 app.include_router(workspace_model_router)
+app.include_router(warehouse_catalog_router)
 app.include_router(incremental_router)
 app.include_router(analytics_router)
 app.include_router(dataset_analytics_router)
