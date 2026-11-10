@@ -87,3 +87,16 @@ def test_disabled_feature_fails_closed_over_http(client_context, monkeypatch):
     assert client.get(f"{base}/catalog").status_code == 409
     assert client.get(f"{base}/relationships").status_code == 409
     assert client.post(f"{base}/relationships", json=relation.model_dump(mode="json")).status_code == 409
+
+
+def test_public_launch_does_not_allow_warehouse_endpoints(client_context):
+    from app.main import app
+    from app.security.public_launch import permitted, http_routes
+    endpoints = [
+        route for route in http_routes(app.router.routes)
+        if getattr(route, "path", "").endswith(("/warehouse/catalog", "/warehouse/relationships"))
+    ]
+    assert len(endpoints) == 2
+    for route in endpoints:
+        for method in ("GET", "POST", "PATCH", "DELETE"):
+            assert not permitted(route, method)
