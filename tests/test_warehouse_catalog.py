@@ -197,3 +197,4 @@ def test_api_route_is_read_only(monkeypatch):
     path = "/workspaces/{workspace_id}/warehouse/catalog"
     methods = app.openapi()["paths"][path]
     assert set(methods) == {"get"}
+    assert set(app.openapi()["paths"]["/workspaces/{workspace_id}/warehouse/relationships"]) == {"get", "post"}
