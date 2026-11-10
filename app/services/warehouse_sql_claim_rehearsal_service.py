@@ -10,6 +10,7 @@ to execute a query. A production gateway still needs end-to-end authorization.
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
+import re
 
 from app.query_governance.providers.base import CompiledQuery
 from app.services.query_governance_service import QueryGovernanceService
@@ -22,6 +23,29 @@ from app.warehouse.sql_claimed_reservation_guard import (
     inspect_claimed_warehouse_reservation,
 )
 from app.warehouse.sql_physical_binding import InternalDraftBinding
+
+_TABLE_PIN = re.compile(
+    r"^[a-z][a-z0-9-]*[a-z0-9]\\.dr_dev_w(?P<workspace>[1-9][0-9]*)"
+    r"\\.m(?P<model>[1-9][0-9]*)_v(?P<version>[1-9][0-9]*)"
+    r"_g(?P<generation>[1-9][0-9]*)_p(?P<publication>[1-9][0-9]*)"
+    r"_r(?P<revision>[1-9][0-9]*)$"
+)
+
+
+def _physical_pins_consistent(binding, workspace_id):
+    if not binding.models or len(binding.models) > 2:
+        return False
+    for model in binding.models:
+        name=model.physical_table
+        match=_TABLE_PIN.fullmatch(name) if isinstance(name,str) else None
+        if match is None or tuple(int(match.group(field)) for field in (
+            "workspace","model","version","generation","publication","revision"
+        )) != (
+            workspace_id,model.model_id,model.model_version_id,
+            model.generation,model.publication_id,model.publication_revision
+        ):
+            return False
+    return True
 
 
 class WarehouseClaimRehearsalState(StrEnum):
@@ -76,12 +100,13 @@ def inspect_claim_transition_without_dispatch(
         if (type(binding) is not InternalDraftBinding
                 or binding.executable is not False
                 or tuple(m.physical_table for m in binding.models)!=admission.query.physical_tables
+                or not _physical_pins_consistent(binding,governance.workspace_id)
                 or not _matches_current(admission.query,template,evidence)):
             raise ValueError("Current warehouse compilation/publication differs")
         return binding
 
     # No state transition happens unless current publication evidence matches.
-    current()
+    initial_binding=current()
     row=governance.reservation(admission.reservation_id)
     if (row.get("status")!="ACTIVE"
             or row.get("workspace_id")!=governance.workspace_id
@@ -98,6 +123,8 @@ def inspect_claim_transition_without_dispatch(
 
     try:
         binding=current()
+        if binding != initial_binding:
+            raise ValueError("WAREHOUSE_PUBLICATION_CHANGED_AFTER_CLAIM")
         inspect_claimed_warehouse_reservation(
             workspace_id=governance.workspace_id,
             owner_key=governance.owner_key,
