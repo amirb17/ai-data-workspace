@@ -135,7 +135,7 @@ def test_terminal_replay_cannot_settle_again_or_execute(governance_pg,state):
     booking,svc=claimed(governance_pg)
     provider=RecoveryProvider(state)
     settle(booking,svc,provider)
-    with pytest.raises(ValueError,match="EXECUTING"):
+    with pytest.raises(ValueError,match="Executing durable reservation required"):
         settle(booking,svc,provider)
     assert len(provider.calls)==1
     with governance_pg["connect"]() as conn:
@@ -148,7 +148,7 @@ def test_terminal_replay_cannot_settle_again_or_execute(governance_pg,state):
 def test_active_reservation_cannot_settle(governance_pg):
     booking=admit(governance_pg)
     provider=RecoveryProvider(RecoveryState.SUCCEEDED)
-    with pytest.raises(ValueError,match="EXECUTING"):
+    with pytest.raises(ValueError,match="Executing durable reservation required"):
         settle(booking,service(governance_pg),provider)
     assert provider.calls==[]
 
