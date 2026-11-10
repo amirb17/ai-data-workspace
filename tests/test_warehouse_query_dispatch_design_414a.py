@@ -10,12 +10,17 @@ DESIGN = ROOT / "docs/warehouse_query_dispatch_design_414a.md"
 REVIEW = ROOT / "docs/warehouse_query_security_review_413h.md"
 
 
+def normalized_document(path):
+    """Ignore Markdown line wrapping and case in prose assertions."""
+    return " ".join(path.read_text(encoding="utf-8").split()).casefold()
+
+
 def test_review_and_design_remain_explicitly_no_go():
-    design = DESIGN.read_text(encoding="utf-8")
-    review = REVIEW.read_text(encoding="utf-8")
-    assert "NO-GO" in review
-    assert "NO-GO" in design
-    assert "does not enable a BigQuery query" in design
+    design = normalized_document(DESIGN)
+    review = normalized_document(REVIEW)
+    assert "no-go" in review
+    assert "no-go" in design
+    assert "does not enable a bigquery query" in design
     assert "atomic publication" in design
 
 
@@ -25,7 +30,7 @@ def test_design_disallows_untrusted_execution_capabilities():
         "SQL", "physical tables", "provider clients", "request tokens",
         "execution permits", "client-controlled", "authenticated",
     ):
-        assert name in design
+        assert name.casefold() in design
 
 
 def test_design_covers_retries_races_recovery_and_revocation():
