@@ -28,6 +28,12 @@ def _pin(conn, workspace_id, user, *, model_id, version_id, dataset_id, state_id
     primaries=[m for m in mappings if m["purpose"]=="PRIMARY"]
     if len(primaries)!=1 or primaries[0]["source_dataset_id"]!=dataset_id:
         raise HTTPException(409,"Exactly one matching approved PRIMARY source is required")
+    # Older/disposable schemas may not contain publication phases yet.
+    # Missing evidence is a blocked binding, never an implicit success.
+    if not all(conn.execute("SELECT to_regclass(%s)", (name,)).fetchone()[0] is not None
+               for name in ("warehouse_publication_heads", "warehouse_publications",
+                            "warehouse_serving_materializations")):
+        raise HTTPException(409,"Warehouse publication/serving evidence is unavailable")
     rows=repository.metric_warehouse_bindings(conn,workspace_id,[dataset_id],"development")
     exact=[r for r in rows
            if r["warehouse_model_id"]==model_id
