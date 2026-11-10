@@ -184,9 +184,9 @@ def test_no_cloud_import_execution_hooks_or_api_routes(monkeypatch):
     monkeypatch.setenv('DATARISE_PUBLIC_LAUNCH_MODE', 'off')
     from app.main import app
     assert '/workspaces/{workspace_id}/warehouse/catalog' in app.openapi()['paths']
-    # Warehouse mutation/execution remain backend-only.
-    assert not any('warehouse' in path and path != '/workspaces/{workspace_id}/warehouse/catalog'
-                   for path in app.openapi()['paths'])
+    allowed = {'/workspaces/{workspace_id}/warehouse/catalog', '/workspaces/{workspace_id}/warehouse/relationships'}
+    assert not any('warehouse' in path and path not in allowed for path in app.openapi()['paths'])
+    assert set(app.openapi()['paths']['/workspaces/{workspace_id}/warehouse/relationships']) == {'get', 'post'}
 
 
 def test_model_names_versions_draft_mapping_and_atomic_approval(pg):
