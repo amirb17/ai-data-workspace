@@ -1,14 +1,17 @@
 import {useCallback, useState} from 'react'
 import {Database, GitBranch, RefreshCw} from 'lucide-react'
 import {ApiFeedback} from '../../../components/ui/ApiFeedback'
-import {getWarehouseCatalog, type WarehouseCatalog, type WarehouseModel} from '../../../services/api/warehouseCatalog'
+import {getWarehouseCatalog, getWarehouseRelationships, type WarehouseCatalog, type WarehouseModel, type WarehouseRelationship} from '../../../services/api/warehouseCatalog'
 import {useApiResource} from '../../../services/api/useApiResource'
 
 export function WarehouseModelPage({workspace}:{workspace:string}) {
-  const load=useCallback((signal:AbortSignal)=>getWarehouseCatalog(workspace,signal),[workspace])
+  const load=useCallback(async(signal:AbortSignal)=>{
+    const [catalog,relationships]=await Promise.all([getWarehouseCatalog(workspace,signal),getWarehouseRelationships(workspace,signal)])
+    return {catalog,relationships}
+  },[workspace])
   const {data,error,retry}=useApiResource(`warehouse-model:${workspace}`,load)
   return data
-    ? <WarehouseModelContent key={workspace} catalog={data} reload={retry}/>
+    ? <WarehouseModelContent key={workspace} catalog={data.catalog} relationships={data.relationships} reload={retry}/>
     : <ApiFeedback loading="Loading approved warehouse models…" error={error} retry={retry}/>
 }
 
@@ -25,13 +28,19 @@ function ModelCard({model,selected,onSelect}:{model:WarehouseModel;selected:bool
   </button>
 }
 
-export function WarehouseModelContent({catalog,reload}:{catalog:WarehouseCatalog;reload:()=>void}) {
+export function WarehouseModelContent({catalog,relationships=[],reload}:{catalog:WarehouseCatalog;relationships?:WarehouseRelationship[];reload:()=>void}) {
   const [selectedId,setSelectedId]=useState<number|null>(null)
   const [search,setSearch]=useState('')
   const models=catalog.models.filter(model=>model.name.toLowerCase().includes(search.trim().toLowerCase()))
   const facts=models.filter(model=>model.model_type==='FACT')
   const dimensions=models.filter(model=>model.model_type==='DIMENSION')
   const selected=catalog.models.find(model=>model.model_id===selectedId)
+  const current=new Map(catalog.models.map(model=>[model.model_id,model]))
+  const verified=relationships.filter(relation=>{
+    const fact=current.get(relation.fact_model_id),dimension=current.get(relation.dimension_model_id)
+    return relation.workspace_id===catalog.workspace_id && fact?.model_type==='FACT' && dimension?.model_type==='DIMENSION'
+      && fact.model_version_id===relation.fact_model_version_id && dimension.model_version_id===relation.dimension_model_version_id
+  }).filter(relation=>models.some(model=>model.model_id===relation.fact_model_id) && models.some(model=>model.model_id===relation.dimension_model_id))
   return <section className="min-w-0 space-y-5">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div>
@@ -43,7 +52,7 @@ export function WarehouseModelContent({catalog,reload}:{catalog:WarehouseCatalog
     </header>
     <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
       <GitBranch className="mr-2 inline-block" size={16}/>
-      FACT-to-DIMENSION connections are not modeled yet. Tables below are grouped by type, not connected by inferred keys. Warehouse SQL remains disabled.
+      {verified.length ? `${verified.length} explicitly reviewed relationship(s) available below.` : 'No current reviewed FACT-to-DIMENSION relationships. Tables are grouped by type, not connected by inferred keys.'} Warehouse SQL remains disabled.
     </div>
     <label className="block text-sm text-slate-700">Search warehouse tables
       <input className="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search approved models…" />
@@ -62,6 +71,15 @@ export function WarehouseModelContent({catalog,reload}:{catalog:WarehouseCatalog
         {!dimensions.length&&<p className="text-sm text-slate-500">No approved dimensions</p>}
       </section>
     </div>}
+    {!!verified.length&&<section className="rounded-xl border border-slate-200 bg-white p-4" aria-label="Reviewed warehouse relationships">
+      <h2 className="text-base font-semibold text-slate-900">Reviewed FACT-to-DIMENSION relationships ({verified.length})</h2>
+      <ul className="mt-3 space-y-3">{verified.map(relation=><li key={relation.relationship_id} className="rounded-lg border border-slate-200 p-3 text-sm">
+        <strong className="block text-slate-900">{current.get(relation.fact_model_id)?.name} → {current.get(relation.dimension_model_id)?.name}</strong>
+        <span className="mt-1 block text-slate-600">{relation.name} · Many-to-one · {relation.temporal_policy==='EVENT_TIME_AS_OF'?'Historical as-of':'Current member'}</span>
+        <span className="mt-1 block text-xs text-slate-600">Join keys: {relation.key_pairs.map(pair=>pair.fact_column+' = '+pair.dimension_column).join(', ')}</span>
+        {relation.temporal_policy==='EVENT_TIME_AS_OF'&&<span className="mt-1 block text-xs text-slate-600">Fact event time: {relation.fact_event_time_column}</span>}
+      </li>)}</ul>
+    </section>}
     {selected&&<section aria-label="Warehouse table details" className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
       <div className="flex items-center justify-between gap-2"><h2 className="break-all text-lg font-semibold">{selected.name}</h2><button onClick={()=>setSelectedId(null)} className="min-h-11 rounded-lg border px-3 text-sm">Close details</button></div>
       <p className="text-sm text-slate-600">{selected.model_type} · Version {selected.version_number} · {selected.scd_type??selected.grain??'Approved definition'}</p>
