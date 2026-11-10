@@ -1,0 +1,203 @@
+{
+  "task": "414D5",
+  "date": "2026-11-11",
+  "timezone": "Asia/Calcutta",
+  "repository": "amirb17/ai-data-workspace",
+  "worktree": "D:\\Project\\datarise-warehouse-ux",
+  "branch": "feature/warehouse-model-ux",
+  "head": "5f673aebcb0dba96700ef09168dcb912b567ec18",
+  "verdict": "PASS: local durable non-dispatch checkpoint; NO-GO for live analytical BigQuery execution",
+  "files": {
+    "modified": [
+      "app/services/warehouse_sql_trusted_recompilation_service.py"
+    ],
+    "added": [
+      "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "tests/test_warehouse_sql_dispatch_checkpoint_414d5.py",
+      "docs/warehouse_sql_dispatch_checkpoint_414d5.md",
+      "docs/warehouse_sql_dispatch_checkpoint_414d5_validation.json"
+    ],
+    "deleted": []
+  },
+  "source_sha256": {
+    "app/services/warehouse_sql_trusted_recompilation_service.py": "d8ab23675b93658512cb76cbe989a3d1a5b4f04010ab28a1194b7cbc3a37c2aa",
+    "app/services/warehouse_sql_dispatch_checkpoint_service.py": "e347e199102e62701ff99a3a3ef52dbcbd0b5dd5e53ed15cc530b888d5e22b16",
+    "migrations/0053_warehouse_query_dispatch_checkpoints.sql": "e1d1aac0029674ff7395c895d8809d68c6a694cfd905144e082b098d1cff06f8",
+    "tests/test_warehouse_sql_dispatch_checkpoint_414d5.py": "d64020fa241772d55b75ba63ac4ac5dbd0babe797b3c29cade5a04caa0db76c7",
+    "docs/warehouse_sql_dispatch_checkpoint_414d5.md": "d0051508958903243dae83eea2ec62a882a4d3cf9e9f686062039c0311cf8e10"
+  },
+  "final": {
+    "tests": 156,
+    "passed": 156,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "new_checkpoint_cases": 33,
+    "existing_cases": 123,
+    "previous_recompilation_cases": 10
+  },
+  "runs": [
+    {
+      "name": "414d5-smoke",
+      "stage": "initial smoke",
+      "counts": {
+        "tests": 1,
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "junit_seconds": 4.456,
+      "timestamp": "2026-11-11T00:11:54.758955+05:30",
+      "modules": {
+        "tests.test_warehouse_sql_dispatch_checkpoint_414d5": 1
+      },
+      "failed_cases": [],
+      "evidence": "$env:TEMP/414d5-smoke.xml",
+      "sha256": "08b38aa2253e939ab6f5131367e339cfe072f6e77c5eb8781e6bdd95149edeb8"
+    },
+    {
+      "name": "414d5-focused",
+      "stage": "initial fixture diagnostic",
+      "counts": {
+        "tests": 24,
+        "passed": 22,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "junit_seconds": 65.996,
+      "timestamp": "2026-11-11T00:12:21.579813+05:30",
+      "modules": {
+        "tests.test_warehouse_sql_dispatch_checkpoint_414d5": 24
+      },
+      "failed_cases": [
+        "tests.test_warehouse_sql_dispatch_checkpoint_414d5::test_revocation_or_stale_publication_before_claim_is_denied[model]",
+        "tests.test_warehouse_sql_dispatch_checkpoint_414d5::test_post_commit_revocation_is_durable_and_never_releases_hold[model]"
+      ],
+      "evidence": "$env:TEMP/414d5-focused.xml",
+      "sha256": "8ff92e87a26269d3902c2f14bb319bb78e0972b5b39f86228d8367d3108a8307"
+    },
+    {
+      "name": "414d5-acceptance",
+      "stage": "intermediate acceptance before final bounded waits/extra cases",
+      "counts": {
+        "tests": 40,
+        "passed": 40,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "junit_seconds": 113.128,
+      "timestamp": "2026-11-11T00:14:11.357079+05:30",
+      "modules": {
+        "tests.test_warehouse_sql_dispatch_checkpoint_414d5": 30,
+        "tests.test_warehouse_sql_trusted_recompilation_414d4d": 6,
+        "tests.test_warehouse_sql_trusted_recompilation_414d4e": 4
+      },
+      "failed_cases": [],
+      "evidence": "$env:TEMP/414d5-acceptance.xml",
+      "sha256": "4930849c015bc989cf4fc4ff709fee558ed6e5e50daf7f9011dcb85f90b1b0e4"
+    },
+    {
+      "name": "414d5-final",
+      "stage": "FINAL WORKTREE",
+      "counts": {
+        "tests": 156,
+        "passed": 156,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "junit_seconds": 312.294,
+      "timestamp": "2026-11-11T00:16:30.095309+05:30",
+      "modules": {
+        "tests.test_warehouse_sql_dispatch_checkpoint_414d5": 33,
+        "tests.test_warehouse_sql_gateway_readiness_414d1": 5,
+        "tests.test_warehouse_sql_authenticated_readiness_414d2": 7,
+        "tests.test_warehouse_sql_compilation_comparison_414d3": 6,
+        "tests.test_warehouse_sql_stored_draft_414d4a": 9,
+        "tests.test_warehouse_sql_attempt_identity_bridge_414d4b": 7,
+        "tests.test_warehouse_sql_stored_publication_evidence_414d4c": 5,
+        "tests.test_warehouse_sql_trusted_recompilation_414d4d": 6,
+        "tests.test_warehouse_sql_trusted_recompilation_414d4e": 4,
+        "tests.test_warehouse_query_reservation_publication_links_postgres": 7,
+        "tests.test_warehouse_query_publication_retirement_postgres": 5,
+        "tests.test_warehouse_query_publication_inspection_postgres": 7,
+        "tests.test_query_governance_postgres": 17,
+        "tests.test_warehouse_sql_claim_rehearsal_postgres": 12,
+        "tests.test_warehouse_sql_recovery_inspection_postgres": 10,
+        "tests.test_warehouse_sql_recovery_settlement_postgres": 16
+      },
+      "failed_cases": [],
+      "evidence": "$env:TEMP/414d5-final.xml",
+      "sha256": "595046267a055748808fc9dc4c2f6348b10d8d8f57a785ba16fac50e26a67737"
+    }
+  ],
+  "exact_final_powershell": "Set-Location 'D:\\Project\\datarise-warehouse-ux'\n$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n$python='D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe'\n$bootstrap=\"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\"\n$tests=@(\n 'tests/test_warehouse_sql_dispatch_checkpoint_414d5.py',\n 'tests/test_warehouse_sql_gateway_readiness_414d1.py',\n 'tests/test_warehouse_sql_authenticated_readiness_414d2.py',\n 'tests/test_warehouse_sql_compilation_comparison_414d3.py',\n 'tests/test_warehouse_sql_stored_draft_414d4a.py',\n 'tests/test_warehouse_sql_attempt_identity_bridge_414d4b.py',\n 'tests/test_warehouse_sql_stored_publication_evidence_414d4c.py',\n 'tests/test_warehouse_sql_trusted_recompilation_414d4d.py',\n 'tests/test_warehouse_sql_trusted_recompilation_414d4e.py',\n 'tests/test_warehouse_query_reservation_publication_links_postgres.py',\n 'tests/test_warehouse_query_publication_retirement_postgres.py',\n 'tests/test_warehouse_query_publication_inspection_postgres.py',\n 'tests/test_query_governance_postgres.py',\n 'tests/test_warehouse_sql_claim_rehearsal_postgres.py',\n 'tests/test_warehouse_sql_recovery_inspection_postgres.py',\n 'tests/test_warehouse_sql_recovery_settlement_postgres.py'\n)\n& $python -c $bootstrap @tests -q --tb=short -ra -p no:cacheprovider --evidence-dir \"$env:TEMP/414d5-final-events\" --junitxml=\"$env:TEMP/414d5-final.xml\"",
+  "launch_blockers_before_pytest": [
+    "Feature virtualenv missing dotenv: no packages installed",
+    "Populated interpreter with no DATABASE_URL: reused only authorized local DATABASE_URL process-locally, never printed"
+  ],
+  "database": {
+    "run_db_tests": "1",
+    "loopback_guard": "tools/task20_local_tests.py rejects non-local hosts; existing local test configuration only",
+    "schemas": "Existing test_warehouse_UUID fixtures; startup search_path",
+    "application_migrations": false,
+    "roles_modified": false,
+    "migration_0053": "Applied only inside new test fixtures after 0052; once-only reapplication rejection tested",
+    "fixture_distinction": "Existing compatibility tests retain their own migration lists; new 33 cases apply 0053 on actual served metadata"
+  },
+  "security_contract": {
+    "inputs": [
+      "ASGI Request with real session cookie",
+      "workspace_id revalidated under row lock",
+      "server-issued attempt handle"
+    ],
+    "trusted_resolution": "Same transaction session/user/workspace locks, exact stored draft + authoritative v2 recompilation, pin/head/receipt locks, reservation and current server budgets, claim/checkpoint atomic commit",
+    "first_outcome": "CHECKPOINTED_NO_DISPATCH",
+    "retry_outcomes": [
+      "RECOVERY_REQUIRED",
+      "REVOKED_RECOVERY_REQUIRED",
+      "EXPIRED_RECOVERY_REQUIRED"
+    ],
+    "client_execution_permit": false,
+    "provider_dispatched": false,
+    "live_execution_enabled": false,
+    "revocations": "Append-only notices from existing account/session/workspace/model/source/resource/publication mutations; reversals do not un-revoke",
+    "retention": "Checkpoint extends existing dependency/retirement protocol indefinitely, including after revocation/expiry/accounting; no hold-release/deletion API",
+    "sql_waits": "New transaction only: lock_timeout 5s, statement_timeout 10s"
+  },
+  "concurrency_evidence": "New tests require pg_blocking_pids to identify actual waiter/holder backends for duplicate checkpoint, checkpoint-first account revocation and revocation-first checkpoint; explicit events, bounded waits and finally cleanup",
+  "remaining_blockers": [
+    "No live send-intent/cancellation/provider dispatch implementation or endpoint; 414E/F/G not implemented",
+    "Fresh independently trusted BigQuery metadata/dry-run/job configuration, labels, project/location evidence still required",
+    "PostgreSQL cannot prevent out-of-band table deletion; physical IAM/immutability and eventual terminal-job-proven hold release/cleanup remain unimplemented",
+    "Restricted runtime checkpoint/auth/control roles need reviewed privileges before migration deployment; SECURITY INVOKER missing grants abort writer transaction",
+    "Future HTTP session/CSRF, rate limiting and safe error integration require separate review",
+    "No live provider, deployed-role, full repository or infrastructure acceptance"
+  ],
+  "checks": {
+    "ast_files": [
+      "app/services/warehouse_sql_trusted_recompilation_service.py",
+      "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "tests/test_warehouse_sql_dispatch_checkpoint_414d5.py"
+    ],
+    "whitespace": [],
+    "secret_patterns": [],
+    "git_diff_check": "PASS",
+    "target_initial_status": "CLEAN",
+    "unrelated_tracked_changes": [],
+    "branch_head_unchanged": true,
+    "index_unchanged": true
+  },
+  "not_performed": [
+    "Cloud calls or live analytical queries",
+    "Application/public schema migrations or role changes",
+    "Dependency installation",
+    "UI/ingestion/publication algorithm/infrastructure edits",
+    "Git switch/stage/commit/push/reset/clean"
+  ],
+  "warnings": []
+}
