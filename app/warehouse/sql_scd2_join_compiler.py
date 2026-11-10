@@ -5,7 +5,6 @@ may produce physical BigQuery SELECT text. Provider state, freshness, approval,
 historical uniqueness, cost and authorization must still be rechecked by the
 future dispatch gateway. Nothing in this module executes or permits queries.
 """
-from dataclasses import fields
 import hashlib
 import json
 import re
@@ -92,15 +91,12 @@ def compile_historical_join(
 
     fc,dc=columns(fact),columns(dimension)
     event=fc.get(temporal.event_time.column)
-    effective=dc.get(dimension.business_keys[0]) if dimension.business_keys else None
-    if (not event or event[1] not in _TIME or not effective):
+    if not event or event[1] not in _TIME or not dimension.business_keys:
         raise ValueError("Typed SCD2 event time and dimension business keys required")
 
-    # The physical SCD2 interval kind is derived from its reviewed effective
-    # time field, which is the source of valid_from/valid_to in the adapter.
-    # A source without explicit effective_time metadata cannot be independently
-    # verified here, so require a caller-supplied typed physical interval kind.
-    # This first compiler deliberately supports TIMESTAMP in UTC only.
+    # The independent provider metadata gate must verify that valid_from and
+    # valid_to really are TIMESTAMP columns with the approved schema contract.
+    # This initial compiler supports only UTC TIMESTAMP SCD2 time semantics.
     if event[1] != "TIMESTAMP":
         raise ValueError("Only UTC TIMESTAMP SCD2 compilation is currently supported")
     if (not 1 <= len(specification.equality_keys) <= 32
