@@ -324,7 +324,9 @@ with patch('google.auth.default', side_effect=AssertionError('Unexpected ADC loo
     from fastapi.testclient import TestClient
     with TestClient(app) as client:
         assert client.get('/health').status_code == 200
-    assert not any('warehouse' in path for path in app.openapi()['paths'])
+    paths = app.openapi()['paths']
+    assert '/workspaces/{workspace_id}/warehouse/catalog' in paths
+    assert not any('warehouse' in path and path != '/workspaces/{workspace_id}/warehouse/catalog' for path in paths)
 print('disabled startup passed without ADC or cloud requests')
 '''
     result = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, timeout=30)
