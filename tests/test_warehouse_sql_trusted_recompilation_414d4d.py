@@ -18,11 +18,44 @@ from tests.test_warehouse_sql_admission_postgres import service
 ROOT=Path(__file__).resolve().parents[1]
 
 
-def test_missing_immutable_serving_receipt_fails_closed(evidence_pg):
+def test_legacy_fixture_physical_reference_drift_fails_closed(evidence_pg):
     f,publication,governance,attempt,reservation=evidence_pg
-    with pytest.raises(ValueError,match="WAREHOUSE_SERVING_NOT_READY"):
+    with pytest.raises(ValueError,match="WAREHOUSE_RESOURCE_DRIFT"):
         recompile(governance=governance,attempt_handle=attempt.attempt_handle)
     assert governance.reservation(reservation)["status"]=="ACTIVE"
+
+
+def test_valid_generated_resource_name_still_requires_serving_receipt(evidence_pg):
+    # The historical reliability fixture intentionally registers a generic
+    # synthetic_dataset/synthetic_generation_1 reference, which fails the
+    # production naming contract BEFORE receipt validation. Test the
+    # missing-receipt branch separately using an in-memory corrected row.
+    # This does not mutate PostgreSQL or bypass service authorization.
+    from app.db import warehouse_repository
+    from app.services.metric_warehouse_binding_service import (
+        _publication_state_id, _source,
+    )
+
+    f, publication, governance, attempt, reservation = evidence_pg
+    with f.pg["connect"]() as conn:
+        rows = warehouse_repository.metric_warehouse_bindings(
+            conn, f.pg["workspace"], [f.pg["dataset"]],
+            environment="development",
+        )
+    assert len(rows) == 1
+    row = dict(rows[0])
+    assert row["serving_materialization_id"] is None
+    row["physical_reference"] = {
+        "reference_version": 1,
+        "project": "synthetic-project",
+        "dataset": f"dr_dev_w{f.pg['workspace']}",
+        "table": (
+            f"m{f.model}_v{f.version}_g{row['generation']}"
+        ),
+    }
+    with pytest.raises(ValueError, match="WAREHOUSE_SERVING_NOT_READY"):
+        _source(row, f.pg["workspace"], _publication_state_id(row))
+    assert governance.reservation(reservation)["status"] == "ACTIVE"
 
 
 def test_fabricated_receipt_hashes_do_not_pass_production_resolver(evidence_pg):
