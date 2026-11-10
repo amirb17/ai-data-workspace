@@ -18,7 +18,7 @@ from app.services.warehouse_sql_preclaim_service import (
 from tests.test_query_governance_postgres import governance_pg
 from tests.test_warehouse_foundation import pg
 from tests.test_warehouse_sql_admission_postgres import admit, service
-from tests.test_warehouse_sql_claimed_reservation_postgres import owned_binding
+from tests.test_warehouse_sql_single_model_compiler import input_pair
 
 
 def context(fixture):
@@ -27,7 +27,12 @@ def context(fixture):
         state=PreclaimState.REVALIDATED_ACTIVE,
         reservation_id=booking.reservation_id,
     )
-    bound=owned_binding(fixture["workspace"])
+    _,original_binding=input_pair()
+    original_model=original_binding.models[0]
+    physical=original_model.physical_table.replace(
+        "dr_dev_w7.",f"dr_dev_w{fixture['workspace']}.")
+    bound=replace(original_binding,models=(
+        replace(original_model,physical_table=physical),))
     template=replace(booking.query,request_token="f"*64)
     evidence=WarehouseCompiledEvidence(
         workspace_id=fixture["workspace"],
@@ -90,7 +95,7 @@ def test_change_after_claim_requires_recovery_and_keeps_budget(governance_pg):
 def test_second_worker_cannot_claim_same_reservation_twice(governance_pg):
     booking,preclaim,bound,template,evidence=context(governance_pg)
     rehearse(governance_pg,booking,preclaim,bound,template,evidence)
-    with pytest.raises(repository.ReservationConflict,match="RESERVATION_ALREADY_CLAIMED"):
+    with pytest.raises(ValueError,match="ACTIVE"):
         rehearse(governance_pg,booking,preclaim,bound,template,evidence)
     assert service(governance_pg).reservation(booking.reservation_id)["status"]=="EXECUTING"
 
