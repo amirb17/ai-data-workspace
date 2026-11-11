@@ -22,7 +22,8 @@ import os
 import sys
 from uuid import UUID
 
-from app.db.warehouse_restricted_connection import RestrictedWarehouseConnection, ROLE_BY_DUTY
+from app.db.warehouse_restricted_connection import ROLE_BY_DUTY
+from app.db.warehouse_canonical_worker_connection import CanonicalWarehouseWorkerConnection
 from app.warehouse.worker_rpc_protocol import (
     DUTY_OPERATIONS, MAX_BODY, ReplayGuard, WorkerRpcRejected,
     bounded_id, bounded_lease_request, verify,
@@ -185,8 +186,8 @@ def main():
         accept(args.duty,dsn)
         # A process may bind to only its own duty, never alternate credentials.
         role=ROLE_BY_DUTY[args.duty]
-        factory=RestrictedWarehouseConnection(
-            duty=args.duty,dsn=dsn,login=role)
+        factory=CanonicalWarehouseWorkerConnection(
+            duty=args.duty,dsn=dsn)
         server=create_server(duty=args.duty,secret=secret,port=args.port,
                              boundary=factory.boundary)
         print(json.dumps({"worker_started":True,"duty":args.duty,
