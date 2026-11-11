@@ -189,8 +189,9 @@ def inspect_authenticated_query_envelope_without_dispatch(
             raise HTTPException(403, 'Original authenticated checkpoint required')
         reservation, query, _ = recovery._live_context(conn, checkpoint)
         intent, event = repo.latest(conn, checkpoint['attempt_id'])
-        if (event['phase'] != 'INTENT_RECORDED' or event['revision'] != 1
-                or event['event'] != 'CREATED' or event['observation'] is not None):
+        if (event['phase'] != 'INTENT_RECORDED'
+                or event['event'] not in ('CREATED', 'LEASE_ACQUIRED')
+                or event['observation'] is not None):
             raise PolicyConflict('EXISTING_SEND_STATE_LOOKUP_ONLY')
         expected, _, _ = _derive(conn, checkpoint, reservation, intent)
         stored = repo.one(
