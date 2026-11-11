@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from contextlib import nullcontext
 from dataclasses import asdict
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -115,11 +116,13 @@ def _rpc_key(value: str | None) -> bytes:
 
 
 def create_server(*, duty: str, secret: bytes, port: int,
-                  handler=execute_operation) -> ThreadingHTTPServer:
+                  handler=execute_operation, boundary=None) -> ThreadingHTTPServer:
     if duty not in DUTY_OPERATIONS or type(port) is not int or not 1024 <= port <= 65535:
         raise ValueError("WORKER_DUTY_OR_PORT_INVALID")
     if len(secret) < 32:
         raise ValueError("WORKER_SECRET_INVALID")
+    if not callable(boundary):
+        raise ValueError("EXPLICIT_WORKER_DATABASE_BOUNDARY_REQUIRED")
     guard = ReplayGuard()
 
     class Handler(BaseHTTPRequestHandler):
@@ -147,7 +150,8 @@ def create_server(*, duty: str, secret: bytes, port: int,
                     signature=self.headers.get("X-Datarise-Signature",""),
                     guard=guard)
                 # DB role is process-bound and verified at startup.
-                response = {"ok": True, "result": handler(duty,operation,args)}
+                with boundary():
+                    response = {"ok": True, "result": handler(duty,operation,args)}
                 encoded = json.dumps(response,separators=(",",":"),
                                      allow_nan=False).encode("utf-8")
                 if len(encoded) > _MAX_RESPONSE:
@@ -181,10 +185,10 @@ def main():
         accept(args.duty,dsn)
         # A process may bind to only its own duty, never alternate credentials.
         role=ROLE_BY_DUTY[args.duty]
-        if RestrictedWarehouseConnection(
-            duty=args.duty,dsn=dsn,login=role).login != role:
-            raise WorkerRpcRejected("WORKER_LOGIN_INVALID")
-        server=create_server(duty=args.duty,secret=secret,port=args.port)
+        factory=RestrictedWarehouseConnection(
+            duty=args.duty,dsn=dsn,login=role)
+        server=create_server(duty=args.duty,secret=secret,port=args.port,
+                             boundary=factory.boundary)
         print(json.dumps({"worker_started":True,"duty":args.duty,
                           "bind":"127.0.0.1","port":args.port,
                           "query_execution_enabled":False}),flush=True)
