@@ -70,3 +70,30 @@ export async function getWarehouseRelationships(workspace: string, signal?: Abor
   if(result.workspace_id !== workspaceId) throw new ApiError('Warehouse relationships belong to another workspace.')
   return result.relationships
 }
+
+
+export interface WarehouseQueryResultReadiness {
+  attempt_handle: string
+  status: 'RESULT_ELIGIBLE'
+  max_page_rows: number
+  results_available: false
+  query_execution_enabled: false
+}
+
+export async function getWarehouseQueryResultReadiness(
+  workspace: string, attemptHandle: string, signal?: AbortSignal,
+): Promise<WarehouseQueryResultReadiness> {
+  const workspaceId=backendId(workspace)
+  if (!/^[a-f0-9]{32}$/.test(attemptHandle)) throw new ApiError('Enter a valid warehouse query handle.')
+  const result=await request<WarehouseQueryResultReadiness>(
+    `/workspaces/${workspaceId}/warehouse/queries/${attemptHandle}/result-readiness`,{signal},
+  )
+  if (result.attempt_handle!==attemptHandle
+      || result.status!=='RESULT_ELIGIBLE'
+      || result.results_available!==false
+      || result.query_execution_enabled!==false
+      || !Number.isSafeInteger(result.max_page_rows)
+      || result.max_page_rows<1 || result.max_page_rows>100)
+    throw new ApiError('Unexpected warehouse result-readiness response.')
+  return result
+}
