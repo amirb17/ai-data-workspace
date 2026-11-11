@@ -12,7 +12,7 @@ Example (explicitly billable and creates one named result table):
  python tools/warehouse_live_bigquery_three_principal.py \\
    --source-table model_123_v1_g1 --approve-billable-demo
 
-Source data is not printed. A single COUNT(*) query is capped at 10 MiB billed.
+Source data is not printed. A single COUNT(*) query is capped at 10 MiB billed.\nThe destination table persists after the demo; this runner does not delete it.
 Unknown submission outcomes are never retried; the original job is only looked up.
 """
 from __future__ import annotations
@@ -208,7 +208,7 @@ def main():
                 print("ROWS:", len(page.rows))
                 print("COUNT:", page.rows[0][0])
                 print("ATTESTED BILLING BYTES:", report.bytes_billed)
-                print("LIMITATION: PostgreSQL/API/UI is NOT tested by this script")
+                print("NOTE: named result table persists in dr_results_dev_w18")\n                print("LIMITATION: PostgreSQL/API/UI is NOT tested by this script")
         finally:
             metadata.close()
         return 0
