@@ -55,7 +55,9 @@ def settle_verified_warehouse_terminal(*, attempt_id: int) -> AccountingResult:
             )
             attested = repo.one(conn, """
                 SELECT a.observation,a.verdict,a.bytes_processed,a.bytes_billed,
-                       a.billing_complete,a.policy_sha256,p.expected_sha256
+                       a.billing_complete,a.payload_sha256,a.policy_sha256,
+                       p.expected_sha256,p.expected,
+                       j.observation AS journal_observation,j.phase,j.event
                   FROM warehouse_query_recovery_attestations a
                   JOIN warehouse_query_provider_policies p USING(attempt_id)
                   JOIN warehouse_query_send_journal j
@@ -67,7 +69,22 @@ def settle_verified_warehouse_terminal(*, attempt_id: int) -> AccountingResult:
             """, (attempt_id,attempt_id))
             if (not usage or not attested or attested['verdict']!='VERIFIED_METADATA'
                     or not attested['billing_complete']
+                    or not attested['payload_sha256']
+                    or attested['event'] != 'OBSERVATION'
+                    or attested['journal_observation'] != attested['observation']
+                    or attested['phase'] != (
+                        'SUCCEEDED_OBSERVED' if attested['observation'] == 'SUCCEEDED'
+                        else 'FAILED_OBSERVED' if attested['observation'] == 'FAILED'
+                        else 'CANCELLED_OBSERVED' if attested['observation'] == 'CANCELLED'
+                        else None)
                     or attested['policy_sha256']!=attested['expected_sha256']
+                    or type(attested['expected'].get('maximum_bytes_billed')) is not int
+                    or type(attested['bytes_processed']) is not int
+                    or type(attested['bytes_billed']) is not int
+                    or not 0 <= attested['bytes_billed'] <= attested['expected']['maximum_bytes_billed']
+                    or attested['bytes_processed'] < 0
+                    or usage['accounted_bytes'] != max(attested['bytes_processed'], attested['bytes_billed'])
+                    or usage['duration_ms'] != 0
                     or usage['outcome'] != expected_outcome
                     or usage['provider_job_id'] != evidence.provider_job_id
                     or usage['bytes_processed'] != attested['bytes_processed']
