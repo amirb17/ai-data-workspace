@@ -71,8 +71,12 @@ def test_unowned_workspace_denied_before_provider_io(pinned_db):
 
 def test_result_readiness_route_is_registered_but_has_no_execution_or_result_path():
     from app.main import app
-    matches=[r for r in app.routes
+    from app.security.public_launch import http_routes
+    # This app uses lazy router includes; app.routes can contain wrappers.
+    installed=list(http_routes(app.router.routes))
+    matches=[r for r in installed
         if getattr(r,"path","")=="/workspaces/{workspace_id}/warehouse/queries/{attempt_handle}/result-readiness"]
     assert len(matches)==1
     assert "GET" in matches[0].methods
-    assert not any(getattr(r,"path","").endswith("/warehouse/execute") for r in app.routes)
+    assert matches[0].endpoint is api.query_result_readiness
+    assert not any(getattr(r,"path","").endswith("/warehouse/execute") for r in installed)
