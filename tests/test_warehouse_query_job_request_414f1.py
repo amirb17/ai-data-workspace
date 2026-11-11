@@ -7,7 +7,7 @@ from app.warehouse.query_job_request import (
     BigQueryJobRequest, JobRequestMismatch, build_reviewed_query_job_request,
 )
 
-SQL = "SELECT order_id FROM \`synthetic-project.dr_dev_w5.orders_fact\` LIMIT 5"
+SQL = "SELECT order_id FROM `synthetic-project.dr_dev_w5.orders_fact` LIMIT 5"
 
 
 def policy():
