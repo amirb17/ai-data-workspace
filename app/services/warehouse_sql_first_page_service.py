@@ -70,3 +70,21 @@ def read_first_warehouse_page_simulated(
         scope.job_id,page.columns,page.rows,
         page.next_page_token is not None,page.bytes_encoded,
     )
+
+
+def read_first_warehouse_page_server_pinned_simulated(
+    *, attempt_id: int, transport: FirstPageTransport,
+) -> FirstPageRead:
+    """No caller schema; only versioned, approved, original draft fields."""
+    from app.services.warehouse_sql_server_result_schema_service import (
+        inspect_server_result_schema, ResultSchemaConflict,
+    )
+    before=inspect_server_result_schema(attempt_id=attempt_id)
+    outcome=read_first_warehouse_page_simulated(
+        attempt_id=attempt_id, approved_schema=before.columns,
+        transport=transport,
+    )
+    after=inspect_server_result_schema(attempt_id=attempt_id)
+    if after != before:
+        raise ResultSchemaConflict("RESULT_SCHEMA_CHANGED_DURING_LOOKUP")
+    return outcome
