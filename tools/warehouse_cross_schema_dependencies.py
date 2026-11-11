@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import re
 import sys
 
 import psycopg
@@ -80,7 +81,7 @@ def inspect(conn) -> dict:
         unqualified = sorted(
             tbl for tbl in IDENTITY_TABLES
             if __import__("re").search(
-                r"(?i)(?<![\\w.])" + __import__("re").escape(tbl) + r"\\b",
+                r"(?i)(?<![\w.])" + re.escape(tbl) + r"\b",
                 definition,
             )
         )
