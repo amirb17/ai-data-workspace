@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from app.api.identity import get_current_user
 from app.services import warehouse_query_workflow_service as workflow
+from app.services.warehouse_query_control_gateway import query_control_boundary
 
 router=APIRouter(prefix='/workspaces/{workspace_id}/warehouse/queries',tags=['Warehouse queries'])
 
@@ -37,7 +38,8 @@ def admit(workspace_id:int,body:AdmissionInput,request:Request,user=Depends(get_
 
 @router.get('/{attempt_handle}')
 def status(workspace_id:int,attempt_handle:str,request:Request,user=Depends(get_current_user)):
-    return _call(lambda:workflow.query_status(request,workspace_id,attempt_handle))
+    with query_control_boundary(request):
+        return _call(lambda:workflow.query_status(request,workspace_id,attempt_handle))
 
 @router.post('/{attempt_handle}/execute')
 def execute(workspace_id:int,attempt_handle:str,request:Request,user=Depends(get_current_user),runtime=Depends(workflow.get_query_runtime)):
