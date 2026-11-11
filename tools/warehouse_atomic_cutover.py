@@ -153,8 +153,8 @@ def _rebind_trigger_target(definition: str, table: str) -> str:
     if type(definition) is not str:
         raise RuntimeError("TRIGGER_DEFINITION_SCHEMA_DRIFT")
     expression = re.compile(
-        r'(?i)\\bON\\s+(?:"?' + re.escape(ISOLATED) +
-        r'"?\\.)"?' + re.escape(table) + r'"?(?=\\s)'
+        r'(?i)\bON\s+(?:"?' + re.escape(ISOLATED) +
+        r'"?\.)"?' + re.escape(table) + r'"?(?=\s)'
     )
     rewritten, count = expression.subn(
         'ON "public"."' + table + '"', definition
