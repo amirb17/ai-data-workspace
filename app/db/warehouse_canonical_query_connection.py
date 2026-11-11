@@ -87,6 +87,48 @@ def verify_scope(conn):
             raise RuntimeError("ISOLATED_QUERY_PROTOCOL_INCOMPLETE")
 
 
+def verify_control_write_boundary(conn):
+    """Reject accidental cross-duty writes before issuing API query transactions.
+
+    The control login is trusted to admit a query, not to send or attest it.
+    Effective grants (including PUBLIC grants) are checked, not just explicit
+    direct grants. No application data is read by this check.
+    """
+    expected = {
+        ("public", "query_governance_reservations"): ("INSERT", "UPDATE"),
+        ("datarise_warehouse_dev", "warehouse_query_attempt_registry"): ("INSERT",),
+        ("datarise_warehouse_dev", "warehouse_query_attempt_logical_drafts"): ("INSERT",),
+        ("datarise_warehouse_dev", "warehouse_query_attempt_publication_pins"): ("INSERT",),
+        ("datarise_warehouse_dev", "warehouse_query_attempt_reservation_links"): ("INSERT",),
+        ("datarise_warehouse_dev", "warehouse_query_api_requests"): ("INSERT",),
+        ("datarise_warehouse_dev", "warehouse_query_result_contracts"): ("INSERT",),
+        ("datarise_warehouse_dev", "warehouse_query_dispatch_checkpoints"): ("INSERT",),
+    }
+    forbidden = (
+        ("public", "users"),
+        ("public", "auth_sessions"),
+        ("public", "warehouse_publications"),
+        ("public", "warehouse_model_versions"),
+        ("datarise_warehouse_dev", "warehouse_query_send_intents"),
+        ("datarise_warehouse_dev", "warehouse_query_send_journal"),
+        ("datarise_warehouse_dev", "warehouse_query_provider_policies"),
+        ("datarise_warehouse_dev", "warehouse_query_recovery_attestations"),
+        ("datarise_warehouse_dev", "warehouse_query_result_attestations"),
+        ("datarise_warehouse_dev", "warehouse_query_dispatch_revocations"),
+    )
+    for schema, table in tuple(expected) + forbidden:
+        wanted = set(expected.get((schema, table), ()))
+        actual = conn.execute("""
+            SELECT has_table_privilege(current_user,%s,'INSERT'),
+                   has_table_privilege(current_user,%s,'UPDATE'),
+                   has_table_privilege(current_user,%s,'DELETE'),
+                   has_table_privilege(current_user,%s,'TRUNCATE')
+        """, (f"{schema}.{table}",) * 4).fetchone()
+        if actual != tuple(kind in wanted for kind in
+                           ("INSERT", "UPDATE", "DELETE", "TRUNCATE")):
+            raise RuntimeError("QUERY_CONTROL_EFFECTIVE_WRITE_GRANT_DRIFT")
+
+
 @dataclass(frozen=True)
 class CanonicalWarehouseQueryControlConnection:
     """Supply only to a dedicated *query-control* process and no other duty."""
@@ -100,6 +142,7 @@ class CanonicalWarehouseQueryControlConnection:
         conn = restricted()
         try:
             verify_scope(conn)
+            verify_control_write_boundary(conn)
             conn.execute(
                 "SELECT set_config('search_path', %s, false)", (SEARCH_PATH,)
             )
