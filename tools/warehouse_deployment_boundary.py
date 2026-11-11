@@ -29,6 +29,7 @@ _TABLES = (
     "auth_sessions",
     "workspaces",
     "warehouse_models",
+    "warehouse_resources",
     "warehouse_publications",
     "warehouse_serving_materializations",
     "warehouse_query_attempt_registry",
@@ -98,14 +99,20 @@ def inspect(conn, workspace_id: int) -> dict:
             data["model_count"] = _count(
                 conn, schema, "warehouse_models", workspace_id
             )
-            # Avoid assuming publication/receipt rows have a workspace_id;
-            # the model join is resolved through the application repository.
-            data["publication_rows_total"] = _count(
-                conn, schema, "warehouse_publications"
-            )
-            data["materialization_rows_total"] = _count(
-                conn, schema, "warehouse_serving_materializations"
-            )
+            # Publications and receipts are keyed by resource_id; derive
+            # workspace ownership from warehouse_resources, never assume
+            # they contain a workspace_id column.
+            for name, target in (
+                ("warehouse_publications", "publications_for_workspace"),
+                ("warehouse_serving_materializations", "serving_receipts_for_workspace"),
+            ):
+                stmt = sql.SQL("""
+                    SELECT count(*) FROM {}.{} t
+                    JOIN {}.warehouse_resources r USING(resource_id)
+                    WHERE r.workspace_id=%s
+                """).format(sql.Identifier(schema), sql.Identifier(name),
+                            sql.Identifier(schema))
+                data[target] = conn.execute(stmt, (workspace_id,)).fetchone()[0]
         schemas[schema] = data
 
     roles = {}
