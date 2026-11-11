@@ -215,10 +215,15 @@ def record_observation(*,lease:RecoveryLease,expected_revision:int,job:JobIdenti
     _validate_lease(lease)
     if type(job) is not JobIdentity or type(observation) is not Observation:raise ValueError('Typed job observation required')
     with _worker(lease.attempt_id) as (conn,c):
-        r=repo.lock_identity(conn,c)
-        if r['status']!='EXECUTING':raise repo.RecoveryConflict('RESERVATION_SETTLED_HELD')
-        intent,event=repo.latest(conn,lease.attempt_id);repo.require_owner(conn,event,lease,expected_revision)
-        if job!=_identity(intent):raise repo.RecoveryConflict('PROVIDER_JOB_SCOPE_MISMATCH')
-        phase={'IN_PROGRESS':'PROVIDER_RUNNING','SUCCEEDED':'SUCCEEDED_OBSERVED','FAILED':'FAILED_OBSERVED','CANCELLED':'CANCELLED_OBSERVED'}.get(observation.value,event['phase'])
-        updated=repo.append(conn,lease.attempt_id,event,'OBSERVATION',phase,observation=observation.value)
-        return _view(conn,c,r,intent,updated)
+        return _record_observation_locked(conn,c,lease,expected_revision,job,observation)
+
+
+def _record_observation_locked(conn,c,lease,expected_revision,job,observation):
+    """Internal transaction composition; E2 atomically adds separate attestation."""
+    r=repo.lock_identity(conn,c)
+    if r['status']!='EXECUTING':raise repo.RecoveryConflict('RESERVATION_SETTLED_HELD')
+    intent,event=repo.latest(conn,lease.attempt_id);repo.require_owner(conn,event,lease,expected_revision)
+    if job!=_identity(intent):raise repo.RecoveryConflict('PROVIDER_JOB_SCOPE_MISMATCH')
+    phase={'IN_PROGRESS':'PROVIDER_RUNNING','SUCCEEDED':'SUCCEEDED_OBSERVED','FAILED':'FAILED_OBSERVED','CANCELLED':'CANCELLED_OBSERVED'}.get(observation.value,event['phase'])
+    updated=repo.append(conn,lease.attempt_id,event,'OBSERVATION',phase,observation=observation.value)
+    return _view(conn,c,r,intent,updated)

@@ -1,0 +1,184 @@
+{
+  "task": "414E2",
+  "date": "2026-11-11",
+  "timezone": "Asia/Calcutta",
+  "repository": "amirb17/ai-data-workspace",
+  "branch": "feature/warehouse-model-ux",
+  "head": "776e86a26daee3b4937cd53aaa660bd5d312ede7",
+  "worktree": "D:\\Project\\datarise-warehouse-ux",
+  "verdict": "PASS local lookup-only recovery attestation checkpoint; NO-GO live analytical execution",
+  "files": {
+    "modified": [
+      "app/services/warehouse_sql_send_recovery_service.py"
+    ],
+    "added": [
+      "app/services/warehouse_sql_recovery_attestation_service.py",
+      "app/warehouse/query_recovery_attestation.py",
+      "migrations/0055_warehouse_query_recovery_attestations.sql",
+      "tests/test_warehouse_sql_recovery_attestation_414e2.py",
+      "docs/warehouse_sql_recovery_attestation_414e2.md",
+      "docs/warehouse_sql_recovery_attestation_414e2_validation.json"
+    ],
+    "deleted": []
+  },
+  "source_sha256": {
+    "app/services/warehouse_sql_send_recovery_service.py": "790d74862851a5bf30cd083e2fb42da1bb63a8c390af3e34cb4205623c8b06cc",
+    "app/services/warehouse_sql_recovery_attestation_service.py": "e5bd4b43f29f6f5c2235c5be1c7e990cac4631f39468e904db50698f2b6ea10a",
+    "app/warehouse/query_recovery_attestation.py": "e11df12bd486cb0054096a8b31dea95ff3aa7e24569c8ddfdd0a8dfc4a394bee",
+    "migrations/0055_warehouse_query_recovery_attestations.sql": "7eb416795e3688bb79af0afdda52261a559c8a4849e85e5a05e41fa61124b60b",
+    "tests/test_warehouse_sql_recovery_attestation_414e2.py": "95af0973aad2b80df76bf5ad553c8df067890421029a41faab9884fc18712bbf",
+    "docs/warehouse_sql_recovery_attestation_414e2.md": "49d10c35fb8464cfffa095b3c83babe826ca40da6f7a15c59b8e952721b932ea"
+  },
+  "validation": {
+    "final_affected_module": {
+      "tests": 50,
+      "passed": 50,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "latest_per_case": {
+      "tests": 237,
+      "passed": 237,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "combined_final_worktree_run": false,
+    "new_e2_cases": 50,
+    "prior_cases_preserved": 187,
+    "prior_module_counts_match": true,
+    "runs": [
+      {
+        "name": "414e2-focused",
+        "stage": "45-case intermediate selection before final test additions and SDK transport correction; superseded for E2",
+        "counts": {
+          "tests": 45,
+          "passed": 45,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "junit_seconds": 152.996,
+        "timestamp": "2026-11-11T09:22:04.964849+05:30",
+        "modules": {
+          "tests.test_warehouse_sql_recovery_attestation_414e2": 45
+        },
+        "evidence": "$env:TEMP/414e2-focused.xml",
+        "sha256": "9f645cf5d41e1446c0f110fbdb088dfeee999a111e165ec8a60887e2bf1b9703",
+        "failed_cases": []
+      },
+      {
+        "name": "414e2-final",
+        "stage": "234-case collection before SDK transport correction; prior 187 paths unchanged; E2 cases superseded by acceptance",
+        "counts": {
+          "tests": 234,
+          "passed": 234,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "junit_seconds": 636.576,
+        "timestamp": "2026-11-11T09:24:51.947728+05:30",
+        "modules": {
+          "tests.test_warehouse_sql_dispatch_checkpoint_414d5": 33,
+          "tests.test_warehouse_sql_gateway_readiness_414d1": 5,
+          "tests.test_warehouse_sql_authenticated_readiness_414d2": 7,
+          "tests.test_warehouse_sql_compilation_comparison_414d3": 6,
+          "tests.test_warehouse_sql_stored_draft_414d4a": 9,
+          "tests.test_warehouse_sql_attempt_identity_bridge_414d4b": 7,
+          "tests.test_warehouse_sql_stored_publication_evidence_414d4c": 5,
+          "tests.test_warehouse_sql_trusted_recompilation_414d4d": 6,
+          "tests.test_warehouse_sql_trusted_recompilation_414d4e": 4,
+          "tests.test_warehouse_query_reservation_publication_links_postgres": 7,
+          "tests.test_warehouse_query_publication_retirement_postgres": 5,
+          "tests.test_warehouse_query_publication_inspection_postgres": 7,
+          "tests.test_query_governance_postgres": 17,
+          "tests.test_warehouse_sql_claim_rehearsal_postgres": 12,
+          "tests.test_warehouse_sql_recovery_inspection_postgres": 10,
+          "tests.test_warehouse_sql_recovery_settlement_postgres": 16,
+          "tests.test_warehouse_sql_send_recovery_414e1": 31,
+          "tests.test_warehouse_sql_recovery_attestation_414e2": 47
+        },
+        "evidence": "$env:TEMP/414e2-final.xml",
+        "sha256": "bb3f05680cb7ff8d40cf48e6a4e165da9ff5fac7d44f820f2a7832a47f0042c9",
+        "failed_cases": []
+      },
+      {
+        "name": "414e2-acceptance",
+        "stage": "final complete affected 50-case module including actual SDK metadata compatibility",
+        "counts": {
+          "tests": 50,
+          "passed": 50,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "junit_seconds": 175.543,
+        "timestamp": "2026-11-11T09:35:42.719814+05:30",
+        "modules": {
+          "tests.test_warehouse_sql_recovery_attestation_414e2": 50
+        },
+        "evidence": "$env:TEMP/414e2-acceptance.xml",
+        "sha256": "8a3036db7671b1f0737b49a2f840373ded1882795835e6ace3df6581d9ed60b9",
+        "failed_cases": []
+      }
+    ],
+    "full_repository": false,
+    "deployed_roles": false,
+    "cloud_provider_calls": false
+  },
+  "checks": {
+    "source_hashes_unchanged_during_final_run": true,
+    "ast": "PASS",
+    "git_diff_check": "PASS",
+    "scoped_secret_screen": "PASS: heuristic patterns, not a credential audit",
+    "branch_head_unchanged": true,
+    "index_unchanged": true,
+    "scope": "one pre-existing tracked source modified, six files added; no unrelated Git-visible changes",
+    "scoped_whitespace_findings": [],
+    "scoped_heuristic_secret_findings": []
+  },
+  "database": {
+    "run_db_tests": "1",
+    "loopback_only": true,
+    "uuid_disposable_schemas": true,
+    "application_schema_migration": false,
+    "role_or_grant_changes": false
+  },
+  "evidence_limits": [
+    "Fake provider REST metadata, not live provider/IAM/authenticated transport acceptance",
+    "Schema-owner PostgreSQL fixtures, not restricted deployed-role acceptance",
+    "Missing creator/configuration/statistics/billing or unreviewed destination remains uncertain",
+    "Metadata/billing presence does not authorize settlement, result access, resend or retention release",
+    "SDK timeout/JSON cap are not hard OS memory or credential-refresh wall-clock bounds"
+  ],
+  "default_runtime": "Empty trusted registry; no credential/client/provider construction or activation",
+  "prohibited_actions_performed": [],
+  "remaining_p0": [
+    "Reviewed historical submitter/policy provenance and production lookup wiring absent",
+    "Provider IAM/transport and restricted controller/DB-role isolation unverified",
+    "No reviewed send/cancel/settlement/result or retention-release bridge",
+    "Physical-table immutability/ACLs and independently justified retention release remain inherited blockers"
+  ],
+  "remaining_p1": [
+    "Durable lookup scheduling/backoff/escalation and finite provider history",
+    "Terminal E1 diagnostic contradictions require independent operator review",
+    "Real SDK metadata/default-field compatibility and operational resource/shutdown acceptance"
+  ],
+  "diagnostics": [
+    "Previous process session could not be resumed and no retained XML from it was available; not counted as passing",
+    "First resumed launch blocked before pytest by sandbox interpreter access; same authorized local command then ran successfully with sandbox escalation",
+    "PowerShell 5 ConvertFrom-Json could not parse prior nested evidence JSON; module inventory is read using Python stdlib instead"
+  ],
+  "commands": {
+    "combined_powershell": "Set-Location 'D:\\Project\\datarise-warehouse-ux'\n$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n$python='D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe'\n$bootstrap=\"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\"\n$tests=@(& $python -c \"import json,pathlib; d=json.loads(pathlib.Path('docs/warehouse_sql_send_recovery_414e1_validation.json').read_text()); print('\\n'.join(k.replace('.','/')+'.py' for k in d['validation']['runs'][-1]['modules']))\")\n$tests+='tests/test_warehouse_sql_recovery_attestation_414e2.py'\n& $python -c $bootstrap @tests -q --tb=short -ra -p no:cacheprovider --evidence-dir \"$env:TEMP/414e2-final-events\" --junitxml=\"$env:TEMP/414e2-final.xml\"",
+    "focused_powershell": "$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n& 'D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe' -c \"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\" tests/test_warehouse_sql_recovery_attestation_414e2.py -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/414e2-focused.xml\"",
+    "final_affected_powershell": "$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n& 'D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe' -c \"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\" tests/test_warehouse_sql_recovery_attestation_414e2.py -q --tb=short -ra -p no:cacheprovider --evidence-dir \"$env:TEMP/414e2-acceptance-events\" --junitxml=\"$env:TEMP/414e2-acceptance.xml\""
+  },
+  "sdk_compatibility": {
+    "installed_version": "google-cloud-bigquery 3.46.2",
+    "finding": "QueryJob.to_api_repr drops creator/status/statistics; full get_job metadata uses private _properties",
+    "verification": "Actual QueryJob hydration test plus safe integral timestamp normalization; no client constructed"
+  }
+}
