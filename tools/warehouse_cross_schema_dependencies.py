@@ -80,7 +80,7 @@ def inspect(conn) -> dict:
         # not a parser or automatic rewrite authorization.
         unqualified = sorted(
             tbl for tbl in IDENTITY_TABLES
-            if __import__("re").search(
+            if re.search(
                 r"(?i)(?<![\w.])" + re.escape(tbl) + r"\b",
                 definition,
             )
