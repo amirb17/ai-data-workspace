@@ -84,8 +84,10 @@ def test_absent_rows_are_empty_success_and_cursor_is_internal():
 def test_large_provider_payload_denied_before_conversion():
     result=raw()
     result["rows"]=[{"f":[{"v":"7"},{"v":"1"},{"v":"true"},{"v":"x"*8192}]}]*50
+    # Request enough rows that this specifically exercises the byte budget,
+    # independently of the new earlier provider-overdelivery guard.
     with pytest.raises(BigQueryResultShapeError,match="TOO_LARGE"):
-        parse(result)
+        parse(result,rows=100)
 
 
 def test_non_finite_float_is_rejected():
