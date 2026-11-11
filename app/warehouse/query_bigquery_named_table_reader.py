@@ -178,3 +178,23 @@ class NamedTableBigQueryResultReader:
         finally:
             if response is not None:
                 response.close()
+
+
+class PinnedNamedTableResultReaderFactory:
+    """Inject a reviewed reader session once; bind exact job/destination later.
+
+    Transport-only, with no database login. The bearer token must belong to
+    the dedicated result reader, not an API/sender/attester process credential.
+    """
+
+    def __init__(self, *, principal: str, session: requests.Session):
+        if (type(principal) is not str or not _EMAIL.fullmatch(principal)
+                or type(session) is not requests.Session):
+            raise ValueError("EXPLICIT_RESULT_READER_FACTORY_REQUIRED")
+        self.principal = principal
+        self._session = session
+
+    def bind(self, expected: dict) -> NamedTableBigQueryResultReader:
+        return NamedTableBigQueryResultReader(
+            expected=expected, principal=self.principal, session=self._session
+        )
