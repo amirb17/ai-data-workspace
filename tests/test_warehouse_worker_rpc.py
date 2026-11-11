@@ -1,5 +1,6 @@
 """HMAC, replay and local one-duty RPC transport integration tests."""
 import json
+from contextlib import nullcontext
 from threading import Thread
 
 import pytest
@@ -68,7 +69,8 @@ def test_worker_roundtrip_is_loopback_and_does_not_require_database():
     def fake(duty,operation,args):
         received.append((duty,operation,args))
         return {"attempt_id":bounded_id(args),"accounted_bytes":0}
-    server=create_server(duty="accounting",secret=KEY,port=18084,handler=fake)
+    server=create_server(duty="accounting",secret=KEY,port=18084,
+                         handler=fake,boundary=nullcontext)
     worker=Thread(target=server.serve_forever,daemon=True)
     worker.start()
     try:
@@ -89,3 +91,8 @@ def test_rpc_client_rejects_weak_secrets_and_unreviewed_ports():
         WarehouseWorkerClient("accounting",80,KEY)
     with pytest.raises(ValueError,match="REVIEWED"):
         WarehouseWorkerClient("accounting",18084,b"weak")
+
+
+def test_worker_host_cannot_start_without_explicit_database_boundary():
+    with pytest.raises(ValueError, match="EXPLICIT_WORKER_DATABASE_BOUNDARY"):
+        create_server(duty="accounting",secret=KEY,port=18085)
