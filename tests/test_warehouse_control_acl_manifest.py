@@ -26,12 +26,11 @@ def test_control_role_has_no_provider_or_accounting_write_privileges():
     assert all(name.startswith("warehouse_query_") for name in QUERY_SELECT)
     assert set(QUERY_WRITES).issubset(QUERY_SELECT)
     assert all(rights == ("INSERT",) for rights in QUERY_WRITES.values())
+    assert {"warehouse_query_send_intents", "warehouse_query_provider_policies", "warehouse_query_request_envelopes"} <= set(QUERY_WRITES)
     for forbidden in (
-        "warehouse_query_send_intents",
         "warehouse_query_send_journal",
         "warehouse_query_recovery_attestations",
         "warehouse_query_result_attestations",
-        "warehouse_query_provider_policies",
         "warehouse_query_dispatch_revocations",
     ):
         assert forbidden not in QUERY_WRITES
@@ -46,4 +45,7 @@ def test_control_role_can_only_insert_immutable_query_admission_records():
         "warehouse_query_api_requests",
         "warehouse_query_result_contracts",
         "warehouse_query_dispatch_checkpoints",
+        "warehouse_query_send_intents",
+        "warehouse_query_provider_policies",
+        "warehouse_query_request_envelopes",
     }
