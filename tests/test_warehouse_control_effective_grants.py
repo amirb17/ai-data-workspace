@@ -28,6 +28,9 @@ class _Conn:
             "datarise_warehouse_dev.warehouse_query_api_requests":(True,False,False,False),
             "datarise_warehouse_dev.warehouse_query_result_contracts":(True,False,False,False),
             "datarise_warehouse_dev.warehouse_query_dispatch_checkpoints":(True,False,False,False),
+            "datarise_warehouse_dev.warehouse_query_send_intents":(True,False,False,False),
+            "datarise_warehouse_dev.warehouse_query_provider_policies":(True,False,False,False),
+            "datarise_warehouse_dev.warehouse_query_request_envelopes":(True,False,False,False),
         }.get(name,(False,False,False,False))
         if self.overgrant==name:
             expected=(expected[0],True,expected[2],expected[3])
@@ -39,7 +42,7 @@ class _Conn:
 def test_control_acl_exact_grants_admitted():
     conn=_Conn()
     verify_control_write_boundary(conn)
-    assert len(conn.calls)==18
+    assert len(conn.calls)==19
     assert "public.users" in conn.calls
     assert "datarise_warehouse_dev.warehouse_query_send_intents" in conn.calls
 
@@ -47,7 +50,7 @@ def test_control_acl_exact_grants_admitted():
 def test_provider_worker_write_overgrant_is_rejected():
     with pytest.raises(RuntimeError,match="GRANT_DRIFT"):
         verify_control_write_boundary(_Conn(
-            overgrant="datarise_warehouse_dev.warehouse_query_send_intents"))
+            overgrant="datarise_warehouse_dev.warehouse_query_send_journal"))
 
 
 def test_missing_admission_insert_is_rejected():
