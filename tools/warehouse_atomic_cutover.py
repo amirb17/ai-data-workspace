@@ -146,6 +146,24 @@ def _trigger_rows(conn):
     """, (ISOLATED, REVOKE_FUNCTION)).fetchall()
 
 
+def _rebind_trigger_target(definition: str, table: str) -> str:
+    """Replace exactly one trusted trigger ON target, quoted or unquoted."""
+    if table not in REVOKE_TABLES:
+        raise RuntimeError("TRIGGER_TARGET_OUTSIDE_CANONICAL_SCOPE")
+    if type(definition) is not str:
+        raise RuntimeError("TRIGGER_DEFINITION_SCHEMA_DRIFT")
+    expression = re.compile(
+        r'(?i)\\bON\\s+(?:"?' + re.escape(ISOLATED) +
+        r'"?\\.)"?' + re.escape(table) + r'"?(?=\\s)'
+    )
+    rewritten, count = expression.subn(
+        'ON "public"."' + table + '"', definition
+    )
+    if count != 1:
+        raise RuntimeError("TRIGGER_DEFINITION_SCHEMA_DRIFT")
+    return rewritten
+
+
 def rehearse(conn) -> dict:
     # The only supported operation is a transaction that will be rolled back.
     db, role = conn.execute(
