@@ -58,7 +58,8 @@ def test_owner_receives_only_specific_trigger_capabilities():
         def __init__(self, template):
             self.template = template
         def format(self, *parts):
-            pieces = [part.string if hasattr(part, "string") else str(part)
+            pieces = [part.string if hasattr(part, "string")
+                      else part.body if hasattr(part, "body") else str(part)
                       for part in parts]
             tokens = self.template.split("{}")
             return _Statement("".join(
