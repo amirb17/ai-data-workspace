@@ -48,6 +48,14 @@ def test_http_to_database_to_catalog_and_reviewed_join(client_context):
     assert all(m["serving_status"] == "NOT_VERIFIED" and not m["queryable"]
                for m in catalog["models"])
     assert not catalog["query_execution_enabled"]
+    readiness = catalog["readiness"]
+    assert readiness["status"] == "REVIEW_REQUIRED"
+    assert readiness["warehouse_sql_enabled"] is False
+    assert readiness["deployment_authorized"] is False
+    assert {x["code"] for x in readiness["blockers"]} == {
+        "RUNTIME_ROLE_ACCEPTANCE", "CLOUD_RETENTION_IAM",
+        "QUERY_EXECUTION_RELEASE", "SERVING_READINESS",
+    }
 
     empty = client.get(f"{base}/relationships")
     assert empty.status_code == 200, empty.text
