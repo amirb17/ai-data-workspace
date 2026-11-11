@@ -1,0 +1,193 @@
+{
+  "task": "414E3",
+  "date": "2026-11-11",
+  "timezone": "Asia/Calcutta",
+  "repository": "amirb17/ai-data-workspace",
+  "branch": "feature/warehouse-model-ux",
+  "head": "6e420632ce18e74d08fb4a919fccc673dda5bdba",
+  "worktree": "D:\\Project\\datarise-warehouse-ux",
+  "verdict": "PASS local exact server-policy non-dispatch checkpoint; NO-GO live analytical execution",
+  "files": {
+    "modified": [
+      "app/warehouse/query_recovery_attestation.py"
+    ],
+    "added": [
+      "app/warehouse/query_provider_policy.py",
+      "app/services/warehouse_sql_provider_policy_service.py",
+      "migrations/0056_warehouse_query_provider_policies.sql",
+      "tests/test_warehouse_sql_provider_policy_414e3.py",
+      "docs/warehouse_sql_provider_policy_414e3.md",
+      "docs/warehouse_sql_provider_policy_414e3_validation.json"
+    ],
+    "deleted": []
+  },
+  "source_sha256": {
+    "app/warehouse/query_recovery_attestation.py": "8317881d9b1551ec031cd7b8ac0f1dd65e13a541f60aa7cad015e4efdd602c76",
+    "app/warehouse/query_provider_policy.py": "23a5e0182b0569ff81c690d54daca3ded0c4a4a2d60381e95c8bad20fe42b348",
+    "app/services/warehouse_sql_provider_policy_service.py": "eb285a42a04c899f93153abf2beecd03413f92f4f2978603709816a96cac2234",
+    "migrations/0056_warehouse_query_provider_policies.sql": "ac4fc20238980b7d7ee61cc40e07dee281ca2346f7d18d4e20a9e7b0427d8f4c",
+    "tests/test_warehouse_sql_provider_policy_414e3.py": "21078c777268718ec6811abfa757b2060c23658f2e38f4c474cab4b1ee3d0402",
+    "docs/warehouse_sql_provider_policy_414e3.md": "ce9038578c43c43292a315466b2caf1cd0bf28f3056e4909ef6305aaf90976ce"
+  },
+  "reviewed_migrations_sha256": {
+    "migrations/0053_warehouse_query_dispatch_checkpoints.sql": "e1d1aac0029674ff7395c895d8809d68c6a694cfd905144e082b098d1cff06f8",
+    "migrations/0054_warehouse_query_send_recovery.sql": "5c3c278a691aad1bc9e88ccf438e171956ab3db42ab0247d11b25d5092e74366",
+    "migrations/0055_warehouse_query_recovery_attestations.sql": "7eb416795e3688bb79af0afdda52261a559c8a4849e85e5a05e41fa61124b60b"
+  },
+  "validation": {
+    "final": {
+      "tests": 288,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 288
+    },
+    "new_e3_cases": 51,
+    "prior_cases_preserved": 237,
+    "prior_d5_cases": 33,
+    "prior_e1_cases": 31,
+    "prior_e2_cases": 50,
+    "prior_module_counts_match": true,
+    "combined_final_worktree_run": true,
+    "runs": [
+      {
+        "name": "414e3-smoke",
+        "stage": "initial smoke; before client-scope requirement and final test additions",
+        "counts": {
+          "tests": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 1
+        },
+        "modules": {
+          "tests.test_warehouse_sql_provider_policy_414e3": 1
+        },
+        "junit_seconds": 8.356,
+        "timestamp": "2026-11-11T10:01:23.015609+05:30",
+        "evidence": "$env:TEMP/414e3-smoke.xml",
+        "sha256": "95b378425a6779f237ef9be0873eaadd08dd5b0a7bd73e71f624a35dadafad36",
+        "failed_cases": [],
+        "console_seconds": 8.35
+      },
+      {
+        "name": "414e3-focused",
+        "stage": "complete final-source E3 module",
+        "counts": {
+          "tests": 51,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 51
+        },
+        "modules": {
+          "tests.test_warehouse_sql_provider_policy_414e3": 51
+        },
+        "junit_seconds": 178.466,
+        "timestamp": "2026-11-11T10:02:58.016811+05:30",
+        "evidence": "$env:TEMP/414e3-focused.xml",
+        "sha256": "73f8aa629c3c8640793213e6224a95948dd28a3687ef9dab10c0303d138e6f8a",
+        "failed_cases": [],
+        "console_seconds": 178.47
+      },
+      {
+        "name": "414e3-final",
+        "stage": "complete final-worktree prior237 plus E3 selection",
+        "counts": {
+          "tests": 288,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 288
+        },
+        "modules": {
+          "tests.test_warehouse_sql_dispatch_checkpoint_414d5": 33,
+          "tests.test_warehouse_sql_gateway_readiness_414d1": 5,
+          "tests.test_warehouse_sql_authenticated_readiness_414d2": 7,
+          "tests.test_warehouse_sql_compilation_comparison_414d3": 6,
+          "tests.test_warehouse_sql_stored_draft_414d4a": 9,
+          "tests.test_warehouse_sql_attempt_identity_bridge_414d4b": 7,
+          "tests.test_warehouse_sql_stored_publication_evidence_414d4c": 5,
+          "tests.test_warehouse_sql_trusted_recompilation_414d4d": 6,
+          "tests.test_warehouse_sql_trusted_recompilation_414d4e": 4,
+          "tests.test_warehouse_query_reservation_publication_links_postgres": 7,
+          "tests.test_warehouse_query_publication_retirement_postgres": 5,
+          "tests.test_warehouse_query_publication_inspection_postgres": 7,
+          "tests.test_query_governance_postgres": 17,
+          "tests.test_warehouse_sql_claim_rehearsal_postgres": 12,
+          "tests.test_warehouse_sql_recovery_inspection_postgres": 10,
+          "tests.test_warehouse_sql_recovery_settlement_postgres": 16,
+          "tests.test_warehouse_sql_send_recovery_414e1": 31,
+          "tests.test_warehouse_sql_recovery_attestation_414e2": 50,
+          "tests.test_warehouse_sql_provider_policy_414e3": 51
+        },
+        "junit_seconds": 806.304,
+        "timestamp": "2026-11-11T10:06:15.788768+05:30",
+        "evidence": "$env:TEMP/414e3-final.xml",
+        "sha256": "7e47b4e8713ab03e859503ca2de890a7eafe8afb4efc5671f0b1704d386b64d8",
+        "failed_cases": [],
+        "console_seconds": 806.31
+      }
+    ],
+    "full_repository": false,
+    "cloud_provider_calls": false,
+    "deployed_roles": false
+  },
+  "commands": {
+    "combined_powershell": "Set-Location 'D:\\Project\\datarise-warehouse-ux'\n$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n$python='D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe'\n$bootstrap=\"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\"\n$tests=@(& $python -c \"import json,pathlib; a=json.loads(pathlib.Path('docs/warehouse_sql_send_recovery_414e1_validation.json').read_text())['validation']['runs'][-1]['modules']; b=json.loads(pathlib.Path('docs/warehouse_sql_recovery_attestation_414e2_validation.json').read_text())['validation']['runs'][-1]['modules']; print('\\n'.join(k.replace('.','/')+'.py' for k in dict.fromkeys([*a,*b])))\")\n$tests+='tests/test_warehouse_sql_provider_policy_414e3.py'\n& $python -c $bootstrap @tests -q --tb=short -ra -p no:cacheprovider --evidence-dir \"$env:TEMP/414e3-final-events\" --junitxml=\"$env:TEMP/414e3-final.xml\"",
+    "focused_with_same_environment": "& $python -c $bootstrap tests/test_warehouse_sql_provider_policy_414e3.py -q --tb=short -ra -p no:cacheprovider --evidence-dir \"$env:TEMP/414e3-focused-events\" --junitxml=\"$env:TEMP/414e3-focused.xml\"",
+    "smoke": "Same focused command with ::test_authenticated_exact_policy_idempotency_and_checked_sdk_metadata, no --evidence-dir, --junitxml=\"$env:TEMP/414e3-smoke.xml\""
+  },
+  "database": {
+    "run_db_tests": "1",
+    "runner": "tools/task20_local_tests.py",
+    "loopback_only": true,
+    "uuid_temporary_schemas": true,
+    "application_schema_migrations": false,
+    "role_or_grant_application": false,
+    "permission_denial": "Provider fake Forbidden; actual PostgreSQL SQLSTATE42501 fault injection, not deployed-role acceptance"
+  },
+  "checks": {
+    "ast": "PASS",
+    "git_diff_check": "PASS",
+    "scoped_whitespace_findings": [],
+    "scoped_heuristic_secret_findings": [],
+    "source_hashes_unchanged_during_final_run": true,
+    "index_unchanged": true,
+    "branch_head_unchanged": true,
+    "scope": "one existing file modified, six added; no unrelated Git-visible changes"
+  },
+  "defaults": "Empty trusted provider/lookup registries; no credentials/client factory, execution gate or endpoint enabled",
+  "evidence_limits": [
+    "Synthetic provider metadata/SDK hydration is not live authenticated provider acceptance",
+    "Schema-owner fixtures/fault injection do not prove restricted SQL privileges or effective IAM",
+    "Private SDK _properties compatibility and optional metadata/defaults remain conservative",
+    "Exact policy pin is not proof of historical submission or independently verified billing settlement",
+    "No OS/network-partition/deployed resource or full repository acceptance"
+  ],
+  "remaining_p0": [
+    "Reviewed runtime/initial policy provenance, effective IAM/TLS/credential and cross-tenant controller isolation",
+    "No reviewed send/cancel/result/settlement boundary; metadata cannot authorize dispatch",
+    "Physical ACL/immutability and independently verified retention release remain open"
+  ],
+  "remaining_p1": [
+    "Durable lookup scheduling/backoff/history expiry/escalation",
+    "Immutable startup configuration/revision discipline and cross-process rollout",
+    "SDK upgrade/default metadata compatibility; terminal diagnostic contradiction review"
+  ],
+  "permission_references": [
+    "https://docs.cloud.google.com/bigquery/docs/reference/rest/v2/jobs/get",
+    "https://www.postgresql.org/docs/current/sql-select.html"
+  ],
+  "diagnostics": [
+    "Smoke passed before final additions; focused and combined runs are final source",
+    "Initial read-only rg wildcard invocation used Windows-incompatible literal paths; corrected with rg -g; no test failure"
+  ],
+  "not_performed": [
+    "Google/AWS SDK/control-plane calls or cloud credential construction/use",
+    "Deployments, infrastructure/UI/processing activation",
+    "Application/public-schema migrations or role/grant changes",
+    "Dependency installation",
+    "Git stage/commit/push/reset/clean/merge/branch switch"
+  ]
+}

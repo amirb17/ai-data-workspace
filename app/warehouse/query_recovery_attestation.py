@@ -179,7 +179,12 @@ def verify_metadata(raw,expected,policy):
 
 
 def lookup_metadata(runtime,expected):
+    return _lookup_metadata(runtime,expected,verify_metadata)
+
+
+def _lookup_metadata(runtime,expected,validator):
+    """Trusted internal validator composition; no public provider/policy bypass."""
     try:raw=runtime.transport.lookup(expected)
     except _LookupAbsent:return MetadataReport('NOT_FOUND','ABSENT','LOOKUP_NOT_FOUND')
     except Exception:return MetadataReport('UNCERTAIN','UNCERTAIN','LOOKUP_UNAVAILABLE')
-    return verify_metadata(raw,expected,runtime.policy)
+    return validator(raw,expected,runtime.policy)

@@ -1,0 +1,147 @@
+"""414E3 authenticated expected policy and backend-only, non-dispatch verification."""
+from dataclasses import asdict, dataclass
+import re
+from types import MappingProxyType
+
+from fastapi import HTTPException, Request
+from psycopg.types.json import Jsonb
+from psycopg.rows import dict_row
+
+from app.auth.config import require_secret
+from app.db import warehouse_query_attempt_repository as attempts
+from app.db import warehouse_query_send_repository as repo
+from app.query_governance.policy import QueryPolicy
+from app.services import warehouse_sql_send_recovery_service as recovery
+from app.services import warehouse_sql_recovery_attestation_service as attestation
+from app.services.warehouse_sql_dispatch_checkpoint_service import _session_locked
+from app.warehouse.query_provider_policy import ProviderPolicy, verify_exact_metadata
+from app.warehouse.query_recovery_attestation import ExpectedJob, digest, _lookup_metadata
+
+# Workspace bindings are trusted startup configuration, never request parameters.
+_POLICIES = MappingProxyType({})
+
+
+class PolicyConflict(ValueError):
+    pass
+
+
+@dataclass(frozen=True)
+class PolicyPreparation(recovery.NonDispatch):
+    attempt_handle: str
+    classification: str = 'POLICY_PINNED_NO_DISPATCH'
+
+
+def _runtime(workspace):
+    policy = _POLICIES.get(workspace)
+    if type(policy) is not ProviderPolicy:
+        raise attestation.LookupUnavailable('Reviewed workspace provider policy unavailable')
+    runtime = attestation._runtime_for(policy.project, policy.location)
+    client = runtime.transport._client
+    if (getattr(client, 'project', None), getattr(client, 'location', None)) != (policy.project, policy.location):
+        raise PolicyConflict('SERVER_CLIENT_SCOPE_MISMATCH')
+    lookup = runtime.policy
+    if (lookup.creator_email != policy.creator_email
+            or lookup.principal_subject != policy.principal_subject
+            or lookup.maximum_timeout_ms != policy.timeout_ms):
+        raise PolicyConflict('SERVER_LOOKUP_POLICY_MISMATCH')
+    return policy, runtime
+
+
+def _derive(conn, c, r, intent):
+    policy, runtime = _runtime(c['workspace_id'])
+    if asdict(QueryPolicy.from_environment()) != c['policy']:
+        raise PolicyConflict('GOVERNANCE_POLICY_DRIFT')
+    dataset = f"dr_dev_w{c['workspace_id']}"
+    tables = c['evidence'].get('physical_tables')
+    identity = f"dr_query_w{c['workspace_id']}_r{r['reservation_id']}_{c['request_token'].strip()[:32]}"
+    if (intent['provider_project'] != policy.project or intent['provider_location'] != policy.location
+            or intent['provider_job_id'] != identity or c['provider_job_id'] != identity
+            or intent['compiled_intent_sha256'] != c['compiled_intent_sha256']
+            or type(tables) is not list or len(tables) != 1
+            or any(type(t) is not str or t.split('.')[:2] != [policy.project, dataset] for t in tables)):
+        raise PolicyConflict('SERVER_PROVIDER_SCOPE_MISMATCH')
+    pins = conn.cursor(row_factory=dict_row).execute("""
+        SELECT p.resource_id,p.publication_id,p.publication_revision,to_jsonb(sm) AS serving_receipt
+        FROM warehouse_query_attempt_publication_pins p
+        JOIN warehouse_serving_materializations sm ON sm.resource_id=p.resource_id
+          AND sm.publication_id=p.publication_id AND sm.publication_revision=p.publication_revision
+        WHERE p.attempt_id=%s ORDER BY p.resource_id""", (c['attempt_id'],)).fetchall()
+    if len(pins) != 1 or pins != c['evidence'].get('publications'):
+        raise PolicyConflict('EXACT_PUBLICATION_RECEIPT_REQUIRED')
+    ceiling = min(r['reserved_bytes'], r['maximum_bytes_billed'], c['policy']['auto_execute_bytes'], c['policy']['hard_bytes'])
+    core = ExpectedJob(policy.project, policy.location, identity, c['workspace_id'], r['reservation_id'],
+        c['compiled_intent_sha256'].strip(), c['compiled_sql_sha256'].strip(), tuple(tables), ceiling,
+        int(r['execution_started_at'].timestamp()*1000))
+    expected = dict(contract_version=1, project=policy.project, dataset=dataset, location=policy.location,
+        job_id=identity, sql_sha256=core.sql_sha256, compiled_intent_sha256=core.intent_sha256,
+        tables=tables, labels=dict(datarise='query', workspace=str(c['workspace_id']),
+            reservation=str(r['reservation_id']), intent=core.intent_sha256[:63]),
+        maximum_bytes_billed=min(ceiling, policy.maximum_bytes), job_timeout_ms=policy.timeout_ms,
+        publication_sha256=digest(pins), governance_policy_sha256=digest(c['policy']),
+        provider_policy=asdict(policy), lookup_policy=asdict(runtime.policy))
+    return expected, core, runtime
+
+
+def prepare_authenticated_provider_policy(*, request: Request, workspace_id: int, attempt_handle: str) -> PolicyPreparation:
+    if (not isinstance(request, Request) or type(workspace_id) is not int or workspace_id < 1
+            or type(attempt_handle) is not str or not re.fullmatch('[a-f0-9]{32}', attempt_handle)):
+        raise ValueError('Verified session and server handle required')
+    try:
+        settings = require_secret()
+    except ValueError:
+        raise HTTPException(503, 'Warehouse session unavailable') from None
+    if settings.mode != 'session':
+        raise HTTPException(503, 'Warehouse session required')
+    token = request.cookies.get(settings.session_cookie)
+    if not token or len(token) > 128:
+        raise HTTPException(401, 'Sign in to continue.')
+    with repo.transaction(workspace_id) as conn:
+        user, session = _session_locked(conn, token)
+        workspace = repo.one(conn, 'SELECT owner,status FROM workspaces WHERE workspace_id=%s FOR SHARE', (workspace_id,))
+        if not workspace or workspace['owner'] != user['owner_key'] or workspace['status'] != 'ACTIVE':
+            raise HTTPException(403, 'Workspace unavailable')
+        a = attempts.read_attempt(conn, workspace_id=workspace_id, owner_key=user['owner_key'], attempt_handle=attempt_handle)
+        c = repo.checkpoint(conn, a['attempt_id'])
+        if c['user_id'] != user['user_id'] or c['session_digest'] != session['token_digest']:
+            raise HTTPException(403, 'Original authenticated checkpoint required')
+        r, _, _ = recovery._live_context(conn, c)
+        intent, _ = repo.latest(conn, c['attempt_id'])
+        expected, _, _ = _derive(conn, c, r, intent)
+        hashed = digest(expected)
+        old = repo.one(conn, 'SELECT * FROM warehouse_query_provider_policies WHERE attempt_id=%s', (c['attempt_id'],))
+        if old:
+            if old['expected'] != expected or old['expected_sha256'] != hashed:
+                raise PolicyConflict('IMMUTABLE_PROVIDER_POLICY_DRIFT')
+        else:
+            conn.execute('INSERT INTO warehouse_query_provider_policies(attempt_id,expected,expected_sha256) VALUES(%s,%s,%s)',
+                         (c['attempt_id'], Jsonb(expected), hashed))
+        return PolicyPreparation(attempt_handle)
+
+
+def _snapshot(conn, c, lease, revision):
+    core = attestation._snapshot(conn, c, lease, revision)
+    r = repo.one(conn, 'SELECT * FROM query_governance_reservations WHERE reservation_id=%s', (c['reservation_id'],))
+    intent, _ = repo.latest(conn, c['attempt_id'])
+    expected, derived_core, runtime = _derive(conn, c, r, intent)
+    old = repo.one(conn, 'SELECT * FROM warehouse_query_provider_policies WHERE attempt_id=%s', (c['attempt_id'],))
+    if (not old or old['expected'] != expected or old['expected_sha256'] != digest(expected) or core != derived_core):
+        raise PolicyConflict('IMMUTABLE_PROVIDER_POLICY_REQUIRED_OR_DRIFTED')
+    return expected, core, runtime
+
+
+def lookup_with_provider_policy(*, lease: recovery.RecoveryLease, expected_revision: int) -> attestation.RecoveryAttestation:
+    """Trusted bookkeeping only; accepts no principal, SQL, provider or policy DTO."""
+    recovery._validate_lease(lease)
+    with recovery._worker(lease.attempt_id) as (conn, c):
+        expected, core, runtime = _snapshot(conn, c, lease, expected_revision)
+    report = _lookup_metadata(runtime, core,
+        lambda raw, trusted_core, lookup: verify_exact_metadata(raw, trusted_core, lookup, expected))
+    with recovery._worker(lease.attempt_id) as (conn, c):
+        current, current_core, _ = _snapshot(conn, c, lease, expected_revision)
+        if current != expected or current_core != core:
+            raise PolicyConflict('PROVIDER_POLICY_CHANGED_DURING_LOOKUP')
+        result = recovery._record_observation_locked(conn, c, lease, expected_revision,
+            recovery.JobIdentity(core.project, core.location, core.job_id), recovery.Observation(report.observation))
+        attestation._persist(conn, c['attempt_id'], result.revision, report, digest(expected))
+        return attestation.RecoveryAttestation(result.revision, report.observation, report.verdict,
+                                             report.reason, report.billing_complete, result)
