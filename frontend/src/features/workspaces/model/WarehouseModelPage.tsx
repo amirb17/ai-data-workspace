@@ -54,6 +54,16 @@ export function WarehouseModelContent({catalog,relationships=[],reload}:{catalog
       <GitBranch className="mr-2 inline-block" size={16}/>
       {verified.length ? `${verified.length} explicitly reviewed relationship(s) available below.` : 'No current reviewed FACT-to-DIMENSION relationships. Tables are grouped by type, not connected by inferred keys.'} Warehouse SQL remains disabled.
     </div>
+    <section className="rounded-xl border border-slate-200 bg-white p-4" aria-labelledby="warehouse-readiness-title">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="warehouse-readiness-title" className="text-base font-semibold text-slate-900">Warehouse release readiness</h2>
+        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">Review required</span>
+      </div>
+      <p className="mt-2 text-sm text-slate-600">Approved model definitions are available for inspection. BigQuery warehouse SQL remains disabled until independent security, serving and execution checks are accepted.</p>
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
+        {catalog.readiness.blockers.map(item=><li key={item.code}>{item.label}</li>)}
+      </ul>
+    </section>
     <label className="block text-sm text-slate-700">Search warehouse tables
       <input className="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search approved models…" />
     </label>
