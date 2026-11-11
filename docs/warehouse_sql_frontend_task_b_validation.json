@@ -1,0 +1,100 @@
+{
+  "task": "B - Warehouse SQL frontend",
+  "branch": "feature/warehouse-model-ux",
+  "base_head": "fa1a57ef602f370e6e89c9cf1cf539a88f271e68",
+  "local_status": "PASS frontend build/lint and 38 scripts",
+  "production_status": "NO-GO; no real runtime enabled",
+  "files": {
+    "modified": [
+      "frontend/src/AppLayout.tsx",
+      "frontend/src/pages/Workspace/WorkspaceDetailPage.tsx"
+    ],
+    "added": [
+      "frontend/src/services/api/warehouseQueries.ts",
+      "frontend/src/features/workspaces/warehouseSql/WarehouseSqlPage.tsx",
+      "frontend/src/features/workspaces/warehouseSql/useWarehouseQuery.ts",
+      "frontend/src/features/workspaces/warehouseSql/WarehouseQueryResults.tsx",
+      "frontend/tests/warehouse-sql-api.cjs",
+      "frontend/tests/warehouse-sql-workflow.cjs",
+      "docs/warehouse_sql_frontend_task_b.md",
+      "docs/warehouse_sql_frontend_task_b_validation.json"
+    ],
+    "deleted": []
+  },
+  "runs": [
+    {
+      "command": "npm run build",
+      "cwd": "D:\\Project\\datarise-warehouse-ux\\frontend",
+      "exit_code": 0,
+      "evidence": "$env:TEMP/warehouse-sql-task-b-build.log",
+      "sha256": "6a1f4c9dbfc604ec4dbd51156f96adaaa32aa86b448625cc4aedcffc80b0febd"
+    },
+    {
+      "command": "npm run lint",
+      "cwd": "D:\\Project\\datarise-warehouse-ux\\frontend",
+      "exit_code": 0,
+      "evidence": "$env:TEMP/warehouse-sql-task-b-lint.log",
+      "sha256": "f265d2ebe55f26405fc67d977c2a568a0ffa721d684708ba1dcb040e433b9fbe"
+    },
+    {
+      "command": "npm test",
+      "cwd": "D:\\Project\\datarise-warehouse-ux\\frontend",
+      "exit_code": 0,
+      "evidence": "$env:TEMP/warehouse-sql-task-b-test.log",
+      "sha256": "1c80a397ae74b7dcfd01b22d8ee1578b6512f3b11c16346850aac563f1122f41"
+    }
+  ],
+  "tests": {
+    "scripts_passed": 38,
+    "scripts_failed": 0,
+    "existing_scripts": 36,
+    "new_scripts": 2,
+    "new_interaction_scenarios": 18,
+    "new_api_contract_scenarios": 8,
+    "real_dom": true,
+    "session_csrf_client": true,
+    "controlled_http_responses": true,
+    "real_cloud": false,
+    "connected_browser_backend_acceptance": false
+  },
+  "source_sha256": {
+    "frontend/src/AppLayout.tsx": "a0fac1d0351da46b8f9f7afd9c767e32419d3e764efa6b7d7d2f363647cb1198",
+    "frontend/src/pages/Workspace/WorkspaceDetailPage.tsx": "3da448bcf281f7373058fc4b9380259b0c536e27dbb9de06e0358c4d100b72bc",
+    "frontend/src/services/api/warehouseQueries.ts": "82f27ffeb4ef3eff3decc4f527cdae03407d8b44b1a5427e76919744f38484d5",
+    "frontend/src/features/workspaces/warehouseSql/WarehouseSqlPage.tsx": "0ec49faf98f03d69196aad421b558de86c04d4d006db826aa3c46fe43d2127b1",
+    "frontend/src/features/workspaces/warehouseSql/useWarehouseQuery.ts": "7415bd9feeee89aba76bf93a05bd9ecb79f362a99148165e94f1bd6f88877b86",
+    "frontend/src/features/workspaces/warehouseSql/WarehouseQueryResults.tsx": "9d3ab3aeacab981b95a43b1c96f9819a508e04befa19e3f2037a156d8853273f",
+    "frontend/tests/warehouse-sql-api.cjs": "99d864142e971e2fff6507739568d3b8de62dfcd2e63f597deb9f05edcf2af3f",
+    "frontend/tests/warehouse-sql-workflow.cjs": "3bc67ac8f261190b4c74730c29336bd10b6c460af1cba4be02716e342445cd51",
+    "docs/warehouse_sql_frontend_task_b.md": "6736e620744b9caa7b1a951213196aef40a5b55b6cb01037a32837795a5e113e"
+  },
+  "checks": {
+    "trailing_whitespace": [],
+    "heuristic_secret_findings": []
+  },
+  "warnings": [
+    "Vite non-failing chunk size warning: AppLayout approximately 625 kB"
+  ],
+  "limits": [
+    "Existing bounded single-model grammar and first-page results only",
+    "Runtime disabled; controlled backend must be separately injected",
+    "Browser-unsafe integer numbers rejected; exact decimal strings preserved",
+    "In-memory lifecycle only; no persistence across reload, original-handle resume requires same server session",
+    "Unresolved admission interrupted by navigation may require original in-memory retry identity; no new history API",
+    "No actual browser/viewport/cloud or PostgreSQL test in this frontend phase"
+  ],
+  "unchanged": [
+    "Task A backend and migrations",
+    "Dataset/Gold SQL implementation",
+    "Shared auth client and public-mode policy",
+    "Draft role matrix and Task 20 roles",
+    "Processing and infrastructure"
+  ],
+  "not_performed": [
+    "Dependency installation",
+    "AWS/GCP APIs or credentials",
+    "Role grants or database migrations",
+    "Deployment or activation",
+    "Task C"
+  ]
+}

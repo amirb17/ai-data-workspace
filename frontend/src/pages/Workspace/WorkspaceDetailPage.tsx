@@ -5,7 +5,7 @@ import { listDatasets } from "../../services/api/datasets"
 import { useApiResource } from "../../services/api/useApiResource"
 import { ApiFeedback } from "../../components/ui/ApiFeedback"
 import { SectionNavigation, type SectionLink } from "../../components/layout/SectionNavigation"
-const tabs: SectionLink[] = [{label:"Overview",path:""},{label:"Data",path:"datasets",sections:["datasets","processing"]},{label:"Quality",path:"data-quality"},{label:"Model",path:"data-model",sections:["data-model","relationships","understanding","metrics"]},{label:"Analytics",path:"analytics"},{label:"SQL",path:"sql"}]
+const tabs: SectionLink[] = [{label:"Overview",path:""},{label:"Data",path:"datasets",sections:["datasets","processing"]},{label:"Quality",path:"data-quality"},{label:"Model",path:"data-model",sections:["data-model","relationships","understanding","metrics"]},{label:"Analytics",path:"analytics"},{label:"SQL",path:"sql"},{label:"Warehouse SQL",path:"warehouse-sql"}]
 const dataTabs: SectionLink[] = [{label:"Datasets",path:"datasets"},{label:"Processing",path:"processing"}]
 const modelTabs: SectionLink[] = [{label:"Data model",path:"data-model"},{label:"Review relationships",path:"relationships"},{label:"Dataset descriptions",path:"understanding"},{label:"Metric definitions",path:"metrics"}]
 export function WorkspaceDetailPage() {
