@@ -33,7 +33,10 @@ class FakeSession:
             return Reply(200, {"attempt_handle": self.handle, "status": "SUCCEEDED"})
         if url.endswith("/refresh"):
             raise AssertionError("Finished job must not refresh")
-        return Reply(201, {"attempt_handle": self.handle})
+        return Reply(201, {
+            "attempt_handle": self.handle,
+            "reused": len([x for x in self.history if x[1].endswith("/queries")]) > 1,
+        })
     def get(self, url, *, timeout, allow_redirects):
         assert allow_redirects is False
         self.history.append(("GET", url, None))
