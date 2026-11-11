@@ -49,7 +49,7 @@ def test_ambiguous_provider_result_does_not_retry_or_leak_errors(error):
 
 
 @pytest.mark.parametrize('overrides',[
-    {'project':'foreign'},
+    {'project':'FOREIGN!'},
     {'location':'US'},
     {'job_id':'other'},
     {'job_id':'dr_query_w0_r7_'+'a'*32},
@@ -66,3 +66,17 @@ def test_unreviewed_identity_rejected_before_transport(overrides):
 def test_no_default_credentials_or_implicit_cancel_client():
     with pytest.raises(TypeError):
         cancel_exact_job_once_after_intent(project=PROJECT,location='asia-south1',job_id=JOB,transport=object())
+
+
+def test_valid_project_syntax_does_not_grant_project_ownership():
+    """This low-level adapter checks syntax, not server-side ownership.
+
+    A project like 'foreign' is syntactically valid. Only the trusted
+    PostgreSQL policy/intent boundary may decide whether it is authorized.
+    """
+    fake=FakeCancel()
+    result=cancel_exact_job_once_after_intent(
+        project='foreign',location='asia-south1',job_id=JOB,transport=fake,
+    )
+    assert result.lookup_required and not result.cancellation_confirmed
+    assert fake.calls==[('foreign','asia-south1',JOB)]
