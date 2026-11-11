@@ -82,3 +82,17 @@ def test_stale_recovery_revision_cannot_lookup_after_valid_observation(pinned_db
         recover(replace(lease, token=uuid4()), checked.revision)
     assert len(client.calls) == 1
     assert scalar(s, "SELECT count(*) FROM warehouse_query_recovery_attestations") == 1
+
+
+def test_account_revocation_after_possible_send_still_allows_same_job_lookup(pinned_db):
+    s, lease, client = pinned_db
+    saved = pin(s)
+    boundary = send_boundary(lease)
+    change(s, "account")
+    result = recover(lease, boundary.revision)
+    assert result.verdict == "VERIFIED_METADATA"
+    assert result.recovery.revoked is True
+    assert result.recovery.job.job_id == saved.job_id
+    assert result.recovery.classification == "REVOKED_HELD"
+    assert len(client.calls) == 1
+    assert scalar(s, "SELECT count(*) FROM query_governance_usage") == 0
