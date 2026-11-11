@@ -35,9 +35,10 @@ def install_revocation_owner(conn) -> None:
         raise RuntimeError("REVOCATION_OWNER_ROLE_NOT_RESTRICTED")
     # A SECURITY DEFINER owner must not inherit rights from any other role.
     # Permissions granted here are the complete intended capability.
-    conn.execute(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(
-        sql.Identifier(ISOLATED), sql.Identifier(OWNER)
-    ))
+    for schema in (ISOLATED, "public"):
+        conn.execute(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(
+            sql.Identifier(schema), sql.Identifier(OWNER)
+        ))
     for name in READS:
         conn.execute(sql.SQL("GRANT SELECT ON {}.{} TO {}").format(
             sql.Identifier(ISOLATED), sql.Identifier(name), sql.Identifier(OWNER)
