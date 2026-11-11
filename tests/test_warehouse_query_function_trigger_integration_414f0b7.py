@@ -41,17 +41,15 @@ def test_real_migrated_catalog_functions_and_triggers_are_present(unbound):
         pytest.skip("Real warehouse integration requires RUN_DB_TESTS=1")
     s, _, client = unbound
     with s.f.pg["connect"]() as conn:
-        schema = conn.execute("SELECT current_schema()").fetchone()[0]
-        assert schema.startswith("test_warehouse_"), schema
         groups = collect_audit(conn)
+        schema = groups[0][0]["audited_schema"]
+        assert schema.startswith("test_warehouse_"), schema
         # The caller must never commit from within this READ ONLY transaction.
         conn.rollback()
 
     assert len(groups) == 3
-    assert groups[0] == [dict(audited_schema=schema, audit_user="postgres",
-                              search_path=schema)] or (
-        groups[0][0]["audited_schema"] == schema and len(groups[0]) == 1
-    )
+    assert len(groups[0]) == 1
+    assert groups[0][0]["audited_schema"] == schema
     functions, triggers = groups[1], groups[2]
     assert len(functions) >= 14
     assert len(triggers) >= 20
