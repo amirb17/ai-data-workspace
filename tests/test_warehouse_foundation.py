@@ -33,6 +33,13 @@ def pg(monkeypatch):
         pytest.skip('Set RUN_DB_TESTS=1 for isolated warehouse PostgreSQL tests')
     schema = 'test_warehouse_'+uuid.uuid4().hex
     original_url = database.DATABASE_URL
+    if not original_url:
+        pytest.fail(
+            "RUN_DB_TESTS=1 requires DATABASE_URL. Configure the local .env "
+            "or PowerShell environment with a disposable-test-capable PostgreSQL "
+            "connection; never commit connection secrets.",
+            pytrace=False,
+        )
     with psycopg.connect(original_url) as conn:
         conn.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
     test_url = make_conninfo(original_url, options='-c search_path='+schema)
