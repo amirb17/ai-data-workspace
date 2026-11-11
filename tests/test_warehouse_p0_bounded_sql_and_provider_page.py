@@ -82,3 +82,42 @@ def test_bounded_first_page_preserves_valid_rows():
     page=parse(result,requested_rows=1)
     assert page.rows==((7,"12.50",True,"Coffee"),)
     assert page.bytes_encoded<=256*1024
+
+
+def test_server_owned_job_enforces_billing_timeout_and_no_large_results():
+    from app.warehouse.query_job_request import build_reviewed_query_job_request
+    from tests.test_warehouse_query_job_request_414f1 import policy, SQL
+    expected=policy()
+    request=build_reviewed_query_job_request(expected=expected,compiled_sql=SQL)
+    config=request.body["configuration"]
+    query=config["query"]
+    assert query["maximumBytesBilled"]==str(expected["maximum_bytes_billed"])
+    assert int(query["maximumBytesBilled"])<=expected["provider_policy"]["maximum_bytes"]
+    assert config["jobTimeoutMs"]==str(expected["job_timeout_ms"])
+    assert query["allowLargeResults"] is False
+    assert query["useLegacySql"] is False
+    assert config["dryRun"] is False
+
+
+@pytest.mark.parametrize("tamper",[
+    "over_provider_ceiling",
+    "over_hard_ceiling",
+    "timeout_drift",
+    "zero_billing",
+])
+def test_server_owned_job_rejects_billing_or_timeout_drift(tamper):
+    from app.warehouse.query_job_request import (
+        build_reviewed_query_job_request,JobRequestMismatch,
+    )
+    from tests.test_warehouse_query_job_request_414f1 import policy, SQL
+    expected=policy()
+    if tamper=="over_provider_ceiling":
+        expected["maximum_bytes_billed"]=expected["provider_policy"]["maximum_bytes"]+1
+    elif tamper=="over_hard_ceiling":
+        expected["maximum_bytes_billed"]=1024**3+1
+    elif tamper=="timeout_drift":
+        expected["job_timeout_ms"]=expected["provider_policy"]["timeout_ms"]+1
+    else:
+        expected["maximum_bytes_billed"]=0
+    with pytest.raises(JobRequestMismatch):
+        build_reviewed_query_job_request(expected=expected,compiled_sql=SQL)
