@@ -100,41 +100,47 @@ def register_reviewed_logical_draft_without_dispatch(
     if type(model_id) is not int or model_id < 1:
         raise ValueError("Positive approved warehouse model required")
     with repository_transaction() as conn:
-        original=_load_attempt(conn,governance,attempt_handle)
-        catalog=_catalog_for_owned_model(
-            conn,governance.workspace_id,governance.owner_key,
-            governance.user,model_id,
-        )
-        draft=plan_draft(
-            logical_sql,workspace_id=governance.workspace_id,catalog=catalog,
-        )
-        if draft.model_id!=model_id:
-            raise ValueError("LOGICAL_DRAFT_MODEL_MISMATCH")
-        if logical_draft_digest(draft)!=original["logical_intent_sha256"].strip():
-            raise ValueError("LOGICAL_DRAFT_ATTEMPT_DIGEST_MISMATCH")
-        saved=conn.cursor(row_factory=dict_row).execute(
-            """SELECT * FROM warehouse_query_attempt_logical_drafts
-               WHERE attempt_id=%s FOR SHARE""",
-            (original["attempt_id"],),
-        ).fetchone()
-        if saved:
-            if _matches(saved,draft):
-                return StoredWarehouseLogicalDraft(
-                    original["attempt_id"],draft,True,
-                )
-            raise ValueError("LOGICAL_DRAFT_IMMUTABLE_CONFLICT")
-        conn.execute(
-            """INSERT INTO warehouse_query_attempt_logical_drafts(
-                attempt_id,workspace_id,owner_key,warehouse_model_id,
-                warehouse_model_version_id,normalized_sql,projected_columns,
-                row_limit
-               ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
-            (original["attempt_id"],governance.workspace_id,
-             governance.owner_key,draft.model_id,draft.model_version_id,
-             draft.normalized_sql,Jsonb(list(draft.projected_columns)),
-             draft.row_limit),
-        )
-        return StoredWarehouseLogicalDraft(original["attempt_id"],draft,True)
+        return _register_in_transaction(conn, governance, attempt_handle, model_id, logical_sql)
+
+
+def _register_in_transaction(conn, governance, attempt_handle, model_id, logical_sql):
+    """Internal composition; caller owns the authenticated admission transaction."""
+    original=_load_attempt(conn,governance,attempt_handle)
+    catalog=_catalog_for_owned_model(
+        conn,governance.workspace_id,governance.owner_key,
+        governance.user,model_id,
+    )
+    draft=plan_draft(
+        logical_sql,workspace_id=governance.workspace_id,catalog=catalog,
+    )
+    if draft.model_id!=model_id:
+        raise ValueError("LOGICAL_DRAFT_MODEL_MISMATCH")
+    if logical_draft_digest(draft)!=original["logical_intent_sha256"].strip():
+        raise ValueError("LOGICAL_DRAFT_ATTEMPT_DIGEST_MISMATCH")
+    saved=conn.cursor(row_factory=dict_row).execute(
+        """SELECT * FROM warehouse_query_attempt_logical_drafts
+           WHERE attempt_id=%s FOR SHARE""",
+        (original["attempt_id"],),
+    ).fetchone()
+    if saved:
+        if _matches(saved,draft):
+            return StoredWarehouseLogicalDraft(
+                original["attempt_id"],draft,True,
+            )
+        raise ValueError("LOGICAL_DRAFT_IMMUTABLE_CONFLICT")
+    conn.execute(
+        """INSERT INTO warehouse_query_attempt_logical_drafts(
+            attempt_id,workspace_id,owner_key,warehouse_model_id,
+            warehouse_model_version_id,normalized_sql,projected_columns,
+            row_limit
+           ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+        (original["attempt_id"],governance.workspace_id,
+         governance.owner_key,draft.model_id,draft.model_version_id,
+         draft.normalized_sql,Jsonb(list(draft.projected_columns)),
+         draft.row_limit),
+    )
+    return StoredWarehouseLogicalDraft(original["attempt_id"],draft,True)
+
 
 
 def _matches(row,draft):

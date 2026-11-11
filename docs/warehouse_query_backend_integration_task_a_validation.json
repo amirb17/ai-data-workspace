@@ -1,0 +1,268 @@
+{
+  "task": "Warehouse SQL backend integration - Task A",
+  "date": "2026-11-11T18:33:24.828714+05:30",
+  "branch": "feature/warehouse-model-ux",
+  "base_head": "5f8bb1aff1e36b14c2fc45efeaddc62891079e22",
+  "local_status": "PASS: authenticated fake-provider lifecycle; two earlier fixture startup errors passed unchanged on targeted rerun",
+  "production_status": "NO-GO; default runtime unavailable and draft role matrix unapproved",
+  "runs": [
+    {
+      "name": "prior-regression",
+      "tests": 319,
+      "passed": 317,
+      "failed": 0,
+      "errors": 2,
+      "skipped": 0,
+      "junit_seconds": 6121.667,
+      "modules": {
+        "tests.test_warehouse_sql_stored_draft_414d4a": 9,
+        "tests.test_warehouse_sql_trusted_recompilation_414d4d": 6,
+        "tests.test_warehouse_sql_trusted_recompilation_414d4e": 4,
+        "tests.test_warehouse_sql_dispatch_checkpoint_414d5": 33,
+        "tests.test_warehouse_sql_send_recovery_414e1": 31,
+        "tests.test_warehouse_sql_recovery_attestation_414e2": 50,
+        "tests.test_warehouse_sql_provider_policy_414e3": 51,
+        "tests.test_warehouse_query_envelope_integration_414f1": 3,
+        "tests.test_warehouse_simulated_submission_414f1": 2,
+        "tests.test_warehouse_pinned_submission_recovery_414f2": 5,
+        "tests.test_warehouse_terminal_evidence_414f2": 6,
+        "tests.test_warehouse_attested_accounting_414f3": 6,
+        "tests.test_warehouse_accounting_concurrency_414f3": 6,
+        "tests.test_warehouse_cancel_takeover_recovery_414f4": 5,
+        "tests.test_warehouse_cancel_attempt_boundary_414f4": 6,
+        "tests.test_warehouse_server_result_schema_414f5": 5,
+        "tests.test_warehouse_authenticated_first_page_414f5": 7,
+        "tests.test_warehouse_bigquery_readonly_full_path_414f5": 1,
+        "tests.test_warehouse_result_readiness_api_414g": 6,
+        "tests.test_warehouse_query_job_request_414f1": 22,
+        "tests.test_warehouse_query_result_pages_414f5": 18,
+        "tests.test_warehouse_bigquery_first_page_adapter_414f5": 19,
+        "tests.test_warehouse_query_submission_transport_414f1": 7,
+        "tests.test_warehouse_query_cancellation_transport_414f4": 11
+      },
+      "unsuccessful": [
+        {
+          "nodeid": "tests/test_warehouse_attested_accounting_414f3.py::test_terminal_failure_and_cancel_account_exact_bytes_once[invalidQuery]",
+          "status": "errors",
+          "detail": "tests\\test_warehouse_provider_postgres.py:158: in fact_provider_pg\n    models.approve_version(\napp\\services\\warehouse_model_service.py:61: in approve_version\n    with repository_transaction() as conn:\n         ^^^^^^^^^^^^^^^^^^^^^^^^\nC:\\Users\\Amir Bensekar\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\napp\\db\\database.py:39: in repository_transaction\n    with psycopg.connect(DATABASE_URL) as connection:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\ai-data-workspace\\.venv\\Lib\\site-packages\\psycopg\\connection.py:122: in connect\n    raise last_ex.with_traceback(None)\nE   psycopg.errors.ConnectionTimeout: connection timeout expired"
+        },
+        {
+          "nodeid": "tests/test_warehouse_attested_accounting_414f3.py::test_terminal_failure_and_cancel_account_exact_bytes_once[stopped]",
+          "status": "errors",
+          "detail": "tests\\test_warehouse_sql_trusted_recompilation_414d4e.py:44: in genuinely_served_query\n    published=publish(f,[row(\"A\",1),row(\"B\",2)])\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests\\test_warehouse_serving_postgres.py:27: in publication\n    response = f.provider.execute(intent['operation_id'], claim['run_id'], claim['fence'])\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\napp\\services\\warehouse_provider_service.py:586: in execute\n    with self.reliability.transaction() as (\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nC:\\Users\\Amir Bensekar\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\napp\\services\\warehouse_reliability_service.py:29: in transaction\n    with repository_transaction() as conn:\n         ^^^^^^^^^^^^^^^^^^^^^^^^\nC:\\Users\\Amir Bensekar\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\napp\\db\\database.py:39: in repository_transaction\n    with psycopg.connect(DATABASE_URL) as connection:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\ai-data-workspace\\.venv\\Lib\\site-packages\\psycopg\\connection.py:122: in connect\n    raise last_ex.with_traceback(None)\nE   psycopg.errors.ConnectionTimeout: connection timeout expired"
+        }
+      ],
+      "evidence": "$env:TEMP/warehouse-workflow-regression.xml",
+      "sha256": "1b245a39356ecd1149b9d14b51bfb37724b76a209b4bfc61663c42579fc711a7",
+      "command": "$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n& 'D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe' -c \"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\" 'tests/test_warehouse_sql_stored_draft_414d4a.py' 'tests/test_warehouse_sql_trusted_recompilation_414d4d.py' 'tests/test_warehouse_sql_trusted_recompilation_414d4e.py' 'tests/test_warehouse_sql_dispatch_checkpoint_414d5.py' 'tests/test_warehouse_sql_send_recovery_414e1.py' 'tests/test_warehouse_sql_recovery_attestation_414e2.py' 'tests/test_warehouse_sql_provider_policy_414e3.py' 'tests/test_warehouse_query_envelope_integration_414f1.py' 'tests/test_warehouse_simulated_submission_414f1.py' 'tests/test_warehouse_pinned_submission_recovery_414f2.py' 'tests/test_warehouse_terminal_evidence_414f2.py' 'tests/test_warehouse_attested_accounting_414f3.py' 'tests/test_warehouse_accounting_concurrency_414f3.py' 'tests/test_warehouse_cancel_takeover_recovery_414f4.py' 'tests/test_warehouse_cancel_attempt_boundary_414f4.py' 'tests/test_warehouse_server_result_schema_414f5.py' 'tests/test_warehouse_authenticated_first_page_414f5.py' 'tests/test_warehouse_bigquery_readonly_full_path_414f5.py' 'tests/test_warehouse_result_readiness_api_414g.py' 'tests/test_warehouse_query_job_request_414f1.py' 'tests/test_warehouse_query_result_pages_414f5.py' 'tests/test_warehouse_bigquery_first_page_adapter_414f5.py' 'tests/test_warehouse_query_submission_transport_414f1.py' 'tests/test_warehouse_query_cancellation_transport_414f4.py' -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/warehouse-workflow-regression.xml\""
+    },
+    {
+      "name": "accounting-setup-rerun",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 10.334,
+      "modules": {
+        "tests.test_warehouse_attested_accounting_414f3": 2
+      },
+      "unsuccessful": [],
+      "evidence": "$env:TEMP/warehouse-workflow-accounting-rerun.xml",
+      "sha256": "239171ff84f1acaeb92915bef97f7aa3c38ae094e61d6d087131618eb6e272a3",
+      "command": "$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n& 'D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe' -c \"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\" 'tests/test_warehouse_attested_accounting_414f3.py::test_terminal_failure_and_cancel_account_exact_bytes_once[invalidQuery]' 'tests/test_warehouse_attested_accounting_414f3.py::test_terminal_failure_and_cancel_account_exact_bytes_once[stopped]' -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/warehouse-workflow-accounting-rerun.xml\""
+    },
+    {
+      "name": "api-final",
+      "tests": 28,
+      "passed": 28,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 141.835,
+      "modules": {
+        "tests.test_warehouse_query_workflow_api": 28
+      },
+      "unsuccessful": [],
+      "evidence": "$env:TEMP/warehouse-workflow-api-acceptance.xml",
+      "sha256": "c1f891286bd6dcd4457d850b849a8b75a312655377bcdafbf825679bae2b6ce4",
+      "command": "$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n& 'D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe' -c \"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\" 'tests/test_warehouse_query_workflow_api.py' -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/warehouse-workflow-api-acceptance.xml\""
+    }
+  ],
+  "latest_per_case": {
+    "passed": 347,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "new": 28,
+    "existing": 319
+  },
+  "combined_regression_clean": false,
+  "run_distinction": "Final API acceptance follows all production code changes. Earlier existing-regression paths unchanged. Two fixture ConnectionTimeout errors retained; same exact cases pass unchanged. No complete-repository or single clean combined run claimed.",
+  "diagnostics": [
+    {
+      "name": "initial-collection",
+      "tests": 1,
+      "passed": 0,
+      "failed": 0,
+      "errors": 1,
+      "skipped": 0,
+      "junit_seconds": 0.262,
+      "modules": {
+        "": 1
+      },
+      "unsuccessful": [
+        {
+          "nodeid": ".py::tests.test_warehouse_query_workflow_api",
+          "status": "errors",
+          "detail": "..\\ai-data-workspace\\.venv\\Lib\\site-packages\\_pytest\\python.py:508: in importtestmodule\n    mod = import_path(\n..\\ai-data-workspace\\.venv\\Lib\\site-packages\\_pytest\\pathlib.py:596: in import_path\n    importlib.import_module(module_name)\nC:\\Users\\Amir Bensekar\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1395: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n..\\ai-data-workspace\\.venv\\Lib\\site-packages\\_pytest\\assertion\\rewrite.py:179: in exec_module\n    source_stat, co = _rewrite_test(fn, self.config)\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\ai-data-workspace\\.venv\\Lib\\site-packages\\_pytest\\assertion\\rewrite.py:348: in _rewrite_test\n    tree = ast.parse(source, filename=strfn)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nC:\\Users\\Amir Bensekar\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\ast.py:50: in parse\n    return compile(source, filename, mode, flags,\nE     File \"D:\\Project\\datarise-warehouse-ux\\tests\\test_warehouse_query_workflow_api.py\", line 102\nE       LookupRuntime(LookupPolicy(fake.project,fake.location,CREATOR,'test-lookup-1'),LookupOnlyClient(fake)))}))\nE                                                                                                             ^\nE   SyntaxError: closing parenthesis ')' does not match opening parenthesis '{' on line 101"
+        }
+      ],
+      "evidence": "$env:TEMP/warehouse-workflow-smoke.xml",
+      "sha256": "329a12918e1a36f1190bde2f8cba781688a581f5ec09997782cd851a22e42a96",
+      "command": "$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n& 'D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe' -c \"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\"  -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/warehouse-workflow-smoke.xml\""
+    },
+    {
+      "name": "initial-smoke",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 13.732,
+      "modules": {
+        "tests.test_warehouse_query_workflow_api": 1
+      },
+      "unsuccessful": [],
+      "evidence": "$env:TEMP/warehouse-workflow-smoke2.xml",
+      "sha256": "ea6243b0037f2ab79f69d3d644012cc025ec7b42f517f7805eef92dc26b64201",
+      "command": "$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n& 'D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe' -c \"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\" 'tests/test_warehouse_query_workflow_api.py' -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/warehouse-workflow-smoke2.xml\""
+    },
+    {
+      "name": "focused-before-terminal-routing-fix",
+      "tests": 20,
+      "passed": 19,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 104.961,
+      "modules": {
+        "tests.test_warehouse_query_workflow_api": 20
+      },
+      "unsuccessful": [
+        {
+          "nodeid": "tests/test_warehouse_query_workflow_api.py::test_uncertain_and_incomplete_jobs_never_resubmit_or_invent_success[missing_billing]",
+          "status": "failed",
+          "detail": "tests\\test_warehouse_query_workflow_api.py:182: in test_uncertain_and_incomplete_jobs_never_resubmit_or_invent_success\n    wait_lease(s);again=post(s,'/'+h+'/execute');assert again.status_code==200,again.text\n                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   AssertionError: {\"detail\":\"Query state requires recovery or is not ready\"}\nE   assert 409 == 200\nE    +  where 409 = <Response [409 Conflict]>.status_code"
+        }
+      ],
+      "evidence": "$env:TEMP/warehouse-workflow-focused.xml",
+      "sha256": "300cad64826ddf6d4defd3c8fa5f8a9960209b8cd6cc208a4682b705d032762c",
+      "command": "$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n& 'D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe' -c \"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\" 'tests/test_warehouse_query_workflow_api.py' -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/warehouse-workflow-focused.xml\""
+    },
+    {
+      "name": "expanded-before-stale-conflict-classification",
+      "tests": 27,
+      "passed": 26,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 149.677,
+      "modules": {
+        "tests.test_warehouse_query_workflow_api": 27
+      },
+      "unsuccessful": [
+        {
+          "nodeid": "tests/test_warehouse_query_workflow_api.py::test_stale_publication_between_preflight_and_admission_is_rejected",
+          "status": "failed",
+          "detail": "tests\\test_warehouse_query_workflow_api.py:296: in test_stale_publication_between_preflight_and_admission_is_rejected\n    assert reply.status_code==409,reply.text\nE   AssertionError: {\"detail\":\"Invalid or stale warehouse query\"}\nE   assert 400 == 409\nE    +  where 400 = <Response [400 Bad Request]>.status_code"
+        }
+      ],
+      "evidence": "$env:TEMP/warehouse-workflow-focused2.xml",
+      "sha256": "4a65cc0c6e65aeef8b08a5c98391aedfb55c5453e769cceafc08d0a909098abb",
+      "command": "$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n& 'D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe' -c \"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\" 'tests/test_warehouse_query_workflow_api.py' -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/warehouse-workflow-focused2.xml\""
+    },
+    {
+      "name": "api-before-final-provider-cap",
+      "tests": 27,
+      "passed": 27,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_seconds": 133.35,
+      "modules": {
+        "tests.test_warehouse_query_workflow_api": 27
+      },
+      "unsuccessful": [],
+      "evidence": "$env:TEMP/warehouse-workflow-final.xml",
+      "sha256": "efd65baeb7d9fb549efc4a4d81653fdfec0704376dedd0988142a32f4489b7f3",
+      "command": "$env:RUN_DB_TESTS='1'\n$env:APP_ENV='development'\n$env:AUTH_MODE='session'\n$env:AUTH_SECRET='synthetic-dispatch-session-test-secret-414d5'\n& 'D:\\Project\\ai-data-workspace\\.venv\\Scripts\\python.exe' -c \"import os,runpy; from dotenv import dotenv_values; os.environ.setdefault('DATABASE_URL',dotenv_values(r'D:\\Project\\ai-data-workspace\\.env')['DATABASE_URL']); runpy.run_path('tools/task20_local_tests.py',run_name='__main__')\" 'tests/test_warehouse_query_workflow_api.py' -q --tb=short -ra -p no:cacheprovider --junitxml=\"$env:TEMP/warehouse-workflow-final.xml\""
+    }
+  ],
+  "files": {
+    "modified": [
+      "app/main.py",
+      "app/services/warehouse_sql_stored_draft_service.py"
+    ],
+    "added": [
+      "app/api/warehouse_queries.py",
+      "app/services/warehouse_query_workflow_service.py",
+      "migrations/0061_warehouse_query_api_requests.sql",
+      "tests/test_warehouse_query_workflow_api.py",
+      "docs/warehouse_query_backend_integration_task_a.md",
+      "docs/warehouse_query_backend_integration_task_a_validation.json"
+    ],
+    "deleted": []
+  },
+  "source_sha256": {
+    "app/main.py": "6b9370357f1997603624100c9bcdea5ae1cc74416b49a00f1a88cae2391b8376",
+    "app/services/warehouse_sql_stored_draft_service.py": "de1cadf4ae3cbd9bf3346ff3f283124a5022b121bddc37adec168f88b1992cda",
+    "app/api/warehouse_queries.py": "152e91ef462c5ffa3ffc3d243304f598932777c417810bbec8b0f94fd5c442bb",
+    "app/services/warehouse_query_workflow_service.py": "bd4af648259bfd5f73fef12b380cd70710dfb00f3712061f348e2278194e1994",
+    "migrations/0061_warehouse_query_api_requests.sql": "5028f7afa6e8ffc997d0a5c8ea9a5d288b2a050c172e59bf92577d82c845af6f",
+    "tests/test_warehouse_query_workflow_api.py": "38cccde8fadeaf31a53179e1681d4144dfede11cd3eca8fe1e5ece989e0233c4",
+    "docs/warehouse_query_backend_integration_task_a.md": "61930515c2956304f1a6512e74027e282d8e50ce3a078f0c17f9217428568fc3"
+  },
+  "checks": {
+    "ast_files": [
+      "app/main.py",
+      "app/services/warehouse_sql_stored_draft_service.py",
+      "app/api/warehouse_queries.py",
+      "app/services/warehouse_query_workflow_service.py",
+      "tests/test_warehouse_query_workflow_api.py"
+    ],
+    "whitespace_findings": [],
+    "heuristic_secret_findings": [],
+    "git_diff_check": "PASS",
+    "unchanged_role_matrix": true,
+    "no_role_or_grant_provisioning": true
+  },
+  "database": {
+    "run_db_tests": "1",
+    "runner": "tools/task20_local_tests.py",
+    "loopback_only": true,
+    "temporary_uuid_schemas": true,
+    "application_migrations": false,
+    "restricted_login_acceptance": false
+  },
+  "not_performed": [
+    "Real BigQuery/AWS or credentials",
+    "Application/public-schema migration",
+    "Role creation or grants from the unapproved matrix",
+    "Frontend changes/tests",
+    "Full repository regression",
+    "Deployment or activation"
+  ],
+  "limitations": [
+    "Existing single-model bounded logical projections and development/Mumbai policy only",
+    "First page only; no public cursor/export flow",
+    "Provider timeout is FAILED under existing attestation vocabulary; unproven timeouts remain UNCERTAIN",
+    "Pre-send cancel is rejected; no new release command",
+    "Revocation stops new customer work but not already in-flight IO",
+    "Missing jobs never authorize resubmission; holds remain indefinite",
+    "Role matrix, independent credential routing, deployed privileges/IAM, trusted real factories and operational recovery require review"
+  ],
+  "warnings": [
+    "Existing Starlette/httpx and Authlib/httpx deprecations"
+  ]
+}
