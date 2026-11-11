@@ -111,10 +111,11 @@ def bootstrap(duty, *, apply=False, ask_password=_read_password):
             return {"duty":duty,"role":role,"credentials_changed":False,
                     "query_execution_enabled":False}
         password=ask_password(role)
-        # Use SQL identifier composition and a bind variable for the password:
-        # no password in logs, command-line argv, or SQL string interpolation.
-        conn.execute(sql.SQL("ALTER ROLE {} PASSWORD %s").format(
-            sql.Identifier(role)), (password,))
+        # PostgreSQL utility statements cannot use server-side $1 parameters.
+        # psycopg.sql.Literal quotes the password safely as a SQL literal;
+        # the composed SQL is never printed or added to logs.
+        conn.execute(sql.SQL("ALTER ROLE {} PASSWORD {}").format(
+            sql.Identifier(role), sql.Literal(password)))
         conn.commit()
     # The admin connection is now closed; independently authenticate the role
     # using its new password, and verify that its effective ACL is exact.
