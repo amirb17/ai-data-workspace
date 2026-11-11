@@ -79,3 +79,39 @@ def inspect_authenticated_warehouse_result_without_fetch(
             attempt_handle, "AUTHORIZED_RESULT_INSPECTION_NO_FETCH",
             eligible.max_page_rows,
         )
+
+
+def _authenticated_attempt_id(
+    *, request: Request, workspace_id: int, attempt_handle: str,
+) -> int:
+    """Trusted-only ID resolver; repeats session binding before simulated IO.
+
+    No public endpoint should return this numeric identifier.
+    """
+    inspect_authenticated_warehouse_result_without_fetch(
+        request=request, workspace_id=workspace_id,
+        attempt_handle=attempt_handle,
+    )
+    settings=require_secret()
+    token=request.cookies.get(settings.session_cookie)
+    with repo.transaction(workspace_id) as conn:
+        user,session=_session_locked(conn,token)
+        workspace=repo.one(
+            conn,"SELECT owner,status FROM workspaces WHERE workspace_id=%s FOR SHARE",
+            (workspace_id,),
+        )
+        if (not workspace or workspace["owner"]!=user["owner_key"]
+                or workspace["status"]!="ACTIVE"):
+            raise HTTPException(403,"Workspace unavailable")
+        a=attempts.read_attempt(
+            conn,workspace_id=workspace_id,owner_key=user["owner_key"],
+            attempt_handle=attempt_handle,
+        )
+        c=repo.checkpoint(conn,a["attempt_id"])
+        if (c["workspace_id"]!=workspace_id
+                or c["owner_key"]!=user["owner_key"]
+                or c["user_id"]!=user["user_id"]
+                or c["session_digest"]!=session["token_digest"]
+                or repo.one(conn,"SELECT 1 FROM warehouse_query_dispatch_revocations WHERE attempt_id=%s",(a["attempt_id"],))):
+            raise HTTPException(403,"Original query result access unavailable")
+        return a["attempt_id"]
