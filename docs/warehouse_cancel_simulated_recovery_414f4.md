@@ -32,3 +32,14 @@ $env:RUN_DB_TESTS = "1"
 python -m pytest tests/test_warehouse_cancel_simulated_recovery_414f4.py -v --tb=short -x
 python -m pytest tests/test_warehouse_query_cancellation_transport_414f4.py tests/test_warehouse_cancel_simulated_recovery_414f4.py -q --tb=short -x
 ```
+
+## 414F4 test correction
+
+The initial transport test expected the syntactically valid project ID
+`foreign` to fail the regex. That was a **test-fixture mistake**, not
+proof of provider authorization. The malformed-ID fixture now uses
+`FOREIGN!`, and a separate regression explicitly documents that a valid
+project string is not an authorization claim. Any production callsite must
+prove the exact project/location/job identity against the durable original
+intent and pinned server policy; the pure transport is never callable as a
+standalone authorization boundary.
