@@ -1,5 +1,5 @@
 """Offline contract tests for the warehouse identity-only provisioning workflow."""
-from pathlib import Path
+import re
 
 from tools import warehouse_provision_roles as tool
 
@@ -61,5 +61,7 @@ def test_role_script_creates_no_warehouse_table_or_cloud_privileges():
     assert "PASSWORD NULL" in ddl
     assert "NOSUPERUSER" in ddl
     assert "NOINHERIT" in ddl
-    assert "GRANT " not in ddl
-    assert "SET ROLE " not in ddl
+    # Ignore comments, which may legitimately mention GRANT or SET ROLE.
+    executable = "\n".join(line.split("--", 1)[0] for line in ddl.splitlines())
+    assert not re.search(r"\bGRANT\s+", executable)
+    assert not re.search(r"\bSET\s+ROLE\b", executable)
