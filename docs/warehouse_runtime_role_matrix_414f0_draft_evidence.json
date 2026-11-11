@@ -1,0 +1,3286 @@
+{
+  "task": "414F0 warehouse role architecture review",
+  "status": "DRAFT_NOT_APPROVED",
+  "release": "NO_GO",
+  "date": "2026-11-11",
+  "timezone": "Asia/Calcutta",
+  "branch": "feature/warehouse-model-ux",
+  "review_base_head": "a9fb73827e2907bc6f9ec212ce98bfbb998a7b47",
+  "scope": "Documentation only following explicit user clarification; no roles or GRANT/REVOKE migrations",
+  "files_examined": [
+    {
+      "path": "app/api/identity.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "13d35aee752f55a24149cbb815634b76d66b5af8bc761ba29a9894c31609eeb5"
+    },
+    {
+      "path": "app/api/warehouse_catalog.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "c2b3a374ec48b345448840e3882dc16922dce818aa428e2d45f530660e5741bc"
+    },
+    {
+      "path": "app/auth/repository.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "4ece8fcd468975e96c6bf24ec0b7563f896c6e202df21170bca3541aae239686"
+    },
+    {
+      "path": "app/auth/service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "984328d2c5a39526ff72623bdf1ff1b96da759719886f4ff47c4871a3a96a479"
+    },
+    {
+      "path": "app/db/database.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "84775543474adf67700483d85ff5d9783a4e584c8254009465ebbde2d0c92f38"
+    },
+    {
+      "path": "app/db/query_governance_repository.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "aeb7ceb1f03dfe830f0ce42e3ece042e09d1fd5dc47fe404ab765e8f960ab31e"
+    },
+    {
+      "path": "app/db/warehouse_query_attempt_repository.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "a36269bffcb929647673002b4966662882938a43a554ba2ff8876eff0b7a873d"
+    },
+    {
+      "path": "app/db/warehouse_query_publication_inspection_repository.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "f12d47fc85b58f7a7487ce3061076aee8428b7ce1acab074ef454054328e5ae2"
+    },
+    {
+      "path": "app/db/warehouse_query_send_repository.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "65c64589ffd35160784e20f8dde45e2bb88d9ff6aa842a8104e428ab34b72721"
+    },
+    {
+      "path": "app/db/warehouse_reliability_repository.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "00246718b8a7dc725b0400e642cea914b4d610eff9c46216c4cf2d5837048c45"
+    },
+    {
+      "path": "app/db/warehouse_repository.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "eceb04ddc6af03cae9e7c90f3f2567e9d7c6aafe3338e6b946b28efcc60dfa6e"
+    },
+    {
+      "path": "app/query_governance/providers/base.py",
+      "method": "static_source_scan_only",
+      "sha256": "a7900d5e21815aa39a23c0665304acac4ebbc536de9a855a2a46a52996e6beaa"
+    },
+    {
+      "path": "app/query_governance/providers/bigquery.py",
+      "method": "static_source_scan_only",
+      "sha256": "986279254831f0864395ed5f1421fc2cb38598e2627640913e00c6b4fbaf0ddc"
+    },
+    {
+      "path": "app/security/warehouse_catalog_assessment.py",
+      "method": "static_source_scan_only",
+      "sha256": "756d2d200b8fa496fab988baa88f0e33d09117748b634e91234ba97fc7701179"
+    },
+    {
+      "path": "app/security/warehouse_permission_requirements.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "43d07958d124e100bcd1a35cec2d879ef931f0131e23735e7ae4b7fb0ccd39cc"
+    },
+    {
+      "path": "app/security/warehouse_privilege_assessment.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "8a19d1f56896b88c3f4571ebea8d217859b35164710b138272418d1c6376f665"
+    },
+    {
+      "path": "app/security/warehouse_sql_lock_inventory.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "2610997a6779145dd8a58e7f80617ff3cf5b6556db7156bc80e40527dd2d428e"
+    },
+    {
+      "path": "app/services/dataset_gold_serving_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "1699531b8137f7dac2943ffdc5131875b5961c32fa667b54694ab9aeeb70592a"
+    },
+    {
+      "path": "app/services/governed_query_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "0997990f690815e2dc9aca21bad0928c7f62824e6c032ae4826fbc66b47470eb"
+    },
+    {
+      "path": "app/services/metric_warehouse_binding_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "72fd04377c4f7a8615dc5b6fe77b794dbf5f99ab2716639c915e7e9df1181fe5"
+    },
+    {
+      "path": "app/services/query_governance_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "86d12ab75fefdd9dae135265f84b429a274fbaaeb2bee711586e82edc4800bc3"
+    },
+    {
+      "path": "app/services/sydney_gold_eligibility_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "5f3e7242b750d224a9f206f3c4f508058603d505846c73d35959342239c9e2c8"
+    },
+    {
+      "path": "app/services/sydney_warehouse_resource_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "e6b4e2325ab3234d72144b3b6750a5287912f862997891a202466813d0706937"
+    },
+    {
+      "path": "app/services/warehouse_catalog_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "3c6854008a8b86541b0cd8348f85a4734d0e3d7d8187548eea2f253610539403"
+    },
+    {
+      "path": "app/services/warehouse_model_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "33cd2794e866fb0274433501d5cca91686becbbe1e36752041a4ea7cc371c86d"
+    },
+    {
+      "path": "app/services/warehouse_modeling_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "15a5477c948c2a709809c53bf70050ef079df2f200d6b9bf0f8344838663acc7"
+    },
+    {
+      "path": "app/services/warehouse_provider_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "ea92d92945a6bb8e9000089de19bdd3db09a3ca90c6330c2229fce83788dc4da"
+    },
+    {
+      "path": "app/services/warehouse_publication_cleanup_inspection_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "65e79eccaeff3c707b9c3f0bdc59e12ae496212ebcfdb768128f604998be4f39"
+    },
+    {
+      "path": "app/services/warehouse_query_attempt_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "1f3d19373841e6c6fd07784b4c76f62465e9b985621d30a5080296cab830a927"
+    },
+    {
+      "path": "app/services/warehouse_relationship_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "8aab98ee1c2c2ab76c7e89c64a3ba6294eb2a95a220ae979996d0519d4c8ef59"
+    },
+    {
+      "path": "app/services/warehouse_reliability_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "6ee601345563eb5af614105a003fd872ca9ebcd570584481478af667640d646f"
+    },
+    {
+      "path": "app/services/warehouse_resource_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "bbc1d460fd419d58c2d5abd496d9a73c32f84859caa81be650b9f80e618aa4ab"
+    },
+    {
+      "path": "app/services/warehouse_run_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "56a5151f50202ab9c99fe0a970394a47961c587f7babce0f9b9891416ac94063"
+    },
+    {
+      "path": "app/services/warehouse_sql_admission_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "8c2be7a3450815b2401ac236f27db426955de1e94bef42010c8cd3d8c513c151"
+    },
+    {
+      "path": "app/services/warehouse_sql_attempt_identity_bridge_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "e7a1333ae587a55de857c4d099cda58f0e6727a0825d2e3b91f7b351153e5af3"
+    },
+    {
+      "path": "app/services/warehouse_sql_attested_accounting_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "2642f9e8dd3d57f24b7f713c51459148d3f86165f0ff185c8a2757065089165d"
+    },
+    {
+      "path": "app/services/warehouse_sql_authenticated_first_page_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "8af654dec49638d6cf2c2d7694881fe8c43b9555c4f121bc13c7b8e9690f98dd"
+    },
+    {
+      "path": "app/services/warehouse_sql_authenticated_readiness_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "5c1b737e181d6aa9c3a20e1004eee368d7f9a35125a73c77ccae5b9d25b91740"
+    },
+    {
+      "path": "app/services/warehouse_sql_authenticated_result_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "47c6618053a888f4e3038a178a4414d8509d559a7aac4a8c4274b912357d3015"
+    },
+    {
+      "path": "app/services/warehouse_sql_binding_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "0010d620397eb44b846ea9d070f7b59d3132d4c6814a9f4b3aebcefcd3a0b832"
+    },
+    {
+      "path": "app/services/warehouse_sql_cancel_attempt_boundary_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "79bb2ab09ff9915ecfbc2c2995c14fd92431b76ee7a27107b7cc3e08582f9f41"
+    },
+    {
+      "path": "app/services/warehouse_sql_cancel_intent_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "d4361d9b7ea6ede9e53e6ca134cf2517782483be33b617bd40a111bf5a58861d"
+    },
+    {
+      "path": "app/services/warehouse_sql_claim_rehearsal_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "83f42733f055ed57293527f3c4567272702bfc8158c21bfd8fb6fcc37f863cd0"
+    },
+    {
+      "path": "app/services/warehouse_sql_compilation_comparison_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "f0a77f208c8320eba9363d8a175263c72e584c3f7a7a35ee53935f28cf88449d"
+    },
+    {
+      "path": "app/services/warehouse_sql_compiled_evidence_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "cb29fa846086ecc57fd3fa374fdb9e568fa08c733a50a3bab95356e1cabdbb25"
+    },
+    {
+      "path": "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "e347e199102e62701ff99a3a3ef52dbcbd0b5dd5e53ed15cc530b888d5e22b16"
+    },
+    {
+      "path": "app/services/warehouse_sql_dry_run_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "e096f5cf95efaa7e29f401fd7b1e6ff7a7d1b02cfd4de9e93813d056587ef023"
+    },
+    {
+      "path": "app/services/warehouse_sql_first_page_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "88135e53edf246343aa65d97358532326889bd3f65a3e082a7670666e6f43976"
+    },
+    {
+      "path": "app/services/warehouse_sql_fresh_metadata_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "72a4d9c2b721078b0d3496e554b791211edec0ba36edbcf8ebb8acc423f423e2"
+    },
+    {
+      "path": "app/services/warehouse_sql_gateway_readiness_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "418eac6b8491ad326913d57429bc5e70682b5b316d06df6e0278a137e84a6ed4"
+    },
+    {
+      "path": "app/services/warehouse_sql_join_binding_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "81e0bec8b17e71712523e5c482238babd75b166958f41be421060d7cd414f835"
+    },
+    {
+      "path": "app/services/warehouse_sql_preclaim_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "5160fdad56e6de5b6ac57c47a9e45096b8bc5e4e2b1831a3cac326982c70a243"
+    },
+    {
+      "path": "app/services/warehouse_sql_provider_policy_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "d48c6aabd27cc2e9d37876be713c58bb3e71eeb0fae00b0178cadff986db33cb"
+    },
+    {
+      "path": "app/services/warehouse_sql_recovery_attestation_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "e5bd4b43f29f6f5c2235c5be1c7e990cac4631f39468e904db50698f2b6ea10a"
+    },
+    {
+      "path": "app/services/warehouse_sql_recovery_inspection_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "5231d32d18157261618e7f450d019807e4daf26837e92b7b031e1bf831c8dea7"
+    },
+    {
+      "path": "app/services/warehouse_sql_recovery_settlement_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "2db3dc0f54f6e2743155f503d05ffac886075c4757f6eca0c2ed9745d4769fa3"
+    },
+    {
+      "path": "app/services/warehouse_sql_result_eligibility_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "75fcfbe5fc2f6f43eb8a66165c2b6bd6b6344e0cfbe2e1419ca18fc2c40c4abd"
+    },
+    {
+      "path": "app/services/warehouse_sql_send_recovery_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "f0852931a65996124812ecf64e501eebadb64b4d591ae97ac056ff71c0a3c2ad"
+    },
+    {
+      "path": "app/services/warehouse_sql_server_result_schema_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "4f157b58817b3d7238ef56d05961bae60c3047bbcfb0b6c230e9fc074c476d5a"
+    },
+    {
+      "path": "app/services/warehouse_sql_stored_draft_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "94950bdb3b1600d3d81302b243916df5bc9f323fd0bee172e234391c85ab2c7c"
+    },
+    {
+      "path": "app/services/warehouse_sql_stored_publication_evidence_service.py",
+      "method": "static_source_scan_only",
+      "sha256": "1f2620b186a2515365e649b6a233452eca433dffc41e7c732a7e6798d078b751"
+    },
+    {
+      "path": "app/services/warehouse_sql_terminal_evidence_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "3235d00fcf0a814769711efc0b797706397c14937f3517853ff795b50266b8ae"
+    },
+    {
+      "path": "app/services/warehouse_sql_trusted_recompilation_service.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "d8ab23675b93658512cb76cbe989a3d1a5b4f04010ab28a1194b7cbc3a37c2aa"
+    },
+    {
+      "path": "app/warehouse/access.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "b722c80e2b077cff344ed683656f633035bde2ee32ae02a145cdbb83e7d622e8"
+    },
+    {
+      "path": "app/warehouse/pg_result_reader_permission_probe.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "b613c59cf8344cb4626dd63c97a447772d6e4f4cf7dc3e32088a2a10aad6b365"
+    },
+    {
+      "path": "app/warehouse/pg_runtime_role_inventory.py",
+      "method": "targeted_source_read_plus_static_scan",
+      "sha256": "f75e869546281827be3aaab54bb5fb012a4af59cf6bdfc3d1b4ccf2b953b8666"
+    },
+    {
+      "path": "app/warehouse/query_bigquery_readonly_transport.py",
+      "method": "static_source_scan_only",
+      "sha256": "5615c06c512086fe2df3e2ba19f67411c24dfbaef8164c4bf1c7207444d010b3"
+    },
+    {
+      "path": "app/warehouse/query_cancellation_transport.py",
+      "method": "static_source_scan_only",
+      "sha256": "d57849a4fa619eba3c5926d927da948fde70ab0be0660d2c0726ba68075ced53"
+    },
+    {
+      "path": "app/warehouse/query_result_iam_preflight.py",
+      "method": "static_source_scan_only",
+      "sha256": "a206da8cb6697c3e7b8ebd446803000d971f0fde10b37ef6b06efdfa5091b647"
+    },
+    {
+      "path": "app/warehouse/query_submission_transport.py",
+      "method": "static_source_scan_only",
+      "sha256": "0e530af96a69401909212305194797215d707f7fbf30650360892e8631d594b6"
+    },
+    {
+      "path": "migrations/0001_baseline.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "2add4e7835d21862d372922c212d86398cb254c9840c26e7f8bf61a97699488c"
+    },
+    {
+      "path": "migrations/0002_dataset_version_scoping.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "7fc3d635e06912c6c4243ca789c141d8c6dcf6e74f5895b186f028a7ce211fd9"
+    },
+    {
+      "path": "migrations/0003_dataset_version_rule_version.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "456e54d249e06c3b4c9302180425ac1974e862612c282f4da67618812691faaa"
+    },
+    {
+      "path": "migrations/0004_gold_artifacts.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "e5010b19082fe06969ab13c82bb70f67d0af48aa9a4de1f9a9bf95291e38423a"
+    },
+    {
+      "path": "migrations/0005_gold_semantic_catalog.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "6234b14388f1defe4cc6170a8b4bb24c9004dc0558b1a8ecd0edd0d76aa6cda3"
+    },
+    {
+      "path": "migrations/0006_gold_artifact_time_grain.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "3e8b19665c97eb26cfcff07af35ede8265b777958e4fd7a485dbff708412a680"
+    },
+    {
+      "path": "migrations/0007_identity_upload_sessions.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "bd899486b73ad8a34f4b5945d4cce87e7767ef0a7f4fc27966bb1c87f5f9a29a"
+    },
+    {
+      "path": "migrations/0008_dataset_version_file_status.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "93c5cdc004af6f1daec90dd633fb21ce6fc030364beecdb0a0fcbebb6349ee0e"
+    },
+    {
+      "path": "migrations/0009_approved_rule_reuse.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "6c8185dc85708ad6caf0d4010f349e7e850955f013a2824a605ccb374981a61d"
+    },
+    {
+      "path": "migrations/0010_rule_policy_snapshots.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "4bf7e92f88cd2ff5a1dc3b6a267df34412783b31f18fef42cf1b835c2513adba"
+    },
+    {
+      "path": "migrations/0011_gold_skip.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "f3d81b2b06057a9921e90cf8c2e0bc8b1e105413d3126f0ccfdfda64b76c4f49"
+    },
+    {
+      "path": "migrations/0012_delivery_archive.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "c69618a795edba1181c99bbc795b8af2878d4138497c73c27d04ca55139e87f6"
+    },
+    {
+      "path": "migrations/0013_incremental_foundation.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "9255791ae9dbd83170be70bb2dd999a83b1aec5ca4d74ecd7d5bd7c52c08d793"
+    },
+    {
+      "path": "migrations/0014_append_delivery_manifests.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "d751ace0dd73dfccf40bdc5f219e3fc896661ad8a203e1e3f410b42939e75ed6"
+    },
+    {
+      "path": "migrations/0015_upsert_outcomes.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "00f6e535f3d3afd68190ec1e9f9524b3c1fa91057316edf5f5399d769888fb13"
+    },
+    {
+      "path": "migrations/0016_snapshot_execution.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "43b06a4582da009f5276eb6d1e5fecce20718a5cc8f61f6a6603ff024e2b3d1d"
+    },
+    {
+      "path": "migrations/0017_cumulative_dataset_gold.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "1e410af97c9dd29b1533a59eb8f3fb0f61bd0500db041c806e4cc67e1d989302"
+    },
+    {
+      "path": "migrations/0018_semantic_profiles.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "ca59ea17b8ebf9d5cf4d70bfc896ffad9081b1064e110c7fde434463c0def8e5"
+    },
+    {
+      "path": "migrations/0019_semantic_suggestions.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "450b745ac2d6324ae3e66aac7d8d371f49aabd0bf86cf70cb094c2e5fb2a7ae3"
+    },
+    {
+      "path": "migrations/0020_workspace_semantic_suggestions.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "ca1e12a6af14b2c255ae85b1b7a68548d1c179023ed046bce820fd04d0a021cc"
+    },
+    {
+      "path": "migrations/0021_relationship_discovery.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "9e2ba06715899e5d312e81a3b6a23961195464660858c5153fb788f060c062c2"
+    },
+    {
+      "path": "migrations/0022_business_metrics.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "9a5ca9d3a4f414f3e1296d628748976fc3deafd0374f9b0e80b3ae464da649f8"
+    },
+    {
+      "path": "migrations/0023_metric_results.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "3e29c943c199605f4a8ec5a0e36b66934ee17b71c70223f4450f8d83a848e286"
+    },
+    {
+      "path": "migrations/0024_workspace_answers.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "e7f9bcff1cfe703d6aea6c93c90b62f6b5315b28b3e0c6368cf1c5f045a08443"
+    },
+    {
+      "path": "migrations/0025_sql_analytics.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "cbb178f30ac9e77814a9bd4ac1ea35feb1892c3c8e6ddd50f35b88fd07eaefe5"
+    },
+    {
+      "path": "migrations/0026_calendar_date_rule.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "606b672f029f6dd045710bc2d9ef0c088a85409feda188549e8f1e493d77f667"
+    },
+    {
+      "path": "migrations/0027_authentication.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "da5bfafc85228d979809cc830051809f4c2b1c25310dab46a043ba631250d2a0"
+    },
+    {
+      "path": "migrations/0029_warehouse_foundation.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "5f0ab6f4806a10e8f008b5daa5960bed4e9843ca44c1ca394c3e64a6509fbddb"
+    },
+    {
+      "path": "migrations/0030_warehouse_modeling.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "86e8798050f531d88db8279711e5908adda107586b4a3bc6135ae7d8a4125291"
+    },
+    {
+      "path": "migrations/0031_warehouse_reliability.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "f6824165af61b96d079cc0199d0741cc68a8758dfecdaf4551255aeb8d5abd08"
+    },
+    {
+      "path": "migrations/0032_query_governance.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "8781553561be3e3e87b948a08444193ecbfad48d0fb8338b2f6eb5904550c412"
+    },
+    {
+      "path": "migrations/0033_fact_analytical_roles.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "13af1698bd81096fa2536803e348b55e9c6a3de0d9bc662cbc8650da1966542d"
+    },
+    {
+      "path": "migrations/0034_warehouse_serving_materialization.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "3bf5322bafcd8124f3ebc10e622941f18113b09c937a9d5e1829e140ac56e218"
+    },
+    {
+      "path": "migrations/0035_exact_decimal_rule_answers.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "cd227a32007eabc0b1c58d5504143516347cdb163950628fbdaf853492cf509b"
+    },
+    {
+      "path": "migrations/0036_exact_delivery_provenance.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "613cfd1cc97487d20d89d4f1b212f470c526f089a65f3019e0823254af259f84"
+    },
+    {
+      "path": "migrations/0037_protect_silver_checksum.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "ebf8524cb4b8af459bd6f7699e42164c1f52f6d329672077d5b10123192d2259"
+    },
+    {
+      "path": "migrations/0038_exact_gold_avg_policy.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "46bc9feb2b04092cfa3733486325171956c81096793b661dc7c81bb42c5656ab"
+    },
+    {
+      "path": "migrations/0039_exact_gold_run_guard.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "b10ff1189a7b301129bada922beb8b596f9f70cb88de402f02c76b5c697c4cee"
+    },
+    {
+      "path": "migrations/0040_exact_gold_candidate_pins.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "edaa58349471359f7823d4e2132cd580b1f172948c9c7ec4aed43550dfa7670c"
+    },
+    {
+      "path": "migrations/0041_processing_jobs.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "6ae4534f1ea03107aa539ff0c27d1ce5846b35b4e3a100afc5a9a26bceef0d6c"
+    },
+    {
+      "path": "migrations/0042_stage_artifact_publication.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "e20c63424dbba3eeffb53c5524c63eebf3f3a9b6b98bd0638f7fabdb923377a5"
+    },
+    {
+      "path": "migrations/0043_processing_integration.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "91685382158f90d854c2dcd6a0f7a083ed24aaaacde02053a0c053a292600d92"
+    },
+    {
+      "path": "migrations/0044_batch_scheduling.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "38fe994e6fb6636ee7ae463c39c13fbbe3237c726a5e9b08e2d40f212ac3318d"
+    },
+    {
+      "path": "migrations/0045_dataset_gold_evidence.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "65651d05aa7c7f3e48baf0dbc48dafabd54acb4232bb186385af13beafa4fea9"
+    },
+    {
+      "path": "migrations/0046_sydney_warehouse_approval.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "e5e4c0d0b95e5fed18ece45a3ad13016f5f98c6269db7c70ebd3f2c00a854dbb"
+    },
+    {
+      "path": "migrations/0047_warehouse_gold_intent_pins.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "4cd00d6be29badec156be16137762b81d3bf168fd9039d172e4cc0e39a23d002"
+    },
+    {
+      "path": "migrations/0048_warehouse_query_attempt_registry.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "2ce4a4d3711c791fee08e5aff83e840466d1314dd1508b3125df5d7521d9982b"
+    },
+    {
+      "path": "migrations/0048_warehouse_relationships.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "82649b8b23fe063eeea5a43bb1620dd6a1f396308613ff7bcdc3477b8e48aa04"
+    },
+    {
+      "path": "migrations/0049_warehouse_query_attempt_publication_pins.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "681039d556a56bb8a8c5c18374f649a36166588f75d36f6000ad1643aebc090a"
+    },
+    {
+      "path": "migrations/0050_warehouse_query_reservation_publication_links.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "e26187d67c5bce9dcfc95c408ced8ed83d413366ecdf0464441fd05659e5681d"
+    },
+    {
+      "path": "migrations/0051_warehouse_query_publication_retirement_fences.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "760bd4c34f86aad5a3c30b0bdcf19f10f856262744b52b380da5f373423698a7"
+    },
+    {
+      "path": "migrations/0052_warehouse_query_attempt_logical_drafts.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "3af35d2dea4740779e9364415ea557da5ab61104f57101df5fa6d730ee8151e5"
+    },
+    {
+      "path": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "e1d1aac0029674ff7395c895d8809d68c6a694cfd905144e082b098d1cff06f8"
+    },
+    {
+      "path": "migrations/0054_warehouse_query_send_recovery.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "5c3c278a691aad1bc9e88ccf438e171956ab3db42ab0247d11b25d5092e74366"
+    },
+    {
+      "path": "migrations/0055_warehouse_query_recovery_attestations.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "7eb416795e3688bb79af0afdda52261a559c8a4849e85e5a05e41fa61124b60b"
+    },
+    {
+      "path": "migrations/0056_warehouse_query_provider_policies.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "ac4fc20238980b7d7ee61cc40e07dee281ca2346f7d18d4e20a9e7b0427d8f4c"
+    },
+    {
+      "path": "migrations/0057_warehouse_query_function_acl_hardening.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "b554a913a87695e1783c4a52ff808dc8df72418eb56e29864a8f9b856ac27046"
+    },
+    {
+      "path": "migrations/0058_warehouse_query_request_envelopes.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "51d594a71650c4e8cbba67389ccb8015910fe1323c32f8d80023c1b9eb674866"
+    },
+    {
+      "path": "migrations/0059_warehouse_query_cancel_intents.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "a6bd8de265caba79945a66eaf898d1348325bf39c49733883c3b5d39051d123d"
+    },
+    {
+      "path": "migrations/0060_warehouse_query_cancel_attempt_boundary.sql",
+      "method": "migration_definition_scan_only",
+      "sha256": "620a9a878f45beb0ffe1a74e51ebb990a87651edb9d0ad5e21b0207efc698573"
+    },
+    {
+      "path": "AGENTS.md",
+      "method": "documentation_reference_review",
+      "sha256": "663e98942fd9827dcdb647d6115f9395df21c75bc884ae5888d90d4776793a1b"
+    },
+    {
+      "path": "docs/warehouse_catalog_assessment_414f0b8.md",
+      "method": "documentation_reference_review",
+      "sha256": "0867d7d48a4f6bb1f2ba24496f35d253e125ad84ddc3fe7ea321e1e645c6b06a"
+    },
+    {
+      "path": "docs/warehouse_control_table_permissions_414f0b10.md",
+      "method": "documentation_reference_review",
+      "sha256": "8d0594c65b18d45178f5c64499a4297b0e022c427b59ff8cde0579eba64638bf"
+    },
+    {
+      "path": "docs/warehouse_function_acl_414f0b11.md",
+      "method": "documentation_reference_review",
+      "sha256": "f4e0047e2751b5c282a3d1fc0e2fcc96128b1cec3bf6a90a8210a1e89077bd4a"
+    },
+    {
+      "path": "docs/warehouse_function_hardening_lifecycle_414f0b12.md",
+      "method": "documentation_reference_review",
+      "sha256": "567fb91a85ad444616c39ac639274e2cdec6ea898907a883cfc077f162a34a59"
+    },
+    {
+      "path": "docs/warehouse_permission_requirements_414f0b4.md",
+      "method": "documentation_reference_review",
+      "sha256": "f9997079c8c350bea613aeb002eca8e472387e9c7d11ef3fe69ea0f7ad9b49a5"
+    },
+    {
+      "path": "docs/warehouse_pg_result_reader_permission_probe_414f0b.md",
+      "method": "documentation_reference_review",
+      "sha256": "267ee7c3fb2b5cf87060d567ce0aa5bda2dc9e6a88f4d0fbbcd5920881fcaae2"
+    },
+    {
+      "path": "docs/warehouse_pg_runtime_role_inventory_414f0b.md",
+      "method": "documentation_reference_review",
+      "sha256": "c551b116a78cfb214d13b1459fa07f78bb3277329046db4a37c684114f4100dc"
+    },
+    {
+      "path": "docs/warehouse_pinned_send_boundary_414f1.md",
+      "method": "documentation_reference_review",
+      "sha256": "5537ce87adf1933898e74b864d06bea6d513719844753902cbb16031e758cb44"
+    },
+    {
+      "path": "docs/warehouse_publication_cleanup_inspection_414f0a.md",
+      "method": "documentation_reference_review",
+      "sha256": "66b3e7986373052b1e1277fc28966c378c4e1ef561f5cb7760e6ed14a47af00f"
+    },
+    {
+      "path": "docs/warehouse_query_function_trigger_audit_414f0b6.md",
+      "method": "documentation_reference_review",
+      "sha256": "fc6bf16cbe902cbd86a2a002a139abf6953509d0a17bca3f27cbfe24097f2aac"
+    },
+    {
+      "path": "docs/warehouse_query_function_trigger_integration_414f0b7.md",
+      "method": "documentation_reference_review",
+      "sha256": "3670488334008276700af689e5bd356245eab26512fbe1c0b0ab92d650bd87f1"
+    },
+    {
+      "path": "docs/warehouse_query_privilege_assessment_414f0b2.md",
+      "method": "documentation_reference_review",
+      "sha256": "3853004c40ccd10a36ac5896362ab3cf4476bd45cf23842454057529ff4a6f1d"
+    },
+    {
+      "path": "docs/warehouse_query_privilege_audit_414f0b1.md",
+      "method": "documentation_reference_review",
+      "sha256": "f9d4d84b724638855256b8ef969403067c48aa9d842a4189c6aabff3d265aea2"
+    },
+    {
+      "path": "docs/warehouse_query_privilege_rehearsal_414f0b3.md",
+      "method": "documentation_reference_review",
+      "sha256": "add94e8caf6c4cd3d23a18b1751eb179a500d41b6823afc9f6d84125b0cd64e8"
+    },
+    {
+      "path": "docs/warehouse_query_security_review_413h.md",
+      "method": "documentation_reference_review",
+      "sha256": "0fc725ea711635b281b57e0f1a7226d7911ea50b3bb37a965cbfc66cf7276ea7"
+    },
+    {
+      "path": "docs/warehouse_restricted_login_acceptance_414f0b.md",
+      "method": "documentation_reference_review",
+      "sha256": "bbb915d47697952327f0030572953c24ab3971c4b732ccc831bfc94943119fa8"
+    },
+    {
+      "path": "docs/warehouse_result_reader_iam_acceptance_414f0c.md",
+      "method": "documentation_reference_review",
+      "sha256": "12bbabd9ca076c4410d8165f37f3d3dafbb15b4889b346638ee043d3af9ae365"
+    },
+    {
+      "path": "docs/warehouse_result_readiness_api_414g.md",
+      "method": "documentation_reference_review",
+      "sha256": "35f94f73d7e80d5be762016d2bbc703967195f17b296bb74be43801b1d71104a"
+    },
+    {
+      "path": "docs/warehouse_runtime_permissions_414f0b9.md",
+      "method": "documentation_reference_review",
+      "sha256": "4f6bac049cc364553a91f242d9cf358d6b2a8ff0bc5991fbb7cdfa2a353d7fa9"
+    },
+    {
+      "path": "docs/warehouse_runtime_role_matrix_414f0_draft.md",
+      "method": "documentation_reference_review",
+      "sha256": "d11c81759eb51869a3a011b6d289f9bb279e857ffaa0f613ae8591bc32162cf1"
+    },
+    {
+      "path": "docs/warehouse_sql_dispatch_checkpoint_414d5.md",
+      "method": "documentation_reference_review",
+      "sha256": "d0051508958903243dae83eea2ec62a882a4d3cf9e9f686062039c0311cf8e10"
+    },
+    {
+      "path": "docs/warehouse_sql_lock_inventory_414f0b5.md",
+      "method": "documentation_reference_review",
+      "sha256": "da570ba3c8bfc87e90e86c3b73273b68269ee146ad8234f102d6f2f3bad1dedb"
+    },
+    {
+      "path": "docs/warehouse_sql_provider_policy_414e3.md",
+      "method": "documentation_reference_review",
+      "sha256": "ce9038578c43c43292a315466b2caf1cd0bf28f3056e4909ef6305aaf90976ce"
+    },
+    {
+      "path": "docs/warehouse_sql_recovery_attestation_414e2.md",
+      "method": "documentation_reference_review",
+      "sha256": "49d10c35fb8464cfffa095b3c83babe826ca40da6f7a15c59b8e952721b932ea"
+    },
+    {
+      "path": "docs/warehouse_sql_send_recovery_414e1.md",
+      "method": "documentation_reference_review",
+      "sha256": "f6276c2f36b8ad675eabd8d57dd9fbea3b8b8e5fd8d38885e98bcd104722c145"
+    },
+    {
+      "path": "deployment/task20_runtime_privileges.sql",
+      "method": "targeted_deployment_sql_read_only_review",
+      "sha256": "9b5f5b366c9bbb854cd13828b0dcfc41fd152f7347bd7d4d8f5f1606a4a883b0"
+    },
+    {
+      "path": "deployment/task21g_6_provision_runtime_roles.sql",
+      "method": "targeted_deployment_sql_read_only_review",
+      "sha256": "b644eca95a2e839c18fdd2d7b998e2e91b78640fbf2a3042c067d61a3aaa47c2"
+    },
+    {
+      "path": "deployment/operations/warehouse_query_privilege_audit_414f0b1.sql",
+      "method": "targeted_deployment_sql_read_only_review",
+      "sha256": "c8ab7d92857eb73c3972b85c356517b76786ce55fe99239020ba534d05cb7df2"
+    },
+    {
+      "path": "deployment/operations/warehouse_query_function_trigger_audit_414f0b6.sql",
+      "method": "targeted_deployment_sql_read_only_review",
+      "sha256": "16c2ec60eb0542197b35da65216eb7653d67bf16244fb3833b67f362e99f6f27"
+    },
+    {
+      "path": "tests/test_warehouse_pg_runtime_role_inventory_414f0b.py",
+      "method": "targeted_acceptance_test_source_review_not_execution",
+      "sha256": "79587067d3bb62c56fec0f512fbaba9b1acf2f7436ca029f319bc262a8c17458"
+    },
+    {
+      "path": "tests/test_warehouse_restricted_login_gate_414f0b.py",
+      "method": "targeted_acceptance_test_source_review_not_execution",
+      "sha256": "773b0acd5371c84632b22a48df311a55de2a0cc4c2e3e258608974b6f5b8c908"
+    },
+    {
+      "path": "tests/test_warehouse_restricted_login_acceptance_414f0b.py",
+      "method": "targeted_acceptance_test_source_review_not_execution",
+      "sha256": "d706a8f5077cc3e93f562f96d2afa5ab678337c1522a031e3c8fe444c95d1e77"
+    },
+    {
+      "path": "tests/test_warehouse_runtime_permissions_postgres_414f0b9.py",
+      "method": "targeted_acceptance_test_source_review_not_execution",
+      "sha256": "0a903a6b67f355ebc8e43ab14699f419294de33738a36dad456bd163660d4f43"
+    },
+    {
+      "path": "tests/test_warehouse_control_table_permissions_414f0b10.py",
+      "method": "targeted_acceptance_test_source_review_not_execution",
+      "sha256": "39eaccf61f1a920cd2d49806eb6a962bf182a29d48d6920a3abd3a6b4b1e2722"
+    },
+    {
+      "path": "tests/test_warehouse_function_acl_postgres_414f0b11.py",
+      "method": "targeted_acceptance_test_source_review_not_execution",
+      "sha256": "5f197155c4d8b4b6f510dac6ee5f5a3b3f97c117eadf4cb70e3fde4a505cb54f"
+    },
+    {
+      "path": "tests/test_warehouse_function_hardening_lifecycle_414f0b12.py",
+      "method": "targeted_acceptance_test_source_review_not_execution",
+      "sha256": "63bda59ab547ba6583afbebe433126999a1240ad1cdf4689984a9f4779a69c7b"
+    }
+  ],
+  "literal_sql_navigation_candidates": [
+    {
+      "file": "app/auth/repository.py",
+      "line": 14,
+      "function": "event",
+      "relations": [
+        "INTO:auth_security_events"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 19,
+      "function": "rate",
+      "relations": [
+        "INTO:auth_rate_limits",
+        "UPDATE:set"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 39,
+      "function": "session",
+      "relations": [
+        "UPDATE:auth_sessions"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 45,
+      "function": "issue_session",
+      "relations": [
+        "INTO:auth_sessions"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 46,
+      "function": "issue_session",
+      "relations": [
+        "UPDATE:users"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 74,
+      "function": "logout",
+      "relations": [
+        "UPDATE:auth_sessions"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 94,
+      "function": "request_code",
+      "relations": [
+        "INTO:users"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 103,
+      "function": "request_code",
+      "relations": [
+        "UPDATE:auth_challenges"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 105,
+      "function": "request_code",
+      "relations": [
+        "INTO:auth_challenges"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 137,
+      "function": "verify_code",
+      "relations": [
+        "FROM:auth_challenges"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 142,
+      "function": "verify_code",
+      "relations": [
+        "UPDATE:auth_challenges"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 150,
+      "function": "verify_code",
+      "relations": [
+        "UPDATE:users"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 151,
+      "function": "verify_code",
+      "relations": [
+        "UPDATE:auth_challenges"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 155,
+      "function": "verify_code",
+      "relations": [
+        "UPDATE:auth_challenges"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 170,
+      "function": "reset_password",
+      "relations": [
+        "UPDATE:users"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 171,
+      "function": "reset_password",
+      "relations": [
+        "UPDATE:auth_challenges"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 172,
+      "function": "reset_password",
+      "relations": [
+        "UPDATE:auth_sessions"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 181,
+      "function": "change_password",
+      "relations": [
+        "UPDATE:users"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 182,
+      "function": "change_password",
+      "relations": [
+        "UPDATE:auth_sessions"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/auth/service.py",
+      "line": 187,
+      "function": "update_profile",
+      "relations": [
+        "UPDATE:users"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 200,
+      "function": "reserve",
+      "relations": [
+        "FROM:query_governance_reservations"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 272,
+      "function": "reserve",
+      "relations": [
+        "INTO:query_governance_reservations"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 353,
+      "function": "complete",
+      "relations": [
+        "FROM:query_governance_reservations"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 402,
+      "function": "complete",
+      "relations": [
+        "INTO:query_governance_usage"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 433,
+      "function": "complete",
+      "relations": [
+        "UPDATE:query_governance_reservations"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 469,
+      "function": "release",
+      "relations": [
+        "FROM:query_governance_reservations"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 488,
+      "function": "release",
+      "relations": [
+        "UPDATE:query_governance_reservations"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 523,
+      "function": "claim",
+      "relations": [
+        "FROM:query_governance_reservations"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 549,
+      "function": "claim",
+      "relations": [
+        "UPDATE:query_governance_reservations"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 601,
+      "function": "fail",
+      "relations": [
+        "FROM:query_governance_reservations"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 671,
+      "function": "fail",
+      "relations": [
+        "INTO:query_governance_usage"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/query_governance_repository.py",
+      "line": 702,
+      "function": "fail",
+      "relations": [
+        "UPDATE:query_governance_reservations"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_query_attempt_repository.py",
+      "line": 45,
+      "function": "register_attempt",
+      "relations": [
+        "INTO:warehouse_query_attempt_registry"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_query_publication_inspection_repository.py",
+      "line": 36,
+      "function": "inspect_linked_publications",
+      "relations": [
+        "FROM:warehouse_query_attempt_registry"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_query_publication_inspection_repository.py",
+      "line": 45,
+      "function": "inspect_linked_publications",
+      "relations": [
+        "FROM:warehouse_query_attempt_reservation_links",
+        "JOIN:query_governance_reservations"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_query_send_repository.py",
+      "line": 38,
+      "function": "lock_identity",
+      "relations": [
+        "FROM:warehouse_query_attempt_registry"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_query_send_repository.py",
+      "line": 39,
+      "function": "lock_identity",
+      "relations": [
+        "FROM:query_governance_reservations"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_query_send_repository.py",
+      "line": 62,
+      "function": "append",
+      "relations": [
+        "INTO:warehouse_query_send_journal"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_reliability_repository.py",
+      "line": 15,
+      "function": "journal",
+      "relations": [
+        "INTO:warehouse_run_journal"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_reliability_repository.py",
+      "line": 25,
+      "function": "register",
+      "relations": [
+        "INTO:warehouse_accepted_manifests"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_reliability_repository.py",
+      "line": 30,
+      "function": "register",
+      "relations": [
+        "INTO:warehouse_accepted_events"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_reliability_repository.py",
+      "line": 32,
+      "function": "register",
+      "relations": [
+        "INTO:warehouse_outbox"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_reliability_repository.py",
+      "line": 36,
+      "function": "checkpoint",
+      "relations": [
+        "FROM:warehouse_checkpoints"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_reliability_repository.py",
+      "line": 40,
+      "function": "head",
+      "relations": [
+        "FROM:warehouse_publication_heads"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_reliability_repository.py",
+      "line": 48,
+      "function": "lease",
+      "relations": [
+        "FROM:warehouse_writer_leases"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_reliability_repository.py",
+      "line": 81,
+      "function": "_insert_serving_materialization",
+      "relations": [
+        "INTO:warehouse_serving_materializations"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 12,
+      "function": "workspace",
+      "relations": [
+        "FROM:workspaces"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 25,
+      "function": "create_model",
+      "relations": [
+        "INTO:warehouse_models"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 31,
+      "function": "version",
+      "relations": [
+        "FROM:warehouse_model_versions"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 39,
+      "function": "create_version",
+      "relations": [
+        "INTO:warehouse_model_versions"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 51,
+      "function": "add_source",
+      "relations": [
+        "INTO:warehouse_model_sources"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 56,
+      "function": "dataset",
+      "relations": [
+        "FROM:datasets"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 66,
+      "function": "approve",
+      "relations": [
+        "UPDATE:warehouse_model_versions"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 67,
+      "function": "approve",
+      "relations": [
+        "UPDATE:warehouse_model_versions"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 69,
+      "function": "approve",
+      "relations": [
+        "UPDATE:warehouse_models"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 74,
+      "function": "archive",
+      "relations": [
+        "UPDATE:warehouse_model_versions"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 75,
+      "function": "archive",
+      "relations": [
+        "UPDATE:warehouse_models"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 79,
+      "function": "resource",
+      "relations": [
+        "FROM:warehouse_resources"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 89,
+      "function": "register_resource",
+      "relations": [
+        "INTO:warehouse_resources"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 96,
+      "function": "create_operation",
+      "relations": [
+        "INTO:warehouse_operations"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 102,
+      "function": "operation",
+      "relations": [
+        "FROM:warehouse_operations"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 106,
+      "function": "new_attempt",
+      "relations": [
+        "FROM:warehouse_runs",
+        "INTO:warehouse_runs"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 112,
+      "function": "run",
+      "relations": [
+        "FROM:warehouse_runs"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 117,
+      "function": "transition",
+      "relations": [
+        "UPDATE:warehouse_runs"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/db/warehouse_repository.py",
+      "line": 141,
+      "function": "save_modeling",
+      "relations": [
+        "INTO:warehouse_model_configurations"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/dataset_gold_serving_service.py",
+      "line": 182,
+      "function": "GoldVerifier.verify",
+      "relations": [
+        "INTO:dataset_gold_evidence"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/dataset_gold_serving_service.py",
+      "line": 203,
+      "function": "DatasetGoldServing.refresh",
+      "relations": [
+        "FROM:dataset_gold_runs"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/services/dataset_gold_serving_service.py",
+      "line": 205,
+      "function": "DatasetGoldServing.refresh",
+      "relations": [
+        "UPDATE:dataset_gold_runs"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/dataset_gold_serving_service.py",
+      "line": 206,
+      "function": "DatasetGoldServing.refresh",
+      "relations": [
+        "UPDATE:datasets"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/dataset_gold_serving_service.py",
+      "line": 217,
+      "function": "DatasetGoldServing._refresh_locked",
+      "relations": [
+        "INTO:dataset_gold_runs"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/dataset_gold_serving_service.py",
+      "line": 220,
+      "function": "DatasetGoldServing._refresh_locked",
+      "relations": [
+        "UPDATE:dataset_gold_runs"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/dataset_gold_serving_service.py",
+      "line": 240,
+      "function": "DatasetGoldServing._refresh_locked",
+      "relations": [
+        "UPDATE:datasets"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/sydney_gold_eligibility_service.py",
+      "line": 63,
+      "function": "resolve_current_gold_for_warehouse",
+      "relations": [
+        "FROM:dataset_gold_runs"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/sydney_gold_eligibility_service.py",
+      "line": 80,
+      "function": "resolve_current_gold_for_warehouse",
+      "relations": [
+        "FROM:dataset_gold_evidence"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/sydney_gold_eligibility_service.py",
+      "line": 135,
+      "function": "resolve_gold_in_transaction",
+      "relations": [
+        "FROM:dataset_gold_runs"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/sydney_gold_eligibility_service.py",
+      "line": 152,
+      "function": "resolve_gold_in_transaction",
+      "relations": [
+        "FROM:dataset_gold_evidence"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/sydney_warehouse_resource_service.py",
+      "line": 59,
+      "function": "resolve_sydney_resource_in_transaction",
+      "relations": [
+        "FROM:warehouse_sydney_approvals"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_provider_service.py",
+      "line": 147,
+      "function": "ProviderService._resolve",
+      "relations": [
+        "FROM:warehouse_sydney_approvals"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_publication_cleanup_inspection_service.py",
+      "line": 47,
+      "function": "inspect_publication_cleanup_without_deletion",
+      "relations": [
+        "FROM:warehouse_publications",
+        "JOIN:warehouse_resources"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_relationship_service.py",
+      "line": 55,
+      "function": "register",
+      "relations": [
+        "INTO:warehouse_model_relationships"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_reliability_service.py",
+      "line": 84,
+      "function": "ReliabilityService.register",
+      "relations": [
+        "FROM:warehouse_model_sources"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_reliability_service.py",
+      "line": 461,
+      "function": "ReliabilityService.create_intent",
+      "relations": [
+        "INTO:warehouse_execution_intents"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_reliability_service.py",
+      "line": 645,
+      "function": "ReliabilityService.claim",
+      "relations": [
+        "INTO:warehouse_writer_leases",
+        "UPDATE:set"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_reliability_service.py",
+      "line": 708,
+      "function": "ReliabilityService.record_receipt",
+      "relations": [
+        "UPDATE:warehouse_writer_leases"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_reliability_service.py",
+      "line": 719,
+      "function": "ReliabilityService.reconcile",
+      "relations": [
+        "INTO:warehouse_reconciliations"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_reliability_service.py",
+      "line": 768,
+      "function": "ReliabilityService.publish",
+      "relations": [
+        "INTO:warehouse_publications"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_reliability_service.py",
+      "line": 772,
+      "function": "ReliabilityService.publish",
+      "relations": [
+        "UPDATE:warehouse_publication_heads"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_reliability_service.py",
+      "line": 778,
+      "function": "ReliabilityService.publish",
+      "relations": [
+        "INTO:warehouse_publication_heads"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_reliability_service.py",
+      "line": 780,
+      "function": "ReliabilityService.publish",
+      "relations": [
+        "UPDATE:warehouse_checkpoints"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_reliability_service.py",
+      "line": 786,
+      "function": "ReliabilityService.publish",
+      "relations": [
+        "INTO:warehouse_checkpoints"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_reliability_service.py",
+      "line": 789,
+      "function": "ReliabilityService.publish",
+      "relations": [
+        "UPDATE:warehouse_writer_leases"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_sql_authenticated_result_service.py",
+      "line": 54,
+      "function": "inspect_authenticated_warehouse_result_without_fetch",
+      "relations": [
+        "FROM:workspaces"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_authenticated_result_service.py",
+      "line": 100,
+      "function": "_authenticated_attempt_id",
+      "relations": [
+        "FROM:workspaces"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_cancel_attempt_boundary_service.py",
+      "line": 46,
+      "function": "record_cancel_attempt_boundary_without_provider",
+      "relations": [
+        "INTO:warehouse_query_cancel_attempt_boundaries"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_sql_cancel_intent_service.py",
+      "line": 50,
+      "function": "record_cancel_intent_without_provider",
+      "relations": [
+        "INTO:warehouse_query_cancel_intents"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "line": 49,
+      "function": "_session_locked",
+      "relations": [
+        "FROM:users"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "line": 50,
+      "function": "_session_locked",
+      "relations": [
+        "FROM:auth_sessions"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "line": 97,
+      "function": "checkpoint_authenticated_warehouse_dispatch",
+      "relations": [
+        "FROM:workspaces"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "line": 107,
+      "function": "checkpoint_authenticated_warehouse_dispatch",
+      "relations": [
+        "FROM:warehouse_query_attempt_registry"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "line": 117,
+      "function": "checkpoint_authenticated_warehouse_dispatch",
+      "relations": [
+        "FROM:query_governance_reservations"
+      ],
+      "locking": [
+        "UPDATE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "line": 123,
+      "function": "checkpoint_authenticated_warehouse_dispatch",
+      "relations": [
+        "FROM:warehouse_query_attempt_publication_pins",
+        "JOIN:warehouse_publication_heads",
+        "JOIN:warehouse_resources",
+        "JOIN:warehouse_serving_materializations"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "line": 133,
+      "function": "checkpoint_authenticated_warehouse_dispatch",
+      "relations": [
+        "FROM:warehouse_query_attempt_logical_drafts"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "line": 137,
+      "function": "checkpoint_authenticated_warehouse_dispatch",
+      "relations": [
+        "FROM:warehouse_model_sources",
+        "JOIN:datasets"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_dispatch_checkpoint_service.py",
+      "line": 147,
+      "function": "checkpoint_authenticated_warehouse_dispatch",
+      "relations": [
+        "INTO:warehouse_query_dispatch_checkpoints"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_sql_provider_policy_service.py",
+      "line": 101,
+      "function": "prepare_authenticated_provider_policy",
+      "relations": [
+        "FROM:workspaces"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_provider_policy_service.py",
+      "line": 117,
+      "function": "prepare_authenticated_provider_policy",
+      "relations": [
+        "INTO:warehouse_query_provider_policies"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_sql_provider_policy_service.py",
+      "line": 179,
+      "function": "_inspect_query_envelope",
+      "relations": [
+        "FROM:workspaces"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_provider_policy_service.py",
+      "line": 210,
+      "function": "_inspect_query_envelope",
+      "relations": [
+        "INTO:warehouse_query_request_envelopes"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_sql_recovery_attestation_service.py",
+      "line": 55,
+      "function": "_persist",
+      "relations": [
+        "INTO:warehouse_query_recovery_attestations"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_sql_send_recovery_service.py",
+      "line": 99,
+      "function": "_live_context",
+      "relations": [
+        "FROM:users"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_send_recovery_service.py",
+      "line": 100,
+      "function": "_live_context",
+      "relations": [
+        "FROM:auth_sessions"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_send_recovery_service.py",
+      "line": 102,
+      "function": "_live_context",
+      "relations": [
+        "FROM:workspaces"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_send_recovery_service.py",
+      "line": 112,
+      "function": "_live_context",
+      "relations": [
+        "FROM:warehouse_query_attempt_publication_pins",
+        "JOIN:warehouse_publication_heads",
+        "JOIN:warehouse_resources",
+        "JOIN:warehouse_serving_materializations"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_send_recovery_service.py",
+      "line": 120,
+      "function": "_live_context",
+      "relations": [
+        "FROM:warehouse_query_attempt_logical_drafts"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_send_recovery_service.py",
+      "line": 122,
+      "function": "_live_context",
+      "relations": [
+        "FROM:warehouse_model_sources",
+        "JOIN:datasets"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_send_recovery_service.py",
+      "line": 148,
+      "function": "prepare_authenticated_send_intent",
+      "relations": [
+        "FROM:workspaces"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_send_recovery_service.py",
+      "line": 158,
+      "function": "prepare_authenticated_send_intent",
+      "relations": [
+        "INTO:warehouse_query_send_intents"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_sql_stored_draft_service.py",
+      "line": 48,
+      "function": "_catalog_for_owned_model",
+      "relations": [
+        "FROM:warehouse_models",
+        "JOIN:warehouse_model_configurations",
+        "JOIN:warehouse_model_versions"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_stored_draft_service.py",
+      "line": 116,
+      "function": "register_reviewed_logical_draft_without_dispatch",
+      "relations": [
+        "FROM:warehouse_query_attempt_logical_drafts"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_stored_draft_service.py",
+      "line": 127,
+      "function": "register_reviewed_logical_draft_without_dispatch",
+      "relations": [
+        "INTO:warehouse_query_attempt_logical_drafts"
+      ],
+      "locking": []
+    },
+    {
+      "file": "app/services/warehouse_sql_stored_draft_service.py",
+      "line": 159,
+      "function": "resolve_reviewed_logical_draft_without_dispatch",
+      "relations": [
+        "FROM:warehouse_query_attempt_logical_drafts"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_stored_publication_evidence_service.py",
+      "line": 58,
+      "function": "resolve_stored_publication_evidence_without_dispatch",
+      "relations": [
+        "FROM:warehouse_query_attempt_logical_drafts"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_stored_publication_evidence_service.py",
+      "line": 77,
+      "function": "resolve_stored_publication_evidence_without_dispatch",
+      "relations": [
+        "FROM:warehouse_query_attempt_publication_pins",
+        "JOIN:warehouse_resources",
+        "JOIN:warehouse_serving_materializations"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_trusted_recompilation_service.py",
+      "line": 69,
+      "function": "_recompile_in_transaction",
+      "relations": [
+        "FROM:warehouse_query_attempt_logical_drafts"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_trusted_recompilation_service.py",
+      "line": 88,
+      "function": "_recompile_in_transaction",
+      "relations": [
+        "FROM:warehouse_query_attempt_publication_pins",
+        "JOIN:warehouse_resources"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    },
+    {
+      "file": "app/services/warehouse_sql_trusted_recompilation_service.py",
+      "line": 126,
+      "function": "_recompile_in_transaction",
+      "relations": [
+        "FROM:query_governance_reservations"
+      ],
+      "locking": [
+        "SHARE"
+      ]
+    }
+  ],
+  "migration_function_definition_candidates": [
+    {
+      "file": "migrations/0013_incremental_foundation.sql",
+      "line": 91,
+      "name": "protect_incremental_history",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0013_incremental_foundation.sql",
+      "line": 116,
+      "name": "require_application_context",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0013_incremental_foundation.sql",
+      "line": 129,
+      "name": "require_published_dataset_head",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0014_append_delivery_manifests.sql",
+      "line": 14,
+      "name": "immutable_delivery_manifest",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0016_snapshot_execution.sql",
+      "line": 18,
+      "name": "immutable_snapshot_context",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0016_snapshot_execution.sql",
+      "line": 30,
+      "name": "protect_snapshot_application_context",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0017_cumulative_dataset_gold.sql",
+      "line": 26,
+      "name": "protect_dataset_gold_run",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0017_cumulative_dataset_gold.sql",
+      "line": 39,
+      "name": "validate_dataset_gold_pins",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0017_cumulative_dataset_gold.sql",
+      "line": 50,
+      "name": "validate_dataset_gold_head",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0018_semantic_profiles.sql",
+      "line": 34,
+      "name": "protect_semantic_profile",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0018_semantic_profiles.sql",
+      "line": 43,
+      "name": "validate_semantic_profile_pins",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0018_semantic_profiles.sql",
+      "line": 54,
+      "name": "protect_column_evidence",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0018_semantic_profiles.sql",
+      "line": 64,
+      "name": "validate_semantic_profile_head",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0019_semantic_suggestions.sql",
+      "line": 29,
+      "name": "protect_semantic_suggestion",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0019_semantic_suggestions.sql",
+      "line": 41,
+      "name": "validate_semantic_suggestion_pins",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0020_workspace_semantic_suggestions.sql",
+      "line": 28,
+      "name": "protect_workspace_semantic_suggestion",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0021_relationship_discovery.sql",
+      "line": 45,
+      "name": "protect_relationship_metadata",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0022_business_metrics.sql",
+      "line": 41,
+      "name": "protect_metric_metadata",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0023_metric_results.sql",
+      "line": 23,
+      "name": "protect_metric_result",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0024_workspace_answers.sql",
+      "line": 19,
+      "name": "protect_workspace_answer",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0025_sql_analytics.sql",
+      "line": 28,
+      "name": "protect_sql_execution",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0025_sql_analytics.sql",
+      "line": 33,
+      "name": "validate_sql_metadata_owner",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0027_authentication.sql",
+      "line": 75,
+      "name": "auth_user_updated_at",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 130,
+      "name": "warehouse_guard_history",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 184,
+      "name": "warehouse_guard_sources",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 203,
+      "name": "warehouse_guard_insert",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 244,
+      "name": "warehouse_no_truncate",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0030_warehouse_modeling.sql",
+      "line": 34,
+      "name": "warehouse_modeling_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0030_warehouse_modeling.sql",
+      "line": 117,
+      "name": "warehouse_modeling_approval_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 113,
+      "name": "warehouse_reliability_immutable",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 127,
+      "name": "warehouse_reliability_insert_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 186,
+      "name": "warehouse_progress_consistent",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 213,
+      "name": "warehouse_reliability_mutation_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 250,
+      "name": "warehouse_evidence_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 174,
+      "name": "query_governance_reservation_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 245,
+      "name": "query_governance_usage_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 292,
+      "name": "query_governance_reservation_no_delete",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 309,
+      "name": "query_governance_no_truncate",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 335,
+      "name": "query_governance_completion_consistent",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0033_fact_analytical_roles.sql",
+      "line": 3,
+      "name": "warehouse_modeling_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0034_warehouse_serving_materialization.sql",
+      "line": 90,
+      "name": "warehouse_serving_materialization_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0037_protect_silver_checksum.sql",
+      "line": 1,
+      "name": "protect_successful_silver_checksum",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0038_exact_gold_avg_policy.sql",
+      "line": 44,
+      "name": "guard_exact_gold_avg_policy",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0039_exact_gold_run_guard.sql",
+      "line": 24,
+      "name": "guard_exact_gold_v2_run",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0040_exact_gold_candidate_pins.sql",
+      "line": 29,
+      "name": "protect_exact_gold_candidate_pin",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0042_stage_artifact_publication.sql",
+      "line": 136,
+      "name": "protect_processing_stage_receipt",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0042_stage_artifact_publication.sql",
+      "line": 150,
+      "name": "protect_processing_artifact_candidate",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0042_stage_artifact_publication.sql",
+      "line": 224,
+      "name": "validate_processing_stage_head_scope",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 33,
+      "name": "task20_policy",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 39,
+      "name": "task20_applied_state",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 52,
+      "name": "task20_schedule_job",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 66,
+      "name": "task20_require_job",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 87,
+      "name": "task20_require_input",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 154,
+      "name": "task20_verify",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 175,
+      "name": "task20_publish",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 211,
+      "name": "task20_protect_attempt",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 222,
+      "name": "task20_preserve_registry",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 243,
+      "name": "task20_source",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 255,
+      "name": "task20_admit",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 307,
+      "name": "task20_claim_dispatch",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 317,
+      "name": "task20_dispatched",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 325,
+      "name": "task20_publish_incremental",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 354,
+      "name": "task20_register_source",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 367,
+      "name": "task20_managed",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 376,
+      "name": "task20_file_managed",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 381,
+      "name": "task20_protect_admitted_job",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0043_processing_integration.sql",
+      "line": 392,
+      "name": "task20_dependency_changed",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0044_batch_scheduling.sql",
+      "line": 33,
+      "name": "task20_claim_dispatch",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0044_batch_scheduling.sql",
+      "line": 50,
+      "name": "task158c_route",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0044_batch_scheduling.sql",
+      "line": 70,
+      "name": "task158c_claim",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0044_batch_scheduling.sql",
+      "line": 101,
+      "name": "task158c_response",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0044_batch_scheduling.sql",
+      "line": 125,
+      "name": "task158c_reconcile",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0044_batch_scheduling.sql",
+      "line": 183,
+      "name": "task158c_cancel",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0045_dataset_gold_evidence.sql",
+      "line": 21,
+      "name": "dataset_gold_evidence_scope",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0046_sydney_warehouse_approval.sql",
+      "line": 68,
+      "name": "warehouse_sydney_approval_immutable",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0046_sydney_warehouse_approval.sql",
+      "line": 118,
+      "name": "warehouse_sydney_resource_registration_guard",
+      "definer_in_definition_header": true
+    },
+    {
+      "file": "migrations/0047_warehouse_gold_intent_pins.sql",
+      "line": 53,
+      "name": "warehouse_sydney_intent_gold_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0048_warehouse_query_attempt_registry.sql",
+      "line": 22,
+      "name": "warehouse_query_attempt_registry_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0048_warehouse_relationships.sql",
+      "line": 44,
+      "name": "warehouse_relationship_history_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0048_warehouse_relationships.sql",
+      "line": 61,
+      "name": "warehouse_relationship_insert_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0049_warehouse_query_attempt_publication_pins.sql",
+      "line": 21,
+      "name": "warehouse_query_attempt_publication_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0050_warehouse_query_reservation_publication_links.sql",
+      "line": 13,
+      "name": "warehouse_query_attempt_reservation_link_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0050_warehouse_query_reservation_publication_links.sql",
+      "line": 87,
+      "name": "warehouse_query_linked_pin_insert_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0050_warehouse_query_reservation_publication_links.sql",
+      "line": 116,
+      "name": "warehouse_query_publication_dependency_present",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0051_warehouse_query_publication_retirement_fences.sql",
+      "line": 18,
+      "name": "warehouse_query_retirement_fence_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0051_warehouse_query_publication_retirement_fences.sql",
+      "line": 57,
+      "name": "warehouse_query_retirement_link_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0052_warehouse_query_attempt_logical_drafts.sql",
+      "line": 29,
+      "name": "warehouse_query_attempt_logical_draft_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 30,
+      "name": "warehouse_query_dispatch_record_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 66,
+      "name": "warehouse_query_publication_dependency_present",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 80,
+      "name": "warehouse_query_dispatch_revoke_notice",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0054_warehouse_query_send_recovery.sql",
+      "line": 28,
+      "name": "warehouse_query_send_intent_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0054_warehouse_query_send_recovery.sql",
+      "line": 59,
+      "name": "warehouse_query_send_journal_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0054_warehouse_query_send_recovery.sql",
+      "line": 113,
+      "name": "warehouse_query_send_initial_event_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0055_warehouse_query_recovery_attestations.sql",
+      "line": 23,
+      "name": "warehouse_query_recovery_attestation_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0056_warehouse_query_provider_policies.sql",
+      "line": 9,
+      "name": "warehouse_query_provider_policy_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0058_warehouse_query_request_envelopes.sql",
+      "line": 11,
+      "name": "warehouse_query_request_envelope_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0059_warehouse_query_cancel_intents.sql",
+      "line": 12,
+      "name": "warehouse_query_cancel_intent_guard",
+      "definer_in_definition_header": false
+    },
+    {
+      "file": "migrations/0060_warehouse_query_cancel_attempt_boundary.sql",
+      "line": 12,
+      "name": "warehouse_query_cancel_attempt_boundary_guard",
+      "definer_in_definition_header": false
+    }
+  ],
+  "migration_serial_columns": [
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "table": "warehouse_models",
+      "column": "warehouse_model_id",
+      "line": 5,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "table": "warehouse_model_versions",
+      "column": "warehouse_model_version_id",
+      "line": 20,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "table": "warehouse_model_sources",
+      "column": "source_mapping_id",
+      "line": 42,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "table": "warehouse_resources",
+      "column": "resource_id",
+      "line": 57,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "table": "warehouse_operations",
+      "column": "operation_id",
+      "line": 91,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "table": "warehouse_runs",
+      "column": "warehouse_run_id",
+      "line": 108,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "table": "warehouse_run_journal",
+      "column": "journal_id",
+      "line": 64,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "table": "warehouse_reconciliations",
+      "column": "reconciliation_id",
+      "line": 73,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "table": "warehouse_publications",
+      "column": "publication_id",
+      "line": 83,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "table": "query_governance_reservations",
+      "column": "reservation_id",
+      "line": 5,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "table": "query_governance_usage",
+      "column": "usage_id",
+      "line": 100,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0034_warehouse_serving_materialization.sql",
+      "table": "warehouse_serving_materializations",
+      "column": "serving_materialization_id",
+      "line": 10,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0046_sydney_warehouse_approval.sql",
+      "table": "warehouse_sydney_approvals",
+      "column": "approval_id",
+      "line": 6,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0048_warehouse_query_attempt_registry.sql",
+      "table": "warehouse_query_attempt_registry",
+      "column": "attempt_id",
+      "line": 5,
+      "actual_sequence_oid": "NOT_QUERIED"
+    },
+    {
+      "file": "migrations/0048_warehouse_relationships.sql",
+      "table": "warehouse_model_relationships",
+      "column": "relationship_id",
+      "line": 5,
+      "actual_sequence_oid": "NOT_QUERIED"
+    }
+  ],
+  "migration_literal_trigger_candidates": [
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 232,
+      "name": "warehouse_model_history"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 233,
+      "name": "warehouse_version_history"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 234,
+      "name": "warehouse_source_history"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 235,
+      "name": "warehouse_resource_history"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 236,
+      "name": "warehouse_operation_history"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 237,
+      "name": "warehouse_run_history"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 238,
+      "name": "warehouse_model_insert"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 239,
+      "name": "warehouse_version_insert"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 240,
+      "name": "warehouse_resource_insert"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 241,
+      "name": "warehouse_operation_insert"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 242,
+      "name": "warehouse_run_insert"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 246,
+      "name": "warehouse_models_no_truncate"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 247,
+      "name": "warehouse_versions_no_truncate"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 248,
+      "name": "warehouse_sources_no_truncate"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 249,
+      "name": "warehouse_resources_no_truncate"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 250,
+      "name": "warehouse_operations_no_truncate"
+    },
+    {
+      "file": "migrations/0029_warehouse_foundation.sql",
+      "line": 251,
+      "name": "warehouse_runs_no_truncate"
+    },
+    {
+      "file": "migrations/0030_warehouse_modeling.sql",
+      "line": 113,
+      "name": "warehouse_modeling_immutable"
+    },
+    {
+      "file": "migrations/0030_warehouse_modeling.sql",
+      "line": 115,
+      "name": "warehouse_modeling_no_truncate"
+    },
+    {
+      "file": "migrations/0030_warehouse_modeling.sql",
+      "line": 125,
+      "name": "warehouse_modeling_approval"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 180,
+      "name": "accepted_manifest_guard"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 181,
+      "name": "execution_intent_guard"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 182,
+      "name": "warehouse_publication_guard"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 208,
+      "name": "warehouse_head_consistent"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 210,
+      "name": "warehouse_checkpoint_consistent"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 246,
+      "name": "warehouse_lease_guard"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 247,
+      "name": "warehouse_checkpoint_guard"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 248,
+      "name": "warehouse_head_guard"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 274,
+      "name": "accepted_event_guard"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 275,
+      "name": "outbox_evidence_guard"
+    },
+    {
+      "file": "migrations/0031_warehouse_reliability.sql",
+      "line": 276,
+      "name": "reconciliation_evidence_guard"
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 237,
+      "name": "query_governance_reservation_validate"
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 284,
+      "name": "query_governance_usage_validate"
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 302,
+      "name": "query_governance_reservation_delete_guard"
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 319,
+      "name": "query_governance_reservation_truncate_guard"
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 325,
+      "name": "query_governance_usage_truncate_guard"
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 374,
+      "name": "query_governance_reservation_consistency"
+    },
+    {
+      "file": "migrations/0032_query_governance.sql",
+      "line": 381,
+      "name": "query_governance_usage_consistency"
+    },
+    {
+      "file": "migrations/0034_warehouse_serving_materialization.sql",
+      "line": 202,
+      "name": "warehouse_serving_materialization_validate"
+    },
+    {
+      "file": "migrations/0034_warehouse_serving_materialization.sql",
+      "line": 209,
+      "name": "warehouse_serving_materialization_no_truncate"
+    },
+    {
+      "file": "migrations/0046_sydney_warehouse_approval.sql",
+      "line": 78,
+      "name": "warehouse_sydney_approval_history"
+    },
+    {
+      "file": "migrations/0046_sydney_warehouse_approval.sql",
+      "line": 84,
+      "name": "warehouse_sydney_approvals_no_truncate"
+    },
+    {
+      "file": "migrations/0046_sydney_warehouse_approval.sql",
+      "line": 173,
+      "name": "warehouse_sydney_resource_registration"
+    },
+    {
+      "file": "migrations/0047_warehouse_gold_intent_pins.sql",
+      "line": 124,
+      "name": "warehouse_sydney_intent_gold_insert"
+    },
+    {
+      "file": "migrations/0048_warehouse_query_attempt_registry.sql",
+      "line": 40,
+      "name": "warehouse_query_attempt_registry_validate"
+    },
+    {
+      "file": "migrations/0048_warehouse_query_attempt_registry.sql",
+      "line": 44,
+      "name": "warehouse_query_attempt_registry_no_truncate"
+    },
+    {
+      "file": "migrations/0048_warehouse_relationships.sql",
+      "line": 51,
+      "name": "warehouse_relationship_no_update"
+    },
+    {
+      "file": "migrations/0048_warehouse_relationships.sql",
+      "line": 55,
+      "name": "warehouse_relationship_no_truncate"
+    },
+    {
+      "file": "migrations/0048_warehouse_relationships.sql",
+      "line": 202,
+      "name": "warehouse_relationship_insert"
+    },
+    {
+      "file": "migrations/0049_warehouse_query_attempt_publication_pins.sql",
+      "line": 78,
+      "name": "warehouse_query_attempt_publication_validate"
+    },
+    {
+      "file": "migrations/0049_warehouse_query_attempt_publication_pins.sql",
+      "line": 84,
+      "name": "warehouse_query_attempt_publication_no_truncate"
+    },
+    {
+      "file": "migrations/0050_warehouse_query_reservation_publication_links.sql",
+      "line": 101,
+      "name": "warehouse_query_linked_pin_insert_validate"
+    },
+    {
+      "file": "migrations/0050_warehouse_query_reservation_publication_links.sql",
+      "line": 105,
+      "name": "warehouse_query_attempt_reservation_link_validate"
+    },
+    {
+      "file": "migrations/0050_warehouse_query_reservation_publication_links.sql",
+      "line": 110,
+      "name": "warehouse_query_attempt_reservation_link_no_truncate"
+    },
+    {
+      "file": "migrations/0051_warehouse_query_publication_retirement_fences.sql",
+      "line": 45,
+      "name": "warehouse_query_retirement_fence_validate"
+    },
+    {
+      "file": "migrations/0051_warehouse_query_publication_retirement_fences.sql",
+      "line": 50,
+      "name": "warehouse_query_retirement_fence_no_truncate"
+    },
+    {
+      "file": "migrations/0052_warehouse_query_attempt_logical_drafts.sql",
+      "line": 62,
+      "name": "warehouse_query_attempt_logical_draft_validate"
+    },
+    {
+      "file": "migrations/0052_warehouse_query_attempt_logical_drafts.sql",
+      "line": 66,
+      "name": "warehouse_query_attempt_logical_draft_no_truncate"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 54,
+      "name": "warehouse_query_dispatch_checkpoint_guard"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 57,
+      "name": "warehouse_query_dispatch_revocation_guard"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 60,
+      "name": "warehouse_query_dispatch_checkpoint_no_truncate"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 62,
+      "name": "warehouse_query_dispatch_revocation_no_truncate"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 107,
+      "name": "warehouse_dispatch_session_revoke"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 109,
+      "name": "warehouse_dispatch_account_revoke"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 111,
+      "name": "warehouse_dispatch_workspace_revoke"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 113,
+      "name": "warehouse_dispatch_publication_revoke"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 115,
+      "name": "warehouse_dispatch_resource_revoke"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 117,
+      "name": "warehouse_dispatch_source_revoke"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 119,
+      "name": "warehouse_dispatch_model_revoke"
+    },
+    {
+      "file": "migrations/0053_warehouse_query_dispatch_checkpoints.sql",
+      "line": 121,
+      "name": "warehouse_dispatch_version_revoke"
+    },
+    {
+      "file": "migrations/0054_warehouse_query_send_recovery.sql",
+      "line": 56,
+      "name": "warehouse_send_intent_guard"
+    },
+    {
+      "file": "migrations/0054_warehouse_query_send_recovery.sql",
+      "line": 106,
+      "name": "warehouse_send_journal_guard"
+    },
+    {
+      "file": "migrations/0054_warehouse_query_send_recovery.sql",
+      "line": 108,
+      "name": "warehouse_send_intent_no_truncate"
+    },
+    {
+      "file": "migrations/0054_warehouse_query_send_recovery.sql",
+      "line": 110,
+      "name": "warehouse_send_journal_no_truncate"
+    },
+    {
+      "file": "migrations/0054_warehouse_query_send_recovery.sql",
+      "line": 120,
+      "name": "warehouse_send_initial_event_guard"
+    },
+    {
+      "file": "migrations/0055_warehouse_query_recovery_attestations.sql",
+      "line": 32,
+      "name": "warehouse_recovery_attestation_guard"
+    },
+    {
+      "file": "migrations/0055_warehouse_query_recovery_attestations.sql",
+      "line": 34,
+      "name": "warehouse_recovery_attestation_no_truncate"
+    },
+    {
+      "file": "migrations/0056_warehouse_query_provider_policies.sql",
+      "line": 33,
+      "name": "warehouse_provider_policy_guard"
+    },
+    {
+      "file": "migrations/0056_warehouse_query_provider_policies.sql",
+      "line": 35,
+      "name": "warehouse_provider_policy_no_truncate"
+    },
+    {
+      "file": "migrations/0058_warehouse_query_request_envelopes.sql",
+      "line": 50,
+      "name": "warehouse_request_envelope_guard"
+    },
+    {
+      "file": "migrations/0058_warehouse_query_request_envelopes.sql",
+      "line": 53,
+      "name": "warehouse_request_envelope_no_truncate"
+    },
+    {
+      "file": "migrations/0059_warehouse_query_cancel_intents.sql",
+      "line": 48,
+      "name": "warehouse_cancel_intent_guard"
+    },
+    {
+      "file": "migrations/0059_warehouse_query_cancel_intents.sql",
+      "line": 51,
+      "name": "warehouse_cancel_intent_no_truncate"
+    },
+    {
+      "file": "migrations/0060_warehouse_query_cancel_attempt_boundary.sql",
+      "line": 54,
+      "name": "warehouse_cancel_attempt_boundary_guard"
+    },
+    {
+      "file": "migrations/0060_warehouse_query_cancel_attempt_boundary.sql",
+      "line": 57,
+      "name": "warehouse_cancel_attempt_boundary_no_truncate"
+    }
+  ],
+  "caveats": [
+    "Static SQL candidates may contain CTE/alias names and miss dynamic or transitive operations; not a grant allowlist",
+    "Function header annotations do not prove effective SECURITY DEFINER/search_path/ACL after later migrations or deployment ownership changes",
+    "Trigger candidates omit names generated dynamically; serial OIDs/catalog owners were not queried",
+    "Targeted reading plus static scans is not independent full source review, role acceptance, live catalog inspection or penetration testing",
+    "Only literal write/lock navigation sites are exported to keep the draft reviewable; all selected source files were parsed, but the index omits pure read sites and is not an entitlement specification"
+  ],
+  "prior_results": {
+    "source": "user-provided context only, not rerun",
+    "role_inventory_passed": 20,
+    "safety_gate_passed": 10,
+    "restricted_login_skipped": 2,
+    "bigquery_combined_passed": 28,
+    "frontend_passed": 36
+  },
+  "validation": {
+    "runtime_tests_run": false,
+    "database_connections": false,
+    "cloud_calls": false,
+    "roles_or_grants_changed": false,
+    "application_code_changed": false,
+    "design_checks": "JSON/AST parse of scanned source, file-reference/hash/whitespace/secret-pattern checks; no runtime acceptance",
+    "documentation_checks": {
+      "referenced_file_hashes_verified": 167,
+      "json": "PASS",
+      "source_ast_parse": "PASS",
+      "scoped_whitespace_findings": [],
+      "scoped_heuristic_secret_findings": [],
+      "existing_worktree_files_changed": [],
+      "diagnostic": "Initial documentation scope check compared a Windows path separator with Git POSIX spelling; normalized, no content/security finding"
+    }
+  },
+  "proposed_labels": [
+    "R1 query control API",
+    "R2 model control API",
+    "R3 dispatch/cancel controller",
+    "R4 recovery attester",
+    "R5 accounting settler",
+    "R6 result metadata gateway",
+    "R7 publisher/materializer",
+    "R8 retention inspector",
+    "T1 PG-free result transport",
+    "X1 disabled cleanup executor",
+    "O1 separate NOLOGIN warehouse owner"
+  ],
+  "approval_required_before_security_implementation": true,
+  "candidate_scan_summary": {
+    "literal_sql_sites_found": 259,
+    "selected_write_or_lock_navigation_sites": 126,
+    "exported_candidates_complete": false
+  }
+}
