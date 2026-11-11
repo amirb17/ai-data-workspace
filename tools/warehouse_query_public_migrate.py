@@ -54,8 +54,8 @@ EXPECTED_NEW_TABLES = (
 )
 # Strip only a migration's standalone transaction delimiters; keep its DDL
 # and PL/pgSQL function bodies unchanged.
-START = re.compile(r"(?m)^BEGIN;[ \\t]*(?:\\r?\\n|$)")
-END = re.compile(r"(?m)^COMMIT;[ \\t]*(?:\\r?\\n|$)")
+START = re.compile(r"(?m)^BEGIN;[ \t]*(?:\r?\n|$)")
+END = re.compile(r"(?m)^COMMIT;[ \t]*(?:\r?\n|$)")
 
 
 def _database_url():
