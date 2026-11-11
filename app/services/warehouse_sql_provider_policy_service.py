@@ -157,8 +157,9 @@ class PreparedQueryEnvelope(recovery.NonDispatch):
     classification: str = 'ENVELOPE_REVIEWED_NO_DISPATCH'
 
 
-def inspect_authenticated_query_envelope_without_dispatch(
+def _inspect_query_envelope(
     *, request: Request, workspace_id: int, attempt_handle: str,
+    persist: bool,
 ) -> PreparedQueryEnvelope:
     """Recheck current authenticated ownership and compile the exact job request.
 
@@ -201,8 +202,51 @@ def inspect_authenticated_query_envelope_without_dispatch(
         if not stored or stored['expected'] != expected or stored['expected_sha256'] != digest(expected):
             raise PolicyConflict('IMMUTABLE_PROVIDER_POLICY_REQUIRED_OR_DRIFTED')
         job = build_reviewed_query_job_request(expected=expected, compiled_sql=query.sql)
+        request_sha256 = digest(job.body)
+        if persist:
+            # Exact same transaction as the identity/policy revalidation.
+            # No provider SDK, network or durable dispatch permit is involved.
+            conn.execute(
+                """INSERT INTO warehouse_query_request_envelopes
+                    (attempt_id,provider_job_id,request_sha256,policy_sha256)
+                   VALUES(%s,%s,%s,%s) ON CONFLICT(attempt_id) DO NOTHING""",
+                (checkpoint['attempt_id'], job.job_id, request_sha256, digest(expected)),
+            )
+            pinned = repo.one(
+                conn,
+                """SELECT provider_job_id,request_sha256,policy_sha256
+                   FROM warehouse_query_request_envelopes WHERE attempt_id=%s""",
+                (checkpoint['attempt_id'],),
+            )
+            if (not pinned or pinned['provider_job_id'] != job.job_id
+                    or pinned['request_sha256'] != request_sha256
+                    or pinned['policy_sha256'] != digest(expected)):
+                raise PolicyConflict('IMMUTABLE_QUERY_ENVELOPE_DRIFT')
         # Return only an inspection digest; no SQL or executable provider body.
         return PreparedQueryEnvelope(
             attempt_handle=attempt_handle, job_id=job.job_id,
-            request_sha256=digest(job.body),
+            request_sha256=request_sha256,
         )
+
+
+def inspect_authenticated_query_envelope_without_dispatch(
+    *, request: Request, workspace_id: int, attempt_handle: str,
+) -> PreparedQueryEnvelope:
+    """Backward-compatible read-only inspection; never writes envelope rows."""
+    return _inspect_query_envelope(
+        request=request, workspace_id=workspace_id,
+        attempt_handle=attempt_handle, persist=False,
+    )
+
+
+def pin_authenticated_query_envelope_without_dispatch(
+    *, request: Request, workspace_id: int, attempt_handle: str,
+) -> PreparedQueryEnvelope:
+    """Persist exact server-derived request hash before any possible send.
+
+    Uses migration 0058; no query submission, send boundary, or permit.
+    """
+    return _inspect_query_envelope(
+        request=request, workspace_id=workspace_id,
+        attempt_handle=attempt_handle, persist=True,
+    )
