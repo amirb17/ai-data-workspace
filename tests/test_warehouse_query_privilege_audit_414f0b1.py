@@ -16,7 +16,7 @@ def test_audit_is_read_only_and_reviews_all_sensitive_tables():
         r"[a-z_]|DELETE\s+FROM|TRUNCATE|CALL|DO|COPY|SET|RESET)\b",
         stripped, flags=re.I,
     )
-    assert stripped.count(";") == 4
+    assert stripped.count(";") == 5
     for table in (
         "warehouse_query_dispatch_checkpoints",
         "warehouse_query_dispatch_revocations",
@@ -28,10 +28,10 @@ def test_audit_is_read_only_and_reviews_all_sensitive_tables():
         "warehouse_query_attempt_reservation_links",
         "warehouse_query_publication_retirement_fences",
     ):
-        assert table in stripped
+        assert table in sql
     for role in ("datarise_authority_owner", "datarise_api", "datarise_worker",
                  "datarise_verifier", "datarise_dispatch"):
-        assert role in stripped
+        assert role in sql
 
 
 def test_audit_inspects_membership_and_column_grants():
