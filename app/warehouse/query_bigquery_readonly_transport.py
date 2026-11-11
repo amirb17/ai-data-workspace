@@ -72,3 +72,42 @@ class ReadOnlyBigQueryFirstPage:
         if type(raw) is not dict:
             raise BigQueryResultShapeError("INVALID_PROVIDER_RESPONSE")
         return raw
+
+
+class BigQuerySdkResultsConnection:
+    """Adapt a reviewed SDK Client to the existing GET-only protocol.
+
+    Client._connection.api_request does not accept retry. Client._call_api
+    consumes retry=None before forwarding to it. No client/credential factory,
+    admission authority, submission, result authorization or IAM grant lives here.
+    The caller owns/ closes the client; the production workflow remains disabled.
+    """
+    def __init__(self, client):
+        from google.cloud.bigquery import Client
+        if (not isinstance(client, Client)
+                or type(client.project) is not str or not _PROJECT.fullmatch(client.project)
+                or client.location != 'asia-south1'
+                or client._connection.get_api_base_url_for_mtls() != 'https://bigquery.googleapis.com'):
+            raise ValueError('REVIEWED_SDK_RESULT_CLIENT_REQUIRED')
+        self._client = client
+        self._project = client.project
+        self._location = client.location
+
+    def api_request(self, *, method, path, query_params, timeout, retry):
+        prefix = f'/projects/{self._project}/queries/'
+        if (method != 'GET' or type(path) is not str or not path.startswith(prefix)
+                or not _JOB.fullmatch(path[len(prefix):])
+                or type(query_params) is not dict
+                or set(query_params) != {'location', 'maxResults', 'timeoutMs'}
+                or query_params['location'] != self._location
+                or type(query_params['maxResults']) is not int
+                or not 1 <= query_params['maxResults'] <= 100
+                or type(query_params['timeoutMs']) is not int or query_params['timeoutMs'] != 1000
+                or type(timeout) is not int or timeout != 10 or retry is not None
+                or self._client.project != self._project or self._client.location != self._location
+                or self._client._connection.get_api_base_url_for_mtls() != 'https://bigquery.googleapis.com'):
+            raise ValueError('EXACT_READ_ONLY_SDK_REQUEST_REQUIRED')
+        return self._client._call_api(
+            retry=None, method='GET', path=path,
+            query_params=dict(query_params), timeout=10,
+        )

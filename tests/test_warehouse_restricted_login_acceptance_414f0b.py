@@ -46,7 +46,7 @@ def restricted_connection():
             assert (session_user,current_user)==(role,role), (
                 "ACTUAL_DIRECT_RESTRICTED_LOGIN_REQUIRED"
             )
-            cur.execute("SELECT rolcanlogin,rolsuper,rolcreaterole,rolcreatedb,rolbypassrls FROM pg_roles WHERE rolname=current_user")
+            cur.execute("SELECT rolcanlogin,rolsuper,rolcreaterole,rolcreatedb,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=current_user")
             flags=cur.fetchone()
             assert flags is not None and flags[0] and not any(flags[1:]), (
                 "RESTRICTED_ROLE_ESCALATION_DETECTED"

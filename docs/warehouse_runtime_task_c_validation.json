@@ -1,0 +1,187 @@
+{
+  "task": "C - runtime approval checkpoint",
+  "date": "2026-11-11T19:20:22.318671+05:30",
+  "branch": "feature/warehouse-model-ux",
+  "base_head": "44eb7de9a43757a5a77c559bf35a86d4cab28a5a",
+  "status": "BLOCKED: Q1-Q8 authority and independent result destination require approval",
+  "implemented": [
+    "GET-only installed-SDK compatibility bridge, bounded/pinned and unwired",
+    "Opt-in restricted-login test now rejects rolreplication"
+  ],
+  "not_implemented_due_approval": [
+    "Positive role/grant migrations and role-aware routing",
+    "Production credential/process/runtime factory",
+    "Live analytical submission/dry-run/cancellation binding",
+    "Named result destination policy/version/retention",
+    "Live-provider smoke credential bootstrap and execution"
+  ],
+  "runs": [
+    {
+      "name": "offline-final",
+      "tests": 55,
+      "counts": {
+        "passed": 55,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "modules": {
+        "tests.test_warehouse_bigquery_sdk_results_task_c": 17,
+        "tests.test_warehouse_bigquery_readonly_transport_414f5": 11,
+        "tests.test_warehouse_query_result_iam_preflight_414f0c": 17,
+        "tests.test_warehouse_restricted_login_gate_414f0b": 10
+      },
+      "junit_seconds": 0.82,
+      "evidence": "$env:TEMP/warehouse-task-c-offline-acceptance.xml",
+      "sha256": "813f2a1251346954b082623ef43830c422a3b9b3270a97235b7ea3eb875280f8",
+      "unsuccessful": []
+    },
+    {
+      "name": "postgres-regression",
+      "tests": 101,
+      "counts": {
+        "passed": 101,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "modules": {
+        "tests.test_warehouse_query_workflow_api": 28,
+        "tests.test_warehouse_pg_runtime_role_inventory_414f0b": 10,
+        "tests.test_warehouse_sql_provider_policy_414e3": 51,
+        "tests.test_warehouse_attested_accounting_414f3": 6,
+        "tests.test_warehouse_cancel_takeover_recovery_414f4": 5,
+        "tests.test_warehouse_bigquery_readonly_full_path_414f5": 1
+      },
+      "junit_seconds": 361.492,
+      "evidence": "$env:TEMP/warehouse-task-c-postgres.xml",
+      "sha256": "179cb29cb66bf5431eb6ab6b536b132afcd64b410e4d9b34457d6fc6af28c924",
+      "unsuccessful": []
+    },
+    {
+      "name": "restricted-gate",
+      "tests": 12,
+      "counts": {
+        "passed": 10,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 2
+      },
+      "modules": {
+        "tests.test_warehouse_restricted_login_gate_414f0b": 10,
+        "tests.test_warehouse_restricted_login_acceptance_414f0b": 2
+      },
+      "junit_seconds": 0.094,
+      "evidence": "$env:TEMP/warehouse-task-c-restricted-gate.xml",
+      "sha256": "f8712128815023dbd442ef8c378781a0e9a9eeb628d3a6ef492334b657f673cc",
+      "unsuccessful": [
+        {
+          "nodeid": "tests.test_warehouse_restricted_login_acceptance_414f0b::test_restricted_login_has_no_protected_warehouse_table_mutation",
+          "outcome": "skipped",
+          "reason": "D:\\Project\\datarise-warehouse-ux\\tests\\test_warehouse_restricted_login_acceptance_414f0b.py:71: Restricted PostgreSQL acceptance explicitly disabled"
+        },
+        {
+          "nodeid": "tests.test_warehouse_restricted_login_acceptance_414f0b::test_restricted_login_metadata_privileges_are_deny_only",
+          "outcome": "skipped",
+          "reason": "D:\\Project\\datarise-warehouse-ux\\tests\\test_warehouse_restricted_login_acceptance_414f0b.py:89: Restricted PostgreSQL acceptance explicitly disabled"
+        }
+      ]
+    }
+  ],
+  "normal_distinct": {
+    "passed": 156,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "new_sdk": 17,
+    "existing": 139
+  },
+  "external_acceptance": {
+    "restricted_login_cases_skipped": 2,
+    "cloud_smoke_run": false,
+    "restricted_logins_verified": false,
+    "role_inventory_is_not_restricted_acceptance": true
+  },
+  "commands": "Exact PowerShell commands in docs/warehouse_runtime_task_c_approval_checkpoint.md; RUN_DB_TESTS=1 guarded loopback UUID schemas; no public-schema migration",
+  "files": {
+    "modified": [
+      "app/warehouse/query_bigquery_readonly_transport.py",
+      "tests/test_warehouse_restricted_login_acceptance_414f0b.py"
+    ],
+    "added": [
+      "tests/test_warehouse_bigquery_sdk_results_task_c.py",
+      "docs/warehouse_runtime_task_c_approval_checkpoint.md",
+      "docs/warehouse_runtime_task_c_validation.json"
+    ],
+    "deleted": []
+  },
+  "source_sha256": {
+    "app/warehouse/query_bigquery_readonly_transport.py": "121dd8219c276235622b35602969d5d9ad08dbffec9af22377c23985111ce403",
+    "tests/test_warehouse_restricted_login_acceptance_414f0b.py": "5a7ea93173eaca4b4ed57d5f5d8963fb0030f0ac90df2eed1913712e133f5c00",
+    "tests/test_warehouse_bigquery_sdk_results_task_c.py": "c0c7e35fd28430f286bd19fe2f1b2a022811b200daf7045342e62e31855e715a",
+    "docs/warehouse_runtime_task_c_approval_checkpoint.md": "f9b6e88e076c14322330194b18d48f46a67bf7e5a76b121de8cbbc38fedfa785"
+  },
+  "reviewed_sha256": {
+    "docs/warehouse_runtime_role_matrix_414f0_draft.md": "d11c81759eb51869a3a011b6d289f9bb279e857ffaa0f613ae8591bc32162cf1",
+    "docs/warehouse_runtime_role_matrix_414f0_draft_evidence.json": "7a5162418606892c58191eb3368d9511e463712553ef3ba4d4df1ab57dc4e16f",
+    "app/db/database.py": "84775543474adf67700483d85ff5d9783a4e584c8254009465ebbde2d0c92f38",
+    "app/services/warehouse_query_workflow_service.py": "bd4af648259bfd5f73fef12b380cd70710dfb00f3712061f348e2278194e1994",
+    "app/services/warehouse_sql_provider_policy_service.py": "d48c6aabd27cc2e9d37876be713c58bb3e71eeb0fae00b0178cadff986db33cb",
+    "app/services/warehouse_sql_attested_accounting_service.py": "2642f9e8dd3d57f24b7f713c51459148d3f86165f0ff185c8a2757065089165d",
+    "app/services/warehouse_sql_authenticated_first_page_service.py": "8af654dec49638d6cf2c2d7694881fe8c43b9555c4f121bc13c7b8e9690f98dd",
+    "app/warehouse/query_recovery_attestation.py": "8317881d9b1551ec031cd7b8ac0f1dd65e13a541f60aa7cad015e4efdd602c76",
+    "app/warehouse/query_job_request.py": "dc17db9e6c833deec050c47055104dc0386bf6c801074082506f079a50e13afa",
+    "app/warehouse/query_result_iam_preflight.py": "a206da8cb6697c3e7b8ebd446803000d971f0fde10b37ef6b06efdfa5091b647",
+    "app/query_governance/providers/bigquery.py": "986279254831f0864395ed5f1421fc2cb38598e2627640913e00c6b4fbaf0ddc",
+    "deployment/task21g_6_provision_runtime_roles.sql": "b644eca95a2e839c18fdd2d7b998e2e91b78640fbf2a3042c067d61a3aaa47c2",
+    "migrations/0053_warehouse_query_dispatch_checkpoints.sql": "e1d1aac0029674ff7395c895d8809d68c6a694cfd905144e082b098d1cff06f8",
+    "migrations/0054_warehouse_query_send_recovery.sql": "5c3c278a691aad1bc9e88ccf438e171956ab3db42ab0247d11b25d5092e74366",
+    "migrations/0055_warehouse_query_recovery_attestations.sql": "7eb416795e3688bb79af0afdda52261a559c8a4849e85e5a05e41fa61124b60b",
+    "migrations/0057_warehouse_query_function_acl_hardening.sql": "b554a913a87695e1783c4a52ff808dc8df72418eb56e29864a8f9b856ac27046",
+    "migrations/0061_warehouse_query_api_requests.sql": "5028f7afa6e8ffc997d0a5c8ea9a5d288b2a050c172e59bf92577d82c845af6f"
+  },
+  "checks": {
+    "ast": [
+      "app/warehouse/query_bigquery_readonly_transport.py",
+      "tests/test_warehouse_restricted_login_acceptance_414f0b.py",
+      "tests/test_warehouse_bigquery_sdk_results_task_c.py"
+    ],
+    "whitespace": [],
+    "heuristic_secret_findings": [],
+    "git_diff_check": "PASS"
+  },
+  "diagnostics": {
+    "initial_offline": {
+      "passed": 39,
+      "failed": 15,
+      "errors": 0,
+      "skipped": 0,
+      "cause": "New fake HTTP session missing SDK _auth_request close and is_mtls attributes; fixture corrected without weakening assertions",
+      "evidence": "$env:TEMP/warehouse-task-c-offline.xml"
+    },
+    "intermediate_offline": {
+      "passed": 54,
+      "failed": 0,
+      "seconds": 0.62,
+      "note": "Superseded by final effective-mTLS endpoint case"
+    }
+  },
+  "warnings": [
+    "Existing Starlette/httpx and Authlib/httpx deprecations"
+  ],
+  "unchanged": [
+    "Task A/B contracts and frontend",
+    "get_query_runtime always returns 503",
+    "Task 20 roles",
+    "Migrations, database routing and grants",
+    "Permanent publication holds and recovery/accounting protocols"
+  ],
+  "no_actions": [
+    "Cloud APIs/credentials",
+    "Roles or grants",
+    "Application/public-schema migration",
+    "Infrastructure, Terraform or deployment",
+    "Dependency installation",
+    "Activation, physical deletion or hold release"
+  ]
+}
