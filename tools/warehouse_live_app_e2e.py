@@ -115,8 +115,8 @@ def run(args, *, session=None, cookie=None, csrf=None, wait=time.sleep):
     if type(handle) is not str or not _HANDLE.fullmatch(handle):
         raise AcceptanceError("MISSING_ATTEMPT_HANDLE")
     again = _post(session, url, payload)
-    if again.get("attempt_handle") != handle:
-        raise AcceptanceError("DUPLICATE_ADMISSION_CREATED_NEW_ATTEMPT")
+    if again.get("attempt_handle") != handle or again.get("reused") is not True:
+        raise AcceptanceError("DUPLICATE_ADMISSION_NOT_REUSED")
     print("CHECK: submit/reconcile verified original job", flush=True)
     attempt_url = url + "/" + handle
     state = _post(session, attempt_url + "/execute")
