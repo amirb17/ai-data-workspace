@@ -5,8 +5,8 @@ and rewires query guard/revocation triggers to read the *canonical* application
 tables. It never copies users, sessions, workspace or publication data.
 
 DEFAULT IS ROLLBACK: run python -m tools.warehouse_atomic_cutover to rehearse.
---apply is intentionally NOT implemented until the full least-privilege grants,
-application routing, and negative authorization acceptance are integrated.
+--apply persists ONLY the reviewed local database cutover with a limited
+NOLOGIN revocation owner. It does not authorize query runtime logins or API.
 Never deploy this script to RDS without a distinct production review.
 
 A transaction-level advisory lock prevents parallel cutovers. Exact expected
@@ -25,6 +25,7 @@ import psycopg
 from psycopg import sql
 
 from tools.warehouse_deployment_boundary import _dsn
+from tools.warehouse_revocation_owner import install_revocation_owner
 from tools.warehouse_query_fk_rebind_plan import (
     CANONICAL, ISOLATED, TARGETS, generate_reviewed_fk_ddl, plan,
 )
@@ -165,7 +166,7 @@ def _rebind_trigger_target(definition: str, table: str) -> str:
 
 
 def rehearse(conn) -> dict:
-    # The only supported operation is a transaction that will be rolled back.
+    # Runs in a single transaction; caller commits only after all checks pass.
     db, role = conn.execute(
         "SELECT current_database(), session_user"
     ).fetchone()
@@ -247,6 +248,9 @@ def rehearse(conn) -> dict:
         new_def = _rebind_trigger_target(definition, table)
         conn.execute(new_def)
 
+    # Keep public app writers independent of query protocol direct grants.
+    install_revocation_owner(conn)
+
     # Assert every FK target and trigger hook moved in this same tx.
     remaining = conn.execute("""
         SELECT count(*) FROM pg_constraint c
@@ -286,19 +290,24 @@ def rehearse(conn) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--apply", action="store_true", help="Persist local query cutover only; API stays disabled")
     args = parser.parse_args()
-    if args.apply:
-        parser.error("APPLY_DISABLED_UNTIL_RUNTIME_ACL_AND_NEGATIVE_AUTH_TESTS")
     try:
         with psycopg.connect(_dsn(), autocommit=False) as conn:
             try:
                 result = rehearse(conn)
+                result["transaction"] = "APPLIED" if args.apply else "ROLLBACK_ONLY"
+                if args.apply:
+                    conn.commit()
+                else:
+                    conn.rollback()
                 print(json.dumps(result, indent=2, sort_keys=True))
-                print("DRY_RUN_PASS: every DDL statement rolled back")
+                print("CUTOVER_APPLIED: query runtime remains disabled" if args.apply
+                      else "DRY_RUN_PASS: every DDL statement rolled back")
                 return 0
-            finally:
+            except BaseException:
                 conn.rollback()
+                raise
     except Exception as exc:
         print("ATOMIC_CUTOVER_REHEARSAL_BLOCKED:", type(exc).__name__,
               str(exc) if isinstance(exc, RuntimeError) else "",
