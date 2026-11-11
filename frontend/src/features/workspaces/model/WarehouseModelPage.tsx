@@ -4,6 +4,7 @@ import {ApiFeedback} from '../../../components/ui/ApiFeedback'
 import {getWarehouseCatalog, getWarehouseRelationships, type WarehouseCatalog, type WarehouseModel, type WarehouseRelationship} from '../../../services/api/warehouseCatalog'
 import {useApiResource} from '../../../services/api/useApiResource'
 import {WarehouseGraph} from './WarehouseGraph'
+import {WarehouseResultReadiness} from './WarehouseResultReadiness'
 import {currentWarehouseRelationships} from './warehouseGraphView'
 import {warehouseModelInspectionJson} from './warehouseModelInspection'
 
@@ -14,7 +15,7 @@ export function WarehouseModelPage({workspace}:{workspace:string}) {
   },[workspace])
   const {data,error,retry}=useApiResource(`warehouse-model:${workspace}`,load)
   return data
-    ? <WarehouseModelContent key={workspace} catalog={data.catalog} relationships={data.relationships} reload={retry}/>
+    ? <WarehouseModelContent key={workspace} workspace={workspace} catalog={data.catalog} relationships={data.relationships} reload={retry}/>
     : <ApiFeedback loading="Loading approved warehouse models…" error={error} retry={retry}/>
 }
 
@@ -31,7 +32,7 @@ function ModelCard({model,selected,onSelect}:{model:WarehouseModel;selected:bool
   </button>
 }
 
-export function WarehouseModelContent({catalog,relationships=[],reload}:{catalog:WarehouseCatalog;relationships?:WarehouseRelationship[];reload:()=>void}) {
+export function WarehouseModelContent({workspace,catalog,relationships=[],reload}:{workspace?:string;catalog:WarehouseCatalog;relationships?:WarehouseRelationship[];reload:()=>void}) {
   const [selectedId,setSelectedId]=useState<number|null>(null)
   const [selectedRelationId,setSelectedRelationId]=useState<number|null>(null)
   const [search,setSearch]=useState('')
@@ -66,6 +67,7 @@ export function WarehouseModelContent({catalog,relationships=[],reload}:{catalog
         {catalog.readiness.blockers.map(item=><li key={item.code}>{item.label}</li>)}
       </ul>
     </section>
+    {workspace&&<WarehouseResultReadiness workspace={workspace}/>}
     <label className="block text-sm text-slate-700">Search warehouse tables
       <input className="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search approved models…" />
     </label>
