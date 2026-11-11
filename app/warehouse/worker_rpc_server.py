@@ -54,6 +54,20 @@ def execute_operation(duty: str, operation: str, args: dict):
     """Exact service dispatch. No arbitrary SQL or method names accepted."""
     if operation not in DUTY_OPERATIONS.get(duty, ()):
         raise WorkerRpcRejected("WORKER_OPERATION_FORBIDDEN")
+    if operation == "health":
+        if args != {}:
+            raise WorkerRpcRejected("WORKER_HEALTH_ARGUMENTS_FORBIDDEN")
+        from app.db.database import repository_transaction
+        with repository_transaction() as conn:
+            current, session, schema = conn.execute(
+                "SELECT current_user, session_user, current_schema()"
+            ).fetchone()
+        if (current != ROLE_BY_DUTY[duty] or session != ROLE_BY_DUTY[duty]
+                or schema != "public"):
+            raise WorkerRpcRejected("WORKER_IDENTITY_OR_CANONICAL_PATH_INVALID")
+        return {"duty": duty, "database_identity_verified": True,
+                "query_execution_enabled": False}
+
     if duty == "recovery_attestation":
         from app.services import warehouse_sql_send_recovery_service as recovery
         if operation == "inspect_recovery":
