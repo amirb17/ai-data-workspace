@@ -16,6 +16,7 @@ from app.services import warehouse_sql_recovery_attestation_service as attestati
 from app.services.warehouse_sql_dispatch_checkpoint_service import _session_locked
 from app.warehouse.query_provider_policy import ProviderPolicy, verify_exact_metadata
 from app.warehouse.query_recovery_attestation import ExpectedJob, digest, _lookup_metadata
+from app.warehouse.query_job_request import build_reviewed_query_job_request
 
 # Workspace bindings are trusted startup configuration, never request parameters.
 _POLICIES = MappingProxyType({})
@@ -145,3 +146,62 @@ def lookup_with_provider_policy(*, lease: recovery.RecoveryLease, expected_revis
         attestation._persist(conn, c['attempt_id'], result.revision, report, digest(expected))
         return attestation.RecoveryAttestation(result.revision, report.observation, report.verdict,
                                              report.reason, report.billing_complete, result)
+
+
+@dataclass(frozen=True)
+class PreparedQueryEnvelope(recovery.NonDispatch):
+    """Diagnostic fingerprint only. Never exposes SQL or a provider send permit."""
+    attempt_handle: str
+    job_id: str
+    request_sha256: str
+    classification: str = 'ENVELOPE_REVIEWED_NO_DISPATCH'
+
+
+def inspect_authenticated_query_envelope_without_dispatch(
+    *, request: Request, workspace_id: int, attempt_handle: str,
+) -> PreparedQueryEnvelope:
+    """Recheck current authenticated ownership and compile the exact job request.
+
+    This function does not send or return the provider request. Only the
+    server-owned digest and deterministic job identity leave this boundary.
+    Any existing send boundary, revoked/expired claim, or drift fails closed.
+    """
+    # Reuse the full original session and provider policy pinning boundary.
+    prepare_authenticated_provider_policy(
+        request=request, workspace_id=workspace_id, attempt_handle=attempt_handle,
+    )
+    settings = require_secret()
+    token = request.cookies.get(settings.session_cookie)
+    with repo.transaction(workspace_id) as conn:
+        user, session = _session_locked(conn, token)
+        workspace = repo.one(
+            conn, 'SELECT owner,status FROM workspaces WHERE workspace_id=%s FOR SHARE',
+            (workspace_id,),
+        )
+        if not workspace or workspace['owner'] != user['owner_key'] or workspace['status'] != 'ACTIVE':
+            raise HTTPException(403, 'Workspace unavailable')
+        attempt = attempts.read_attempt(
+            conn, workspace_id=workspace_id, owner_key=user['owner_key'],
+            attempt_handle=attempt_handle,
+        )
+        checkpoint = repo.checkpoint(conn, attempt['attempt_id'])
+        if checkpoint['user_id'] != user['user_id'] or checkpoint['session_digest'] != session['token_digest']:
+            raise HTTPException(403, 'Original authenticated checkpoint required')
+        reservation, query, _ = recovery._live_context(conn, checkpoint)
+        intent, event = repo.latest(conn, checkpoint['attempt_id'])
+        if (event['phase'] != 'INTENT_RECORDED' or event['revision'] != 1
+                or event['event'] != 'CREATED' or event['observation'] is not None):
+            raise PolicyConflict('EXISTING_SEND_STATE_LOOKUP_ONLY')
+        expected, _, _ = _derive(conn, checkpoint, reservation, intent)
+        stored = repo.one(
+            conn, 'SELECT expected,expected_sha256 FROM warehouse_query_provider_policies WHERE attempt_id=%s',
+            (checkpoint['attempt_id'],),
+        )
+        if not stored or stored['expected'] != expected or stored['expected_sha256'] != digest(expected):
+            raise PolicyConflict('IMMUTABLE_PROVIDER_POLICY_REQUIRED_OR_DRIFTED')
+        job = build_reviewed_query_job_request(expected=expected, compiled_sql=query.sql)
+        # Return only an inspection digest; no SQL or executable provider body.
+        return PreparedQueryEnvelope(
+            attempt_handle=attempt_handle, job_id=job.job_id,
+            request_sha256=digest(job.body),
+        )
