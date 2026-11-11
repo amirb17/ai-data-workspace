@@ -227,3 +227,44 @@ def _record_observation_locked(conn,c,lease,expected_revision,job,observation):
     phase={'IN_PROGRESS':'PROVIDER_RUNNING','SUCCEEDED':'SUCCEEDED_OBSERVED','FAILED':'FAILED_OBSERVED','CANCELLED':'CANCELLED_OBSERVED'}.get(observation.value,event['phase'])
     updated=repo.append(conn,lease.attempt_id,event,'OBSERVATION',phase,observation=observation.value)
     return _view(conn,c,r,intent,updated)
+
+
+def record_pinned_send_boundary_without_dispatch(
+    *, lease: RecoveryLease, expected_revision: int,
+) -> RecoveryView:
+    """Atomically fence the exact immutable request before possible provider IO.
+
+    The returned state is LOOKUP_REQUIRED; this function never returns SQL or
+    the provider request, performs no IO, and is never an execution permit.
+    Future transport must recheck a separately approved runtime release gate.
+    """
+    _validate_lease(lease)
+    with _worker(lease.attempt_id) as (conn, checkpoint):
+        reservation, _, _ = _live_context(conn, checkpoint)
+        intent, event = repo.latest(conn, lease.attempt_id)
+        repo.require_owner(conn, event, lease, expected_revision)
+        if event['phase'] != 'INTENT_RECORDED':
+            raise repo.RecoveryConflict('BOUNDARY_ALREADY_RECORDED_LOOKUP_ONLY')
+        pinned = repo.one(
+            conn,
+            """SELECT e.provider_job_id,e.request_sha256,e.policy_sha256,
+                      p.expected_sha256,p.expected
+               FROM warehouse_query_request_envelopes e
+               JOIN warehouse_query_provider_policies p USING(attempt_id)
+               WHERE e.attempt_id=%s""",
+            (lease.attempt_id,),
+        )
+        if (not pinned
+                or pinned['provider_job_id'] != intent['provider_job_id']
+                or pinned['provider_job_id'] != checkpoint['provider_job_id']
+                or pinned['policy_sha256'] != pinned['expected_sha256']
+                or pinned['expected'].get('job_id') != intent['provider_job_id']
+                or type(pinned['request_sha256']) is not str
+                or len(pinned['request_sha256'].strip()) != 64):
+            raise repo.RecoveryConflict('EXACT_PINNED_REQUEST_REQUIRED')
+        # The send-intent row is held FOR UPDATE. This marker commits exactly
+        # once and forces subsequent workers into lookup-only recovery.
+        updated = repo.append(
+            conn, lease.attempt_id, event, 'SEND_BOUNDARY', 'SEND_UNKNOWN',
+        )
+        return _view(conn, checkpoint, reservation, intent, updated)
