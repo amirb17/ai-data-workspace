@@ -103,15 +103,16 @@ def verify_control_write_boundary(conn):
         ("datarise_warehouse_dev", "warehouse_query_api_requests"): ("INSERT",),
         ("datarise_warehouse_dev", "warehouse_query_result_contracts"): ("INSERT",),
         ("datarise_warehouse_dev", "warehouse_query_dispatch_checkpoints"): ("INSERT",),
+        ("datarise_warehouse_dev", "warehouse_query_send_intents"): ("INSERT",),
+        ("datarise_warehouse_dev", "warehouse_query_provider_policies"): ("INSERT",),
+        ("datarise_warehouse_dev", "warehouse_query_request_envelopes"): ("INSERT",),
     }
     forbidden = (
         ("public", "users"),
         ("public", "auth_sessions"),
         ("public", "warehouse_publications"),
         ("public", "warehouse_model_versions"),
-        ("datarise_warehouse_dev", "warehouse_query_send_intents"),
         ("datarise_warehouse_dev", "warehouse_query_send_journal"),
-        ("datarise_warehouse_dev", "warehouse_query_provider_policies"),
         ("datarise_warehouse_dev", "warehouse_query_recovery_attestations"),
         ("datarise_warehouse_dev", "warehouse_query_result_attestations"),
         ("datarise_warehouse_dev", "warehouse_query_dispatch_revocations"),
