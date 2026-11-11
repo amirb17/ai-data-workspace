@@ -41,7 +41,7 @@ from app.warehouse.query_bigquery_first_page_adapter import validate_bigquery_fi
 from app.warehouse.query_bigquery_job_insert_http import BoundedBigQueryJobInsertTransport
 from app.warehouse.query_bigquery_named_table_reader import NamedTableBigQueryResultReader
 from app.warehouse.query_recovery_attestation import (
-    ExpectedJob, LookupPolicy, verify_metadata,
+    ExpectedJob, LookupPolicy, LookupOnlyClient, verify_metadata,
 )
 
 PROJECT = "datarise-511817"
@@ -180,10 +180,11 @@ def main():
                 report = None
                 for attempt in range(15):
                     try:
-                        job = metadata.get_job(
-                            job_id, project=PROJECT, location=LOCATION,
-                            retry=None, timeout=10)
-                        raw = dict(job._properties)
+                        # Use the established bounded SDK conversion; hydrated
+                        # QueryJob timestamps are floats on some SDK versions.
+                        # The strict verifier intentionally rejects those until
+                        # validated and normalized by LookupOnlyClient.
+                        raw = LookupOnlyClient(metadata).lookup(expected)
                         report = verify_metadata(
                             raw, expected, policy, named_result=contract)
                     except Exception as error:
