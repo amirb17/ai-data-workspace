@@ -87,7 +87,16 @@ class RestrictedWarehouseConnection:
                 cur.execute("SELECT current_schema()")
                 if cur.fetchone()[0] != SCHEMA:
                     raise RuntimeError("RESTRICTED_WAREHOUSE_SEARCH_PATH_MISMATCH")
-            # Do not return a connection with an open read-only verification TX.
+            # set_config(..., false) is a SESSION setting, but rolling back
+            # the transaction that issued it can restore the original value.
+            # Commit the setup before handing the connection to repositories.
+            conn.commit()
+            if conn.info.transaction_status != TransactionStatus.IDLE:
+                raise RuntimeError("RESTRICTED_CONNECTION_NOT_IDLE_AFTER_SETUP")
+            with conn.cursor() as cur:
+                cur.execute("SELECT current_schema()")
+                if cur.fetchone()[0] != SCHEMA:
+                    raise RuntimeError("RESTRICTED_WAREHOUSE_SEARCH_PATH_DID_NOT_PERSIST")
             conn.rollback()
             return conn
         except BaseException:
