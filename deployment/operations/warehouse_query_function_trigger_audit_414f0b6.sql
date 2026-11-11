@@ -31,7 +31,7 @@ SELECT e.name AS expected_function,a.oid IS NOT NULL AS exists,
        a.proconfig AS function_settings,
        pg_catalog.pg_get_userbyid(a.proowner) AS function_owner,
        CASE WHEN a.oid IS NULL THEN NULL
-            ELSE pg_catalog.has_function_privilege('PUBLIC',a.oid,'EXECUTE') END AS public_execute,
+            ELSE EXISTS (SELECT 1 FROM pg_catalog.aclexplode(COALESCE(a.proacl,pg_catalog.acldefault('f',a.proowner))) x WHERE x.grantee=0 AND x.privilege_type='EXECUTE') END AS public_execute,
        a.proacl AS explicit_acl
 FROM expected e LEFT JOIN actual a ON a.proname=e.name
 ORDER BY e.name,a.arguments;
