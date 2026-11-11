@@ -14,7 +14,9 @@ from tests.test_warehouse_sql_dispatch_checkpoint_414d5 import (
 from tests.test_warehouse_query_reservation_publication_links_postgres import (
     linked_pg,
 )
-from tests.test_warehouse_reliability import registered, intent, execute
+from tests.test_warehouse_reliability import (
+    reliability_pg, registered, intent, execute,
+)
 
 ROOT=Path(__file__).resolve().parents[1]
 
