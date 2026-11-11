@@ -10,7 +10,7 @@ trigger closure, duty placement and real-login acceptance are reviewed.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 
 import psycopg
@@ -41,7 +41,7 @@ class RestrictedWarehouseConnection:
     """
 
     duty: str
-    dsn: str
+    dsn: str = field(repr=False)
     login: str
 
     def __post_init__(self):
