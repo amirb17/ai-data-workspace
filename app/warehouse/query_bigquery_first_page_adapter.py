@@ -91,6 +91,10 @@ def validate_bigquery_first_page(
             encoded_bytes+=len(chunk.encode("utf-8"))
             if encoded_bytes>MAX_RAW_RESULT_BYTES:
                 raise BigQueryResultShapeError("PROVIDER_RESPONSE_TOO_LARGE")
+    except BigQueryResultShapeError:
+        # Preserve the precise bounded-size rejection. It is a ValueError
+        # subclass, so the generic encoding exception handler would mask it.
+        raise
     except (TypeError,ValueError,OverflowError,RecursionError):
         raise BigQueryResultShapeError("INVALID_PROVIDER_RESPONSE") from None
     if not raw.get("jobComplete") is True or raw.get("errors"):
