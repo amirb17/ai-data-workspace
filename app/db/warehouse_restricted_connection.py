@@ -20,15 +20,32 @@ from psycopg.pq import TransactionStatus
 from app.db.database import connection_boundary
 
 SCHEMA = "datarise_warehouse_dev"
-DUTIES = frozenset({
-    "query_control",
-    "provider_submission",
-    "recovery_attestation",
-    "accounting",
-    "result_authorization",
-    "publication",
-    "retention_inspection",
-})
+ROLE_BY_DUTY = {
+    "query_control": "datarise_wh_control",
+    "provider_submission": "datarise_wh_submit",
+    "recovery_attestation": "datarise_wh_attest",
+    "accounting": "datarise_wh_account",
+    "result_authorization": "datarise_wh_results",
+    "publication": "datarise_wh_publish",
+    "retention_inspection": "datarise_wh_retention",
+}
+DUTIES = frozenset(ROLE_BY_DUTY)
+_FORBIDDEN_MEMBERSHIPS = (
+    "datarise_wh_owner",
+    "datarise_authority_owner",
+    "datarise_api",
+    "datarise_worker",
+    "datarise_verifier",
+    "datarise_dispatch",
+    "pg_read_all_data",
+    "pg_write_all_data",
+    "pg_execute_server_program",
+    "pg_read_server_files",
+    "pg_write_server_files",
+    "pg_monitor",
+    "pg_signal_backend",
+    "pg_create_subscription",
+)
 _NAME = re.compile(r"datarise_[a-z][a-z0-9_]{2,62}\Z")
 
 
@@ -47,7 +64,8 @@ class RestrictedWarehouseConnection:
     def __post_init__(self):
         if self.duty not in DUTIES or type(self.dsn) is not str or not self.dsn:
             raise ValueError("EXPLICIT_RESTRICTED_WAREHOUSE_DSN_REQUIRED")
-        if type(self.login) is not str or not _NAME.fullmatch(self.login):
+        if (type(self.login) is not str or not _NAME.fullmatch(self.login)
+                or self.login != ROLE_BY_DUTY[self.duty]):
             raise ValueError("RESTRICTED_WAREHOUSE_LOGIN_REQUIRED")
         # Avoid accidental local admin/role reuse and refuse URI-based credentials
         # that do not name the intended direct-login role.
@@ -76,10 +94,25 @@ class RestrictedWarehouseConnection:
                         or row[2] != "ai_data_workspace" or row[3] is not True
                         or any(row[4:])):
                     raise RuntimeError("RESTRICTED_DATABASE_LOGIN_NOT_VERIFIED")
-                cur.execute("SELECT has_schema_privilege(current_user, %s, 'USAGE')",
-                            (SCHEMA,))
-                if cur.fetchone()[0] is not True:
-                    raise RuntimeError("RESTRICTED_WAREHOUSE_SCHEMA_ACCESS_MISSING")
+                cur.execute("""
+                    SELECT EXISTS (
+                        SELECT 1 FROM pg_auth_members m
+                        WHERE m.member=(SELECT oid FROM pg_roles WHERE rolname=current_user)
+                           OR m.roleid=(SELECT oid FROM pg_roles WHERE rolname=current_user)
+                    )
+                """)
+                if cur.fetchone()[0]:
+                    raise RuntimeError("WAREHOUSE_RUNTIME_ROLE_MEMBERSHIP_FORBIDDEN")
+                cur.execute("SELECT has_schema_privilege(current_user,%s,'USAGE'),"
+                            "has_schema_privilege(current_user,%s,'CREATE')",
+                            (SCHEMA, SCHEMA))
+                usage, create = cur.fetchone()
+                if not usage or create:
+                    raise RuntimeError("WAREHOUSE_SCHEMA_PRIVILEGE_BOUNDARY_INVALID")
+                cur.execute("SELECT current_user = pg_get_userbyid(nspowner) "
+                            "FROM pg_namespace WHERE nspname=%s", (SCHEMA,))
+                if cur.fetchone()[0] is not False:
+                    raise RuntimeError("WAREHOUSE_RUNTIME_SCHEMA_OWNERSHIP_FORBIDDEN")
                 cur.execute("SELECT current_setting('search_path')")
                 # SQL containing unqualified names must not resolve through public.
                 cur.execute("SELECT set_config('search_path', %s, false)",
