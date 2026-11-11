@@ -113,3 +113,16 @@ class WarehouseWorkerRouter:
         if type(data) is not dict or set(data) != required:
             raise ValueError("UNTRUSTED_WORKER_RESULT_ENVELOPE")
         return ResultEligibility(**data)
+
+    def probe_workers(self) -> dict:
+        """Signed live database-identity probes. No SQL/job arguments accepted."""
+        results = {}
+        for client in (self.submit, self.attest, self.account, self.results):
+            report=client.invoke("health",{})
+            if (type(report) is not dict
+                    or report != {"duty":client.duty,
+                                  "database_identity_verified":True,
+                                  "query_execution_enabled":False}):
+                raise ValueError("WORKER_IDENTITY_PROBE_FAILED")
+            results[client.duty]=True
+        return results
