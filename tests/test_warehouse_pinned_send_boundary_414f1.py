@@ -9,6 +9,7 @@ import pytest
 
 from app.db import warehouse_query_send_repository as repo
 from app.services import warehouse_sql_send_recovery_service as recovery
+from tests.test_warehouse_sql_provider_policy_414e3 import wait_lease
 from tests.test_warehouse_query_envelope_pinning_414f1 import (
     pg, modeling_pg, fact_provider_pg, genuinely_served_query,
     served, checkpointed, prepared, lookup, unbound, pinned_db,
@@ -47,12 +48,14 @@ def test_missing_pinned_request_never_advances_journal(pinned_db):
     assert not client.calls
 
 
+@pytest.mark.parametrize('lookup', [1], indirect=True)
 def test_second_boundary_and_reclaimed_worker_cannot_resend(pinned_db):
     s, lease, client = pinned_db
     pin(s)
     result = boundary(lease)
     with pytest.raises(repo.RecoveryConflict):
         boundary(lease)
+    wait_lease(s, lease)
     newer = recovery.acquire_recovery(
         attempt_id=s.a.attempt_id, expected_revision=result.revision,
     )
