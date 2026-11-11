@@ -25,7 +25,15 @@ export interface WarehouseModel {
   queryable: false
 }
 
+export interface WarehouseReadiness {
+  status: 'REVIEW_REQUIRED'
+  warehouse_sql_enabled: false
+  deployment_authorized: false
+  blockers: Array<{code: string; label: string}>
+}
+
 export interface WarehouseCatalog {
+  readiness: WarehouseReadiness
   workspace_id: number
   models: WarehouseModel[]
   relationships: []
