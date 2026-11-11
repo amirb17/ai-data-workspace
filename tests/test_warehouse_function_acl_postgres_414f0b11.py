@@ -61,6 +61,17 @@ def test_real_function_security_metadata_is_complete(hardened_unbound):
             assert not security_definer, name
             assert owner and isinstance(signature, str), name
             assert settings and any(item.startswith("search_path=") for item in settings), name
+            public_execute = conn.execute(
+                """SELECT EXISTS (
+                    SELECT 1
+                    FROM pg_catalog.aclexplode(
+                        COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+                    ) acl
+                    WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+                ) FROM pg_catalog.pg_proc p WHERE p.oid=%s""",
+                (oid,),
+            ).fetchone()[0]
+            assert public_execute is False, name
         conn.rollback()
     assert not client.calls
 
