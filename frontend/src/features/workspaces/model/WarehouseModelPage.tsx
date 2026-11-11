@@ -5,6 +5,7 @@ import {getWarehouseCatalog, getWarehouseRelationships, type WarehouseCatalog, t
 import {useApiResource} from '../../../services/api/useApiResource'
 import {WarehouseGraph} from './WarehouseGraph'
 import {currentWarehouseRelationships} from './warehouseGraphView'
+import {warehouseModelInspectionJson} from './warehouseModelInspection'
 
 export function WarehouseModelPage({workspace}:{workspace:string}) {
   const load=useCallback(async(signal:AbortSignal)=>{
@@ -34,6 +35,7 @@ export function WarehouseModelContent({catalog,relationships=[],reload}:{catalog
   const [selectedId,setSelectedId]=useState<number|null>(null)
   const [selectedRelationId,setSelectedRelationId]=useState<number|null>(null)
   const [search,setSearch]=useState('')
+  const [copyStatus,setCopyStatus]=useState('')
   const models=catalog.models.filter(model=>model.name.toLowerCase().includes(search.trim().toLowerCase()))
   const facts=models.filter(model=>model.model_type==='FACT')
   const dimensions=models.filter(model=>model.model_type==='DIMENSION')
@@ -104,6 +106,18 @@ export function WarehouseModelContent({catalog,relationships=[],reload}:{catalog
     {selected&&<section aria-label="Warehouse table details" className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
       <div className="flex items-center justify-between gap-2"><h2 className="break-all text-lg font-semibold">{selected.name}</h2><button onClick={()=>setSelectedId(null)} className="min-h-11 rounded-lg border px-3 text-sm">Close details</button></div>
       <p className="text-sm text-slate-600">{selected.model_type} · Version {selected.version_number} · {selected.scd_type??selected.grain??'Approved definition'}</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium"
+          onClick={()=>{
+            const content=warehouseModelInspectionJson(selected, verified)
+            if(!navigator.clipboard?.writeText){setCopyStatus('Clipboard unavailable; model inspection could not be copied.');return}
+            void navigator.clipboard.writeText(content).then(
+              ()=>setCopyStatus('Approved model definition copied for inspection only; not executable SQL.'),
+              ()=>setCopyStatus('Clipboard unavailable; model inspection could not be copied.'),
+            )
+          }}>Copy model definition</button>
+        {copyStatus&&<span role="status" className="text-xs text-slate-600">{copyStatus}</span>}
+      </div>
       <p className="text-xs text-amber-800">Resource {selected.resource_registered?'registered':'not registered'} · Serving {selected.serving_status.toLowerCase().replaceAll('_',' ')} · Not queryable</p>
       <div className="overflow-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b"><th className="py-2 pr-3">Column</th><th className="py-2 pr-3">Type</th><th className="py-2">Role</th></tr></thead><tbody>{selected.columns.map(column=><tr key={column.name} className="border-b last:border-b-0"><td className="break-all py-2 pr-3">{column.name}</td><td className="py-2 pr-3">{column.type}</td><td className="py-2">{column.role}</td></tr>)}</tbody></table></div>
       <h3 className="font-semibold">Source datasets</h3>
