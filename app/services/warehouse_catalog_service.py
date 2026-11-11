@@ -163,6 +163,21 @@ def snapshot(workspace_id: int, user: dict) -> dict:
     return {
         "workspace_id": workspace_id,
         "models": models,
+        "readiness": {
+            "status": "REVIEW_REQUIRED",
+            "warehouse_sql_enabled": False,
+            "deployment_authorized": False,
+            "blockers": [
+                {"code": "RUNTIME_ROLE_ACCEPTANCE",
+                 "label": "Restricted PostgreSQL service-role acceptance pending"},
+                {"code": "CLOUD_RETENTION_IAM",
+                 "label": "BigQuery IAM and physical publication retention unverified"},
+                {"code": "QUERY_EXECUTION_RELEASE",
+                 "label": "Controlled BigQuery execution, recovery and billing not released"},
+                {"code": "SERVING_READINESS",
+                 "label": "Published warehouse serving metadata not independently verified"},
+            ],
+        },
         "relationships": [],
         "relationship_status": "NOT_MODELED",
         "query_execution_enabled": False,
