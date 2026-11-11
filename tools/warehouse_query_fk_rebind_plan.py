@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 from typing import Mapping
 
@@ -143,6 +144,13 @@ def plan(conn):
     }
 
 
+def temporary_constraint_name(original: str) -> str:
+    """Bound PostgreSQL identifiers and keep exact deterministic names."""
+    if type(original) is not str or not re.fullmatch(r"[a-z][a-z0-9_]{1,62}", original):
+        raise RuntimeError("INVALID_EXISTING_CONSTRAINT_NAME")
+    return "dr_fk_rebind_" + hashlib.sha256(original.encode()).hexdigest()[:24]
+
+
 def generate_reviewed_fk_ddl(conn, inventory: Mapping) -> list[str]:
     """Render the exact FK statements for a future *single* reviewed cutover.
 
@@ -175,7 +183,7 @@ def generate_reviewed_fk_ddl(conn, inventory: Mapping) -> list[str]:
             raise RuntimeError("FK_ACTION_REQUIRES_REVIEW")
         # PostgreSQL truncates identifiers to 63 bytes; the original may
         # already occupy all 63. A short stable digest avoids collisions.
-        new_name = "dr_fk_rebind_" + hashlib.sha256(old_name.encode()).hexdigest()[:24]
+        new_name = temporary_constraint_name(old_name)
         table = sql.SQL("{}.{}").format(sql.Identifier(ISOLATED), sql.Identifier(source))
         target = sql.SQL("{}.{}").format(sql.Identifier(CANONICAL), sql.Identifier(dest))
         col_sql = sql.SQL(", ").join(map(sql.Identifier, columns))
