@@ -136,6 +136,14 @@ class CanonicalWarehouseQueryControlConnection:
 
     dsn: str = field(repr=False)
 
+    def __post_init__(self):
+        # Validate the explicit PostgreSQL role and database before a context
+        # is entered. A connection boundary itself is lazy, so validation only
+        # in __call__ would accept an admin or another worker DSN until SQL ran.
+        RestrictedWarehouseConnection(
+            duty="query_control", dsn=self.dsn, login="datarise_wh_control"
+        )
+
     def __call__(self):
         restricted = RestrictedWarehouseConnection(
             duty="query_control", dsn=self.dsn, login="datarise_wh_control"
