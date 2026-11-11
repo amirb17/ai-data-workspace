@@ -26,10 +26,10 @@ CLOCK_SKEW_SECONDS = 30
 NONCE_BYTES = 16
 _MAX_NONCES = 8192
 DUTY_OPERATIONS = {
-    "provider_submission": frozenset({"record_send_boundary"}),
-    "recovery_attestation": frozenset({"inspect_recovery", "acquire_recovery"}),
-    "accounting": frozenset({"settle_terminal"}),
-    "result_authorization": frozenset({"inspect_eligibility"}),
+    "provider_submission": frozenset({"health", "record_send_boundary"}),
+    "recovery_attestation": frozenset({"health", "inspect_recovery", "acquire_recovery"}),
+    "accounting": frozenset({"health", "settle_terminal"}),
+    "result_authorization": frozenset({"health", "inspect_eligibility"}),
 }
 
 
