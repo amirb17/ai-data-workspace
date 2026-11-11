@@ -354,8 +354,15 @@ def query_results(request,workspace,handle,runtime):
         expected=repo.one(conn,'SELECT expected FROM warehouse_query_provider_policies WHERE attempt_id=%s',(a['attempt_id'],))['expected']
         if expected['contract_version']==2:
             from app.warehouse.named_query_results import IndependentNamedResultReader
+            from app.warehouse.query_bigquery_named_table_reader import PinnedNamedTableResultReaderFactory
             if [list(col) for col in schema.columns]!=expected['result']['schema']:raise ValueError('Pinned result schema changed')
             proof=repo.one(conn,'SELECT metadata_sha256 FROM warehouse_query_result_attestations WHERE attempt_id=%s ORDER BY journal_revision DESC LIMIT 1',(a['attempt_id'],))
+            if not proof:raise ValueError('Pinned materialization proof required')
+            # Bind job-specific table identity ONLY after authenticated schema
+            # and stored immutable policy have been read from PostgreSQL.
+            # Tests may still inject the existing fake results transport.
+            if type(reader) is PinnedNamedTableResultReaderFactory:
+                reader=reader.bind(expected)
             reader=IndependentNamedResultReader(expected,proof['metadata_sha256'],policy._runtime(workspace)[1].transport._client,reader)
     page=read_authenticated_first_warehouse_page_simulated(request=request,workspace_id=workspace,attempt_handle=handle,
         transport=SimulatedBigQueryFirstPage(reader,schema.columns))
