@@ -78,6 +78,15 @@ def test_each_real_table_only_exposes_explicit_select_to_ephemeral_role(unbound,
         schema = conn.execute("SELECT current_schema()").fetchone()[0]
         assert schema.startswith("test_warehouse_") and schema != "public"
         role = "b10_" + uuid4().hex[:20]
+        first_column = conn.execute(
+            """SELECT a.attname FROM pg_attribute a
+            JOIN pg_class c ON c.oid=a.attrelid
+            JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname=%s AND c.relname=%s AND a.attnum>0
+              AND NOT a.attisdropped
+            ORDER BY a.attnum LIMIT 1""",
+            (schema, table),
+        ).fetchone()[0]
         assert conn.execute(
             "SELECT rolsuper FROM pg_roles WHERE rolname=current_user"
         ).fetchone()[0]
@@ -98,7 +107,8 @@ def test_each_real_table_only_exposes_explicit_select_to_ephemeral_role(unbound,
                 # Select on a table must not include row-locking, mutating or
                 # trigger privileges. WHERE FALSE avoids touching fixture rows.
                 _reject(conn, sql.SQL("SELECT * FROM {} FOR UPDATE").format(q))
-                _reject(conn, sql.SQL("UPDATE {} SET attempt_id=attempt_id WHERE FALSE").format(q))
+                _reject(conn, sql.SQL("UPDATE {} SET {}={} WHERE FALSE").format(
+                    q, sql.Identifier(first_column), sql.Identifier(first_column)))
                 _reject(conn, sql.SQL("DELETE FROM {} WHERE FALSE").format(q))
                 _reject(conn, sql.SQL("TRUNCATE {}").format(q))
                 _reject(conn, sql.SQL("INSERT INTO {} DEFAULT VALUES").format(q))
