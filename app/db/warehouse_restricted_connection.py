@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import re
+import os
+from threading import Lock
 
 import psycopg
 from psycopg.conninfo import conninfo_to_dict
@@ -49,6 +51,25 @@ _FORBIDDEN_MEMBERSHIPS = (
 _NAME = re.compile(r"datarise_[a-z][a-z0-9_]{2,62}\Z")
 
 
+_PROCESS_LOCK = Lock()
+_PROCESS_BINDING = None
+
+
+def _bind_process(duty: str, login: str):
+    """One OS process may hold credentials for only one warehouse DB duty.
+
+    Separate worker processes still require independent credential injection;
+    this detects accidental in-process role switching.
+    """
+    global _PROCESS_BINDING
+    identity = (os.getpid(), duty, login)
+    with _PROCESS_LOCK:
+        if _PROCESS_BINDING is None:
+            _PROCESS_BINDING = identity
+        elif _PROCESS_BINDING != identity:
+            raise RuntimeError("CROSS_DUTY_WAREHOUSE_PROCESS_REUSE_FORBIDDEN")
+
+
 @dataclass(frozen=True)
 class RestrictedWarehouseConnection:
     """Explicit DSN and expected login: never infer them from DATABASE_URL.
@@ -76,6 +97,7 @@ class RestrictedWarehouseConnection:
             raise ValueError("UNREVIEWED_CONNECTION_OPTIONS")
 
     def __call__(self):
+        _bind_process(self.duty, self.login)
         conn = psycopg.connect(self.dsn, autocommit=False)
         try:
             if conn.info.transaction_status != TransactionStatus.IDLE:
