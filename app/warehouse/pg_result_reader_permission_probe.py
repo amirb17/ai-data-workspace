@@ -91,13 +91,13 @@ def probe_warehouse_result_reader(conn, *, expected_role: str) -> RuntimePermiss
         protected=[]
         for name,oid in sorted(relations.items()):
             cur.execute("""
-                SELECT has_table_privilege(current_user,%s,'SELECT'),
-                       has_table_privilege(current_user,%s,'INSERT'),
-                       has_table_privilege(current_user,%s,'UPDATE'),
-                       has_table_privilege(current_user,%s,'DELETE'),
-                       has_table_privilege(current_user,%s,'TRUNCATE'),
-                       has_table_privilege(current_user,%s,'REFERENCES'),
-                       has_table_privilege(current_user,%s,'TRIGGER')
+                SELECT has_table_privilege(%s::oid,'SELECT'),
+                       has_table_privilege(%s::oid,'INSERT'),
+                       has_table_privilege(%s::oid,'UPDATE'),
+                       has_table_privilege(%s::oid,'DELETE'),
+                       has_table_privilege(%s::oid,'TRUNCATE'),
+                       has_table_privilege(%s::oid,'REFERENCES'),
+                       has_table_privilege(%s::oid,'TRIGGER')
             """,(oid,)*7)
             rights=cur.fetchone()
             protected.append(ProtectedTablePermission(
