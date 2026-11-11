@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import sys
+from typing import Mapping
 
 import psycopg
 from psycopg import sql
@@ -141,11 +142,75 @@ def plan(conn):
     }
 
 
+def generate_reviewed_fk_ddl(conn, inventory: Mapping) -> list[str]:
+    """Render the exact FK statements for a future *single* reviewed cutover.
+
+    Never execute this SQL in isolation: trigger functions, revocation hooks,
+    privileges and auth gateway must be updated in the same transaction.
+    Quoting is delegated to psycopg.sql.Identifier, not string interpolation.
+    """
+    if inventory.get("ddl_executed") is not False or inventory.get("rebind_fk_count") != len(TARGETS):
+        raise RuntimeError("UNREVIEWED_FK_PLAN")
+    if {item["constraint"] for item in inventory["constraints"]} != set(TARGETS):
+        raise RuntimeError("FK_PLAN_TARGET_SET_DRIFT")
+    statements = []
+    for item in inventory["constraints"]:
+        old_name = item["constraint"]
+        source, dest = TARGETS[old_name]
+        if (item["source"] != f"{ISOLATED}.{source}"
+                or item["canonical_target"] != f"{CANONICAL}.{dest}"):
+            raise RuntimeError("FK_PLAN_DESTINATION_DRIFT")
+        columns = item["columns"]
+        targets = item["referenced_columns"]
+        if (not isinstance(columns, list) or not isinstance(targets, list)
+                or not columns or len(columns) != len(targets)
+                or not all(type(v) is str and v for v in columns + targets)):
+            raise RuntimeError("FK_PLAN_COLUMN_DRIFT")
+        if item["match"] not in {"SIMPLE", "FULL"}:
+            # MATCH PARTIAL is not implemented by PostgreSQL.
+            raise RuntimeError("FK_MATCH_MODE_REQUIRES_REVIEW")
+        actions = {"NO ACTION", "RESTRICT", "CASCADE", "SET NULL", "SET DEFAULT"}
+        if item["on_update"] not in actions or item["on_delete"] not in actions:
+            raise RuntimeError("FK_ACTION_REQUIRES_REVIEW")
+        new_name = old_name + "__canonical"
+        table = sql.SQL("{}.{}").format(sql.Identifier(ISOLATED), sql.Identifier(source))
+        target = sql.SQL("{}.{}").format(sql.Identifier(CANONICAL), sql.Identifier(dest))
+        col_sql = sql.SQL(", ").join(map(sql.Identifier, columns))
+        target_sql = sql.SQL(", ").join(map(sql.Identifier, targets))
+        # Actions are looked up from strict enum values above, never input.
+        clause = sql.SQL(
+            "ALTER TABLE {} ADD CONSTRAINT {} FOREIGN KEY ({}) REFERENCES {} ({}) "
+            "MATCH {} ON UPDATE {} ON DELETE {} {} NOT VALID"
+        ).format(
+            table, sql.Identifier(new_name), col_sql, target, target_sql,
+            sql.SQL(item["match"]), sql.SQL(item["on_update"]),
+            sql.SQL(item["on_delete"]),
+            sql.SQL(
+                ("DEFERRABLE INITIALLY DEFERRED" if item["initially_deferred"]
+                 else "DEFERRABLE INITIALLY IMMEDIATE")
+                if item["deferrable"] else "NOT DEFERRABLE"
+            ),
+        )
+        statements.extend([
+            clause.as_string(conn) + ";",
+            sql.SQL("ALTER TABLE {} VALIDATE CONSTRAINT {}").format(
+                table, sql.Identifier(new_name)).as_string(conn) + ";",
+            sql.SQL("ALTER TABLE {} DROP CONSTRAINT {}").format(
+                table, sql.Identifier(old_name)).as_string(conn) + ";",
+            sql.SQL("ALTER TABLE {} RENAME CONSTRAINT {} TO {}").format(
+                table, sql.Identifier(new_name), sql.Identifier(old_name)
+            ).as_string(conn) + ";",
+        ])
+    return statements
+
+
 def main():
     try:
         with psycopg.connect(_dsn(), autocommit=False) as conn:
             conn.execute("SET TRANSACTION READ ONLY")
             result = plan(conn)
+            result["candidate_fk_ddl"] = generate_reviewed_fk_ddl(conn, result)
+            result["candidate_fk_ddl_must_not_run_alone"] = True
             conn.rollback()
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
