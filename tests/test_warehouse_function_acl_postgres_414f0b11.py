@@ -6,6 +6,7 @@ Checks effective EXECUTE privilege via PostgreSQL, never invokes functions
 or turns on BigQuery query submission.
 """
 import os
+from pathlib import Path
 from uuid import uuid4
 
 import psycopg
@@ -18,6 +19,22 @@ from tests.test_warehouse_query_function_trigger_integration_414f0b7 import (
     served, checkpointed, prepared, lookup, unbound, linked_pg,
     reliability_pg, registered, intent, execute,
 )
+
+MIGRATION_0057 = Path(__file__).resolve().parents[1] / (
+    "migrations/0057_warehouse_query_function_acl_hardening.sql"
+)
+
+
+@pytest.fixture
+def hardened_unbound(unbound):
+    # Forward hardening is isolated to this test module; baseline fixtures
+    # remain unchanged. The existing E3 fixture owns a disposable test schema.
+    s, _, client = unbound
+    with s.f.pg["connect"]() as conn:
+        schema = conn.execute("SELECT current_schema()").fetchone()[0]
+        assert schema.startswith("test_warehouse_") and schema != "public"
+        conn.execute(MIGRATION_0057.read_text(encoding="utf-8-sig"))
+    return unbound
 
 
 def _functions(conn, schema):
@@ -34,8 +51,8 @@ def _functions(conn, schema):
     return found
 
 
-def test_real_function_security_metadata_is_complete(unbound):
-    s, _, client = unbound
+def test_real_function_security_metadata_is_complete(hardened_unbound):
+    s, _, client = hardened_unbound
     with s.f.pg["connect"]() as conn:
         schema = conn.execute("SELECT current_schema()").fetchone()[0]
         assert schema.startswith("test_warehouse_") and schema != "public"
@@ -49,10 +66,10 @@ def test_real_function_security_metadata_is_complete(unbound):
 
 
 @pytest.mark.parametrize("chosen_name", sorted(EXPECTED_FUNCTIONS))
-def test_function_acl_is_grantable_to_only_one_ephemeral_role(unbound, chosen_name):
+def test_function_acl_is_grantable_to_only_one_ephemeral_role(hardened_unbound, chosen_name):
     if os.getenv("RUN_DB_TESTS") != "1":
         pytest.skip("Explicit warehouse fixture requires RUN_DB_TESTS=1")
-    s, _, client = unbound
+    s, _, client = hardened_unbound
     with s.f.pg["connect"]() as conn:
         schema = conn.execute("SELECT current_schema()").fetchone()[0]
         assert schema.startswith("test_warehouse_") and schema != "public"
