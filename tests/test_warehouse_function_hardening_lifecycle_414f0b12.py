@@ -10,10 +10,11 @@ import pytest
 
 from tests.test_warehouse_sql_provider_policy_414e3 import (
     pg, modeling_pg, fact_provider_pg, genuinely_served_query,
-    served, checkpointed, prepared, lookup, unbound, bound,
-    linked_pg, reliability_pg, registered, intent, execute,
+    served, checkpointed, prepared, lookup, unbound,
     prepare, run, state, scalar, change,
 )
+from tests.test_warehouse_query_reservation_publication_links_postgres import linked_pg
+from tests.test_warehouse_reliability import reliability_pg, registered, intent, execute
 
 MIGRATION = Path(__file__).resolve().parents[1] / (
     "migrations/0057_warehouse_query_function_acl_hardening.sql"
