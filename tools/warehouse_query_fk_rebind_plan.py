@@ -13,6 +13,7 @@ query protocol, missing canonical target, or inconsistent column identities.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from typing import Mapping
@@ -172,7 +173,9 @@ def generate_reviewed_fk_ddl(conn, inventory: Mapping) -> list[str]:
         actions = {"NO ACTION", "RESTRICT", "CASCADE", "SET NULL", "SET DEFAULT"}
         if item["on_update"] not in actions or item["on_delete"] not in actions:
             raise RuntimeError("FK_ACTION_REQUIRES_REVIEW")
-        new_name = old_name + "__canonical"
+        # PostgreSQL truncates identifiers to 63 bytes; the original may
+        # already occupy all 63. A short stable digest avoids collisions.
+        new_name = "dr_fk_rebind_" + hashlib.sha256(old_name.encode()).hexdigest()[:24]
         table = sql.SQL("{}.{}").format(sql.Identifier(ISOLATED), sql.Identifier(source))
         target = sql.SQL("{}.{}").format(sql.Identifier(CANONICAL), sql.Identifier(dest))
         col_sql = sql.SQL(", ").join(map(sql.Identifier, columns))
