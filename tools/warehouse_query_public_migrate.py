@@ -75,11 +75,17 @@ def _files():
     for name in MIGRATIONS:
         path = ROOT / "migrations" / name
         raw = path.read_text(encoding="utf-8-sig")
-        if not re.match(r"^\s*BEGIN;", raw, re.IGNORECASE | re.MULTILINE):
+        start = START.search(raw)
+        endings = list(END.finditer(raw))
+        if start is None:
             raise RuntimeError(f"MIGRATION_WRAPPER_MISSING: {name}")
-        if not re.search(r"^\s*COMMIT;\s*$", raw, re.IGNORECASE | re.MULTILINE):
-            raise RuntimeError(f"MIGRATION_COMMIT_MISSING: {name}")
-        result.append((name, WRAPPER.sub("", raw)))
+        if len(endings) != 1 or endings[0].start() <= start.end():
+            raise RuntimeError(f"MIGRATION_COMMIT_MISSING_OR_AMBIGUOUS: {name}")
+        # Only remove the top-level delimiters, never transaction control
+        # appearing within a PL/pgSQL function definition.
+        if raw[endings[0].end():].strip():
+            raise RuntimeError(f"MIGRATION_TRAILING_SQL: {name}")
+        result.append((name, raw[:start.start()] + raw[start.end():endings[0].start()]))
     return result
 
 
