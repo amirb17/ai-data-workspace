@@ -9,6 +9,8 @@ def test_audit_is_read_only_and_reviews_all_sensitive_tables():
     import re
     stripped = re.sub(r"--[^\n]*", "", sql)
     stripped = re.sub(r"/\*.*?\*/", "", stripped, flags=re.S)
+    # SQL privilege names in string literals are not executable commands.
+    stripped = re.sub(r"'(?:''|[^'])*'", "''", stripped)
     assert not re.search(
         r"\b(CREATE|ALTER|DROP|GRANT|REVOKE|INSERT\s+INTO|UPDATE\s+"
         r"[a-z_]|DELETE\s+FROM|TRUNCATE|CALL|DO|COPY|SET|RESET)\b",
