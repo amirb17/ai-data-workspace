@@ -44,8 +44,10 @@ def main():
                 raise RuntimeError("WRONG_DATABASE")
             cur.execute("""
                 SELECT n.oid,pg_get_userbyid(n.nspowner),
-                  has_schema_privilege('public',n.oid,'USAGE'),
-                  has_schema_privilege('public',n.oid,'CREATE')
+                  EXISTS(SELECT 1 FROM aclexplode(coalesce(n.nspacl,acldefault('n',n.nspowner))) a
+                         WHERE a.grantee=0 AND a.privilege_type='USAGE'),
+                  EXISTS(SELECT 1 FROM aclexplode(coalesce(n.nspacl,acldefault('n',n.nspowner))) a
+                         WHERE a.grantee=0 AND a.privilege_type='CREATE')
                 FROM pg_namespace n WHERE n.nspname=%s
             """,(SCHEMA,))
             info=cur.fetchone()
@@ -56,10 +58,14 @@ def main():
             print("PUBLIC SCHEMA USAGE/CREATE:",public_usage,public_create)
             cur.execute("""
                 SELECT c.relname,pg_get_userbyid(c.relowner),
-                       has_table_privilege('public',c.oid,'SELECT'),
-                       has_table_privilege('public',c.oid,'INSERT'),
-                       has_table_privilege('public',c.oid,'UPDATE'),
-                       has_table_privilege('public',c.oid,'DELETE')
+                       EXISTS(SELECT 1 FROM aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
+                              WHERE a.grantee=0 AND a.privilege_type='SELECT'),
+                       EXISTS(SELECT 1 FROM aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
+                              WHERE a.grantee=0 AND a.privilege_type='INSERT'),
+                       EXISTS(SELECT 1 FROM aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
+                              WHERE a.grantee=0 AND a.privilege_type='UPDATE'),
+                       EXISTS(SELECT 1 FROM aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
+                              WHERE a.grantee=0 AND a.privilege_type='DELETE')
                 FROM pg_class c WHERE c.relnamespace=%s
                   AND c.relkind IN ('r','p')
                   AND c.relname=ANY(%s)
