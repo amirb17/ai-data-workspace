@@ -36,3 +36,16 @@ def test_credential_file_override_disallowed_before_auth(monkeypatch):
     )
     with pytest.raises(SystemExit):
         live.main()
+
+
+def test_invalid_resume_job_id_is_rejected_without_cloud(monkeypatch):
+    monkeypatch.setattr(sys, "argv", [
+        "cloud-demo", "--source-table", "m1_v1_g1_p1_r1",
+        "--resume-job-id", "unreviewed_job",
+    ])
+    monkeypatch.setattr(
+        live.google.auth, "default",
+        lambda **kwargs: pytest.fail("No cloud call for invalid resume identity"),
+    )
+    with pytest.raises(SystemExit):
+        live.main()
