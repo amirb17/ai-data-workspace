@@ -20,7 +20,8 @@ def test_catalog_inventory_is_read_only():
                          cleaned, flags=re.I)
     assert "pg_catalog.pg_proc" in raw
     assert "pg_catalog.pg_trigger" in raw
-    assert "has_function_privilege" in raw
+    assert "aclexplode" in raw
+    assert "acldefault" in raw
     assert "prosecdef" in raw
     assert "proconfig" in raw
     assert "current_schema()" in raw
