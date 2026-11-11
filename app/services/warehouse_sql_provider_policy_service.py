@@ -250,3 +250,45 @@ def pin_authenticated_query_envelope_without_dispatch(
         request=request, workspace_id=workspace_id,
         attempt_handle=attempt_handle, persist=True,
     )
+
+
+def lookup_pinned_submission_without_resend(
+    *, lease: recovery.RecoveryLease, expected_revision: int,
+) -> attestation.RecoveryAttestation:
+    """F2: jobs.get-only recovery after committed, pinned SEND_BOUNDARY.
+
+    The immutable envelope and provider policy must agree with the original
+    job ID. Missing boundary or fingerprint fails before any provider GET.
+    Revoked or expired original sessions can still be inspected for recovery;
+    they never authorize another submission. No result fetch or settlement.
+    """
+    recovery._validate_lease(lease)
+    with recovery._worker(lease.attempt_id) as (conn, checkpoint):
+        expected, core, _ = _snapshot(conn, checkpoint, lease, expected_revision)
+        _, latest = repo.latest(conn, lease.attempt_id)
+        repo.require_owner(conn, latest, lease, expected_revision)
+        if latest['phase'] not in ('SEND_UNKNOWN', 'PROVIDER_RUNNING'):
+            raise repo.RecoveryConflict('SEND_BOUNDARY_REQUIRED_LOOKUP_ONLY')
+        if not repo.one(
+            conn,
+            """SELECT 1 FROM warehouse_query_send_journal
+               WHERE attempt_id=%s AND event='SEND_BOUNDARY' LIMIT 1""",
+            (lease.attempt_id,),
+        ):
+            raise repo.RecoveryConflict('SEND_BOUNDARY_REQUIRED_LOOKUP_ONLY')
+        pinned = repo.one(
+            conn,
+            """SELECT provider_job_id,request_sha256,policy_sha256
+               FROM warehouse_query_request_envelopes WHERE attempt_id=%s""",
+            (lease.attempt_id,),
+        )
+        if (not pinned or pinned['provider_job_id'] != core.job_id
+                or pinned['policy_sha256'] != digest(expected)
+                or type(pinned['request_sha256']) is not str
+                or not re.fullmatch(r'[a-f0-9]{64}', pinned['request_sha256'].strip())):
+            raise PolicyConflict('IMMUTABLE_SUBMISSION_ENVELOPE_REQUIRED')
+    # Existing two-phase attestation does one jobs.get with no database lock
+    # held; on reacquisition it compares current policy and CAS journal state.
+    return lookup_with_provider_policy(
+        lease=lease, expected_revision=expected_revision,
+    )
