@@ -79,9 +79,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-table", required=True)
     parser.add_argument("--approve-billable-demo", action="store_true")
+    parser.add_argument("--resume-job-id", help="Inspect one original demo job without another submission")
     args = parser.parse_args()
-    if not args.approve_billable_demo:
-        parser.error("Explicit --approve-billable-demo required; BigQuery can charge")
+    if not args.approve_billable_demo and not args.resume_job_id:
+        parser.error("Explicit --approve-billable-demo required for new submissions")
+    if args.resume_job_id and not re.fullmatch(r"dr_query_w18_r1_[a-f0-9]{32}", args.resume_job_id):
+        parser.error("Resume requires an original bounded workspace-18 demo job ID")
     if not _TABLE.fullmatch(args.source_table):
         parser.error("Source table must be an exact unqualified BigQuery table identifier")
     # Never permit this runner to use downloaded service-account keys or
@@ -91,13 +94,19 @@ def main():
         "GOOGLE_CREDENTIALS",
     )):
         parser.error("No service account JSON keys or credential-file overrides allowed")
+    stage = "CREDENTIAL_SOURCE"
+    job_id = args.resume_job_id
     try:
         source, _ = google.auth.default(scopes=[SCOPE])
         # Source ADC may be a local authorized-user credential; individual
         # cloud calls below use only the three short-lived target identities.
+        stage = "IMPERSONATE_SENDER"
         sender = token(source, PRINCIPALS["sender"])
+        stage = "IMPERSONATE_ATTESTER"
         attester = token(source, PRINCIPALS["attester"])
+        stage = "IMPERSONATE_READER"
         reader = token(source, PRINCIPALS["reader"])
+        stage = "CREATE_ATTESTER_CLIENT"
         metadata = bigquery.Client(project=PROJECT, location=LOCATION,
                                    credentials=attester)
         try:
@@ -106,7 +115,7 @@ def main():
             reservation = 1
             intent = hashlib.sha256(sql.encode()).hexdigest()
             # A unique job ID avoids overwriting an earlier cloud result.
-            job_id = f"dr_query_w{WORKSPACE}_r{reservation}_{secrets.token_hex(16)}"
+            job_id = job_id or f"dr_query_w{WORKSPACE}_r{reservation}_{secrets.token_hex(16)}"
             destination = result_identity(PROJECT, WORKSPACE, job_id)
             contract = {
                 "version": 1, "destination": destination,
@@ -147,22 +156,29 @@ def main():
             with session(sender) as sender_http, session(reader) as reader_http:
                 transport = BoundedBigQueryJobInsertTransport(
                     project=PROJECT, location=LOCATION, session=sender_http)
-                print("LIVE: sending one bounded BigQuery job; no retry", flush=True)
-                try:
-                    transport.insert_job_once(
-                        project=PROJECT, location=LOCATION, body=request)
-                except Exception:
-                    print("SEND UNKNOWN: verifying only the original job", flush=True)
+                if not args.resume_job_id:
+                    stage = "SUBMISSION"
+                    print("JOB:", job_id, flush=True)
+                    print("LIVE: sending one bounded BigQuery job; no retry", flush=True)
+                    try:
+                        transport.insert_job_once(
+                            project=PROJECT, location=LOCATION, body=request)
+                    except Exception:
+                        print("SEND UNKNOWN: verifying only the original job", flush=True)
+                else:
+                    print("RESUME: original job only; no new query will be submitted", flush=True)
+                    print("JOB:", job_id, flush=True)
+                stage = "INDEPENDENT_JOB_LOOKUP"
                 policy = LookupPolicy(
                     PROJECT, LOCATION, PRINCIPALS["sender"], "live-demo-1")
                 expected = ExpectedJob(
                     PROJECT, LOCATION, job_id, WORKSPACE, reservation,
                     intent, hashlib.sha256(sql.encode()).hexdigest(),
                     (source_table,), 10*1024*1024,
-                    int(time.time()*1000)-60000,
+                    0 if args.resume_job_id else int(time.time()*1000)-60000,
                 )
                 report = None
-                for _ in range(15):
+                for attempt in range(15):
                     try:
                         job = metadata.get_job(
                             job_id, project=PROJECT, location=LOCATION,
@@ -170,17 +186,25 @@ def main():
                         raw = dict(job._properties)
                         report = verify_metadata(
                             raw, expected, policy, named_result=contract)
-                    except Exception:
+                    except Exception as error:
+                        # Class name only; do not expose service account tokens,
+                        # HTTP payloads or provider error strings.
+                        print("LOOKUP ERROR:", type(error).__name__, flush=True)
                         report = None
-                    if report and report.observation in (
-                        "SUCCEEDED", "FAILED", "CANCELLED"
-                    ):
-                        break
-                    time.sleep(2)
+                    if report:
+                        print("ATTESTATION:", report.verdict, report.observation,
+                              report.reason, flush=True)
+                        if report.verdict == "REJECTED":
+                            break
+                        if report.observation in ("SUCCEEDED", "FAILED", "CANCELLED"):
+                            break
+                    if attempt < 14:
+                        time.sleep(2)
                 if (report is None or report.verdict != "VERIFIED_METADATA"
                         or not report.billing_complete
                         or report.observation != "SUCCEEDED"):
                     raise RuntimeError("INDEPENDENT_JOB_ATTESTATION_NOT_SUCCESSFUL")
+                stage = "RESULT_METADATA_VERIFICATION"
                 full_expected = {
                     "contract_version": 2, "project": PROJECT,
                     "dataset": f"dr_dev_w{WORKSPACE}",
@@ -189,6 +213,7 @@ def main():
                     "provider_policy": {"creator_email": PRINCIPALS["sender"]},
                 }
                 proof, sha = verify_materialization(metadata, full_expected)
+                stage = "NAMED_TABLE_RESULT_READER"
                 bound = NamedTableBigQueryResultReader(
                     expected=full_expected, principal=PRINCIPALS["reader"],
                     session=reader_http)
@@ -198,6 +223,7 @@ def main():
                 _, after_sha = verify_materialization(metadata, full_expected)
                 if sha != after_sha:
                     raise RuntimeError("RESULT_METADATA_CHANGED_DURING_READ")
+                stage = "RESULT_PAGE_VALIDATION"
                 page = validate_bigquery_first_page(
                     project=PROJECT, location=LOCATION, job_id=job_id,
                     approved_schema=(("demo_value", "INTEGER"),),
@@ -216,7 +242,10 @@ def main():
         return 0
     except Exception as exc:
         # No tokens or SQL printed, fail with stable safe reason.
-        print("LIVE CLOUD SMOKE BLOCKED:", type(exc).__name__, file=sys.stderr)
+        print("LIVE CLOUD SMOKE BLOCKED:", stage, type(exc).__name__, file=sys.stderr)
+        if job_id:
+            print("ORIGINAL JOB:", job_id, file=sys.stderr)
+            print("Do not resubmit it; use --resume-job-id instead.", file=sys.stderr)
         return 2
 
 
