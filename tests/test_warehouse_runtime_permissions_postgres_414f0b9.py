@@ -93,6 +93,9 @@ def test_real_warehouse_table_permissions_are_restrictive(unbound, reader):
         finally:
             # Rolled back rather than committed: no persistent role or grant.
             conn.rollback()
+        # Verify the temporary cluster role was actually removed by rollback.
+        assert conn.execute("SELECT 1 FROM pg_roles WHERE rolname=%s", (role,)).fetchone() is None
+        conn.rollback()
     assert not client.calls
 
 
