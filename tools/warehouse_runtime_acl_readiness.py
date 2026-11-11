@@ -90,8 +90,8 @@ def main():
                 SELECT count(*), count(*) FILTER (WHERE prosecdef),
                        count(*) FILTER (WHERE proacl IS NULL)
                 FROM pg_proc WHERE pronamespace=%s
-                  AND proname LIKE 'warehouse_query_%'
-            """,(oid,))
+                  AND proname LIKE %s
+            """,(oid,"warehouse_query_%"))
             print("QUERY FUNCTION COUNTS (total/definer/default ACL):",
                   cur.fetchone())
             cur.execute("""
