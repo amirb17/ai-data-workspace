@@ -1,7 +1,7 @@
 """Atomic, fail-closed installation of existing warehouse query SQL migrations.
 
-Default is dry-run: all DDL is rolled back. --apply installs exactly the listed
-existing migration files in one transaction, only after a complete preflight.
+Safety inventory only: this historical public-schema runner is disabled because
+migration 0057 deliberately rejects public and all system schemas.
 Never installs PostgreSQL roles, grants application authority, or enables HTTP
 query execution. Use only against an explicitly approved local development DB.
 """
@@ -125,9 +125,15 @@ def _preflight(conn):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true",
-                        help="Commit reviewed query migrations in one transaction")
+                        help="Unavailable: public schema is explicitly prohibited")
     args = parser.parse_args()
-    scripts = _files()
+    # Do not prepare a partial migration only to fail halfway at 0057.
+    # The source migration intentionally refuses public; do not bypass it.
+    raise RuntimeError(
+        "PUBLIC_SCHEMA_MIGRATION_PROHIBITED: 0057 explicitly rejects public. "
+        "No DDL was run. Use a reviewed dedicated warehouse schema and "
+        "separate restricted PostgreSQL identities; never disable 0057."
+    )
     with psycopg.connect(_database_url(), autocommit=False) as conn:
         try:
             _preflight(conn)
