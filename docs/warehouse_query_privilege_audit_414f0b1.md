@@ -1,4 +1,4 @@
-# 414F0-B1 — read-only PostgreSQL warehouse privilege inventory
+# 414F0-B1 - read-only PostgreSQL warehouse privilege inventory
 
 This checkpoint introduces a diagnostic SQL inventory only, with no privilege changes.
 It builds on the existing Task 20 role declarations, which are **not** sufficient
@@ -20,13 +20,15 @@ sql = Path("deployment/operations/warehouse_query_privilege_audit_414f0b1.sql").
 with psycopg.connect(database.DATABASE_URL, autocommit=True) as conn:
     conn.execute("BEGIN READ ONLY")
     try:
-        for statement in sql.split(";"):
-            if statement.strip():
-                with conn.cursor() as cur:
-                    cur.execute(statement)
+        with conn.cursor() as cur:
+            cur.execute(sql)
+            while True:
+                if cur.description:
                     print("COLUMNS:", [d.name for d in cur.description])
                     for row in cur.fetchall():
                         print(row)
+                if not cur.nextset():
+                    break
     finally:
         conn.execute("ROLLBACK")
 '@ | python
