@@ -73,12 +73,26 @@ def validate_bigquery_first_page(
         raise BigQueryResultShapeError("REVIEWED_PROJECT_SCOPE_REQUIRED")
     if type(raw) is not dict:
         raise BigQueryResultShapeError("INVALID_PROVIDER_RESPONSE")
+    # The provider may return more rows than the requested page. Reject before
+    # decoding any cells or serializing the full response a second time.
+    raw_rows=raw.get("rows",[])
+    if type(raw_rows) is not list:
+        raise BigQueryResultShapeError("INVALID_RESULT_ROWS")
+    if (type(requested_rows) is not int or not 1<=requested_rows<=100
+            or len(raw_rows)>requested_rows):
+        raise BigQueryResultShapeError("ROW_LIMIT_EXCEEDED")
+    # JSONEncoder.iterencode allows us to stop measuring at 256 KiB without
+    # constructing a second unbounded JSON document via json.dumps().
+    encoded_bytes=0
     try:
-        encoded=json.dumps(raw,separators=(",",":"),ensure_ascii=False,allow_nan=False).encode("utf-8")
-    except (TypeError,ValueError,OverflowError):
+        for chunk in json.JSONEncoder(
+            separators=(",",":"),ensure_ascii=False,allow_nan=False
+        ).iterencode(raw):
+            encoded_bytes+=len(chunk.encode("utf-8"))
+            if encoded_bytes>MAX_RAW_RESULT_BYTES:
+                raise BigQueryResultShapeError("PROVIDER_RESPONSE_TOO_LARGE")
+    except (TypeError,ValueError,OverflowError,RecursionError):
         raise BigQueryResultShapeError("INVALID_PROVIDER_RESPONSE") from None
-    if len(encoded)>MAX_RAW_RESULT_BYTES:
-        raise BigQueryResultShapeError("PROVIDER_RESPONSE_TOO_LARGE")
     if not raw.get("jobComplete") is True or raw.get("errors"):
         raise BigQueryResultShapeError("INCOMPLETE_OR_FAILED_JOB")
     if set(raw)-{"kind","etag","jobReference","jobComplete","schema","rows","pageToken","totalRows","cacheHit","totalBytesProcessed"}:
@@ -98,9 +112,6 @@ def validate_bigquery_first_page(
                 or BQ_TO_APPROVED.get(field["type"])!=kind
                 or field.get("mode","NULLABLE") not in ("NULLABLE","REQUIRED")):
             raise BigQueryResultShapeError("RESULT_SCHEMA_MISMATCH")
-    raw_rows=raw.get("rows",[])
-    if type(raw_rows) is not list:
-        raise BigQueryResultShapeError("INVALID_RESULT_ROWS")
     converted=[]
     for row in raw_rows:
         if type(row) is not dict or set(row)!={"f"} or type(row["f"]) is not list or len(row["f"])!=len(approved_schema):
