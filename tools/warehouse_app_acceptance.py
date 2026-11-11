@@ -30,8 +30,9 @@ TESTS = (
 
 
 def main():
-    if len(sys.argv) != 1:
-        raise RuntimeError("NO_EXTRA_FLAGS_ALLOWED")
+    if sys.argv[1:] not in ([], ["--c8"]):
+        raise RuntimeError("ONLY_C8_FOCUSED_OPTION_ALLOWED")
+    focused = sys.argv[1:] == ["--c8"]
     dsn = os.getenv("DATABASE_URL")
     if not dsn:
         for path in (ROOT / ".env", Path("D:/Project/ai-data-workspace/.env")):
@@ -54,7 +55,11 @@ def main():
     os.environ["RUN_BIGQUERY_INTEGRATION"] = "0"
     sys.argv = [
         str(ROOT / "tools/task20_local_tests.py"),
-        *TESTS,
+        *((
+            "tests/test_warehouse_named_results_c2.py",
+            "tests/test_warehouse_bigquery_named_table_reader.py",
+            "tests/test_warehouse_restricted_connection_factory.py",
+        ) if focused else TESTS),
         "-q", "--tb=short", "-ra",
         "-p", "no:cacheprovider",
     ]
