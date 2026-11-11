@@ -52,7 +52,7 @@ PRINCIPALS = {
     "attester": f"datarise-query-attester@{PROJECT}.iam.gserviceaccount.com",
     "reader": f"datarise-result-reader@{PROJECT}.iam.gserviceaccount.com",
 }
-_TABLE = re.compile(r"[A-Za-z_][A-Za-z_0-9]{0,127}\\Z")
+_TABLE = re.compile(r"[A-Za-z_][A-Za-z_0-9]{0,127}\Z")
 
 
 def token(source, principal):
