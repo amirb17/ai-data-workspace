@@ -226,15 +226,7 @@ def rehearse(conn) -> dict:
         )
         # pg_get_triggerdef gives a full CREATE TRIGGER statement; replace
         # precisely its ON <schema>.<table> segment. No other text changed.
-        source_name = sql.SQL("{}.{}").format(
-            sql.Identifier(ISOLATED), sql.Identifier(table)
-        ).as_string(conn)
-        target_name = sql.SQL("{}.{}").format(
-            sql.Identifier(CANONICAL), sql.Identifier(table)
-        ).as_string(conn)
-        if "ON " + source_name not in definition:
-            raise RuntimeError("TRIGGER_DEFINITION_SCHEMA_DRIFT")
-        new_def = definition.replace("ON " + source_name, "ON " + target_name, 1)
+        new_def = _rebind_trigger_target(definition, table)
         conn.execute(new_def)
 
     # Assert every FK target and trigger hook moved in this same tx.
