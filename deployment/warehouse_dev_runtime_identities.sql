@@ -60,8 +60,8 @@ BEGIN
                     THEN 'NOLOGIN' ELSE 'LOGIN' END
             );
         END IF;
-        -- Deny cluster-default database access to these identities until
-        -- the per-command privilege/connection matrix is approved.
+        -- Remove direct grants. PostgreSQL may still grant CONNECT to
+        -- PUBLIC; no warehouse schema/table access is granted by this file.
         EXECUTE format('REVOKE ALL ON DATABASE ai_data_workspace FROM %I',candidate);
         EXECUTE format('REVOKE ALL ON SCHEMA datarise_warehouse_dev FROM %I',candidate);
     END LOOP;
@@ -70,4 +70,5 @@ $warehouse_roles$;
 COMMIT;
 
 -- No object ownership changes. No passwords or application grants.
--- No cloud permissions. Runtime cannot connect via these roles yet.
+-- No cloud permissions. Database CONNECT may remain available through PUBLIC,
+-- but no usage of datarise_warehouse_dev is granted to these roles.
