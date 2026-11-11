@@ -57,7 +57,7 @@ class ResultIamInventory:
                 or self.location!="asia-south1"
                 or not isinstance(self.principal,str)
                 or not re.fullmatch(
-                    r"[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com",
+                    r"[a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com",
                     self.principal,
                 )
                 or type(self.job_creator) is not bool
