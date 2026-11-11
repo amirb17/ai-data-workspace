@@ -34,11 +34,13 @@ def build_reviewed_query_job_request(*, expected: dict, compiled_sql: str) -> Bi
         "maximum_bytes_billed", "job_timeout_ms", "publication_sha256",
         "governance_policy_sha256", "provider_policy", "lookup_policy",
     }
+    version=expected.get('contract_version') if type(expected) is dict else None
+    if version==2: required=required|{'result'}
     if type(expected) is not dict or set(expected) != required:
         raise JobRequestMismatch("EXACT_SERVER_POLICY_REQUIRED")
     project, location, dataset = (expected[k] for k in ("project", "location", "dataset"))
     job_id, labels, sql_hash = (expected[k] for k in ("job_id", "labels", "sql_sha256"))
-    if (expected["contract_version"] != 1 or type(expected["contract_version"]) is not int
+    if (expected["contract_version"] not in (1,2) or type(expected["contract_version"]) is not int
             or type(project) is not str or not re.fullmatch(r"[a-z][a-z0-9-]{4,28}[a-z0-9]", project)
             or location != "asia-south1"
             or type(dataset) is not str or not re.fullmatch(r"dr_dev_w[1-9][0-9]*", dataset)
@@ -104,4 +106,9 @@ def build_reviewed_query_job_request(*, expected: dict, compiled_sql: str) -> Bi
             },
         },
     }
+    if version==2:
+        from app.warehouse.named_query_results import validate_result_contract
+        result=validate_result_contract(expected['result'],project,dataset,job_id)
+        body['configuration']['query'].update(destinationTable=dict(result['destination']),
+            createDisposition='CREATE_IF_NEEDED',writeDisposition='WRITE_EMPTY')
     return BigQueryJobRequest(project, location, job_id, body)

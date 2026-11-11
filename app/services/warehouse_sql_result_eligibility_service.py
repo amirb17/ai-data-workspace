@@ -30,7 +30,7 @@ def inspect_settled_result_eligibility(*, attempt_id: int) -> ResultEligibility:
     """Require exact original successful job, verified accounting and pins."""
     if type(attempt_id) is not int or attempt_id < 1:
         raise ValueError("Server attempt ID required")
-    with repo.transaction() as conn:
+    with repo.transaction(duty='result_authorization') as conn:
         return _inspect_settled_result_eligibility_locked(conn, attempt_id)
 
 
@@ -78,6 +78,12 @@ def _inspect_settled_result_eligibility_locked(conn, attempt_id: int) -> ResultE
             or usage["bytes_billed"] != evidence["bytes_billed"]
             or usage["accounted_bytes"] != max(evidence["bytes_processed"],evidence["bytes_billed"])):
         raise ResultEligibilityConflict("EXACT_SETTLED_JOB_EVIDENCE_REQUIRED")
+    if evidence['expected'].get('contract_version')==2:
+        named=repo.one(conn,'SELECT result,read_valid_until>clock_timestamp() AS valid FROM warehouse_query_result_contracts WHERE attempt_id=%s',(attempt_id,))
+        proof=repo.one(conn,'SELECT * FROM warehouse_query_result_attestations WHERE attempt_id=%s AND journal_revision=%s',(attempt_id,event['revision']))
+        if not named or named['result']!=evidence['expected']['result'] or not proof:
+            raise ResultEligibilityConflict('NAMED_RESULT_RECEIPT_REQUIRED')
+        if not named['valid']:raise ResultEligibilityConflict('NAMED_RESULT_READ_WINDOW_EXPIRED')
     requested=reservation["output_rows"]
     if type(requested) is not int or requested < 1:
         raise ResultEligibilityConflict("BOUNDED_OUTPUT_ROWS_REQUIRED")

@@ -30,7 +30,7 @@ def inspect_terminal_evidence(*, attempt_id: int) -> TerminalEvidence:
     """Internal-only verification; hold on missing, unverified, or stale data."""
     if type(attempt_id) is not int or attempt_id < 1:
         raise ValueError('Server attempt ID required')
-    with repo.transaction() as conn:
+    with repo.transaction(duty='accounting') as conn:
         return _inspect_terminal_evidence_locked(conn, attempt_id)
 
 

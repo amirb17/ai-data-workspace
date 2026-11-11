@@ -1,7 +1,7 @@
 """414E1 trusted backend metadata repository. No provider or authorization permit."""
 from contextlib import contextmanager
 from psycopg.rows import dict_row
-from app.db.database import repository_transaction
+from app.db.database import repository_transaction, require_connection_boundary
 from app.db import query_governance_repository as budgets
 
 
@@ -21,7 +21,8 @@ def checkpoint(conn,attempt_id):
 
 
 @contextmanager
-def transaction(workspace_id=None):
+def transaction(workspace_id=None,*,duty='query_control'):
+    require_connection_boundary(duty)
     with repository_transaction() as conn:
         conn.execute("SET LOCAL lock_timeout='5s'")
         conn.execute("SET LOCAL statement_timeout='10s'")

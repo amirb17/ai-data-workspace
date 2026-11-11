@@ -5,7 +5,7 @@ from datetime import timedelta
 from fastapi import HTTPException
 from psycopg.types.json import Jsonb
 
-from app.db.database import repository_transaction
+from app.db.database import repository_transaction, require_connection_boundary
 from app.db import warehouse_repository as metadata
 from app.db import warehouse_reliability_repository as db
 from app.schemas.warehouse import OperationCreate, RunTransition
@@ -24,6 +24,7 @@ class ReliabilityService:
 
     @contextmanager
     def transaction(self):
+        require_connection_boundary('publication')
         settings = require_enabled()
         w, m, v = self.scope
         with repository_transaction() as conn:

@@ -165,9 +165,9 @@ def prepare_authenticated_send_intent(*,request:Request,workspace_id:int,attempt
 
 
 @contextmanager
-def _worker(attempt_id):
+def _worker(attempt_id,*,duty='recovery_attestation'):
     if type(attempt_id) is not int or attempt_id<1:raise ValueError('Server attempt ID required')
-    with repo.transaction() as conn:
+    with repo.transaction(duty=duty) as conn:
         c=repo.checkpoint(conn,attempt_id)
         budgets._lock_scopes(conn,c['workspace_id'])
         yield conn,c
@@ -202,7 +202,7 @@ def _validate_lease(lease):
 def record_send_boundary(*,lease:RecoveryLease,expected_revision:int):
     """Write conservative possible-send marker; DOES NOT permit or send anything."""
     _validate_lease(lease)
-    with _worker(lease.attempt_id) as (conn,c):
+    with _worker(lease.attempt_id,duty='provider_submission') as (conn,c):
         r,_,_=_live_context(conn,c)
         intent,event=repo.latest(conn,lease.attempt_id);repo.require_owner(conn,event,lease,expected_revision)
         if event['phase']!='INTENT_RECORDED':raise repo.RecoveryConflict('BOUNDARY_ALREADY_RECORDED_LOOKUP_ONLY')
@@ -239,7 +239,7 @@ def record_pinned_send_boundary_without_dispatch(
     Future transport must recheck a separately approved runtime release gate.
     """
     _validate_lease(lease)
-    with _worker(lease.attempt_id) as (conn, checkpoint):
+    with _worker(lease.attempt_id,duty='provider_submission') as (conn, checkpoint):
         reservation, _, _ = _live_context(conn, checkpoint)
         intent, event = repo.latest(conn, lease.attempt_id)
         repo.require_owner(conn, event, lease, expected_revision)

@@ -14,7 +14,7 @@ from psycopg.types.json import Jsonb
 from app.auth.config import require_secret
 from app.auth.repository import principal
 from app.auth.security import digest
-from app.db.database import repository_transaction
+from app.db.database import repository_transaction, require_connection_boundary
 from app.db import query_governance_repository as budgets
 from app.db import warehouse_query_attempt_repository as attempts
 from app.query_governance.policy import QueryPolicy
@@ -87,6 +87,7 @@ def checkpoint_authenticated_warehouse_dispatch(*, request: Request, workspace_i
     token=request.cookies.get(settings.session_cookie)
     if not token or len(token)>128:
         raise HTTPException(401, 'Sign in to continue.')
+    require_connection_boundary('query_control')
     policy=QueryPolicy.from_environment()  # No caller-supplied policy overrides.
     with repository_transaction() as conn:
         # Only this new boundary is bounded; existing consumers are unchanged.

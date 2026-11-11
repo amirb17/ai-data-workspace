@@ -20,6 +20,7 @@ from app.warehouse.query_job_request import build_reviewed_query_job_request
 
 # Workspace bindings are trusted startup configuration, never request parameters.
 _POLICIES = MappingProxyType({})
+_RESULT_POLICIES = MappingProxyType({})
 
 
 class PolicyConflict(ValueError):
@@ -80,6 +81,15 @@ def _derive(conn, c, r, intent):
         maximum_bytes_billed=min(ceiling, policy.maximum_bytes), job_timeout_ms=policy.timeout_ms,
         publication_sha256=digest(pins), governance_policy_sha256=digest(c['policy']),
         provider_policy=asdict(policy), lookup_policy=asdict(runtime.policy))
+    named = _RESULT_POLICIES.get(c['workspace_id'])
+    if named is not None:
+        from app.warehouse.named_query_results import NamedResultPolicy, validate_result_contract
+        row=repo.one(conn,'SELECT * FROM warehouse_query_result_contracts WHERE attempt_id=%s',(c['attempt_id'],))
+        if (type(named) is not NamedResultPolicy or not row or row['sql_sha256']!=c['compiled_sql_sha256']
+                or row['result']['policy']!=asdict(named) or named.reader_principal==policy.creator_email):
+            raise PolicyConflict('PINNED_NAMED_RESULT_POLICY_REQUIRED')
+        expected['contract_version']=2;expected['result']=row['result']
+        validate_result_contract(row['result'],policy.project,dataset,identity)
     return expected, core, runtime
 
 
@@ -137,13 +147,23 @@ def lookup_with_provider_policy(*, lease: recovery.RecoveryLease, expected_revis
         expected, core, runtime = _snapshot(conn, c, lease, expected_revision)
     report = _lookup_metadata(runtime, core,
         lambda raw, trusted_core, lookup: verify_exact_metadata(raw, trusted_core, lookup, expected))
+    result_proof=None
+    if expected['contract_version']==2 and report.verdict=='VERIFIED_METADATA' and report.observation=='SUCCEEDED':
+        from app.warehouse.named_query_results import verify_materialization
+        from app.warehouse.query_recovery_attestation import MetadataReport
+        try:result_proof=verify_materialization(runtime.transport._client,expected)
+        except Exception:report=MetadataReport('UNCERTAIN','REJECTED','NAMED_RESULT_METADATA_UNAVAILABLE',report.payload_sha256)
     with recovery._worker(lease.attempt_id) as (conn, c):
         current, current_core, _ = _snapshot(conn, c, lease, expected_revision)
         if current != expected or current_core != core:
             raise PolicyConflict('PROVIDER_POLICY_CHANGED_DURING_LOOKUP')
         result = recovery._record_observation_locked(conn, c, lease, expected_revision,
             recovery.JobIdentity(core.project, core.location, core.job_id), recovery.Observation(report.observation))
-        attestation._persist(conn, c['attempt_id'], result.revision, report, digest(expected))
+        attestation._persist(conn, c['attempt_id'], result.revision, report, digest(expected),contract_version=expected['contract_version'])
+        if result_proof is not None and report.billing_complete:
+            proof,sha=result_proof
+            conn.execute('INSERT INTO warehouse_query_result_attestations(attempt_id,journal_revision,metadata,metadata_sha256) VALUES(%s,%s,%s,%s)',
+                (c['attempt_id'],result.revision,Jsonb(proof),sha))
         return attestation.RecoveryAttestation(result.revision, report.observation, report.verdict,
                                              report.reason, report.billing_complete, result)
 

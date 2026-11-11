@@ -17,7 +17,7 @@ def record_cancel_attempt_boundary_without_provider(
 ) -> CancelBoundary:
     """Commit once before possible cancel; subsequent workers use jobs.get."""
     recovery._validate_lease(lease)
-    with recovery._worker(lease.attempt_id) as (conn, checkpoint):
+    with recovery._worker(lease.attempt_id,duty='provider_submission') as (conn, checkpoint):
         reservation = repo.lock_identity(conn, checkpoint)
         intent, event = repo.latest(conn, lease.attempt_id)
         repo.require_owner(conn, event, lease, expected_revision)
@@ -63,7 +63,7 @@ def lookup_after_cancel_boundary_without_resend(
     """
     from app.services import warehouse_sql_provider_policy_service as policy
     recovery._validate_lease(lease)
-    with recovery._worker(lease.attempt_id) as (conn, checkpoint):
+    with recovery._worker(lease.attempt_id,duty='provider_submission') as (conn, checkpoint):
         reservation = repo.lock_identity(conn, checkpoint)
         intent, event = repo.latest(conn, lease.attempt_id)
         repo.require_owner(conn, event, lease, expected_revision)

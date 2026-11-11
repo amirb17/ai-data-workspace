@@ -113,7 +113,7 @@ def _number(value,*,optional=False):
     raise _EvidenceError('BAD_NUMERIC_EVIDENCE','UNCERTAIN' if value is None else 'REJECTED')
 
 
-def verify_metadata(raw,expected,policy):
+def verify_metadata(raw,expected,policy,*,named_result=None):
     """Missing evidence is uncertain; matching metadata is NOT a settlement permit."""
     payload=None
     try:
@@ -136,7 +136,11 @@ def verify_metadata(raw,expected,policy):
         _require(type(labels) is dict and all(labels.get(k)==v for k,v in wanted.items()),'LABEL_MISMATCH')
         _require(type(query.get('query')) is str,'MISSING_QUERY',missing=True)
         _require(hashlib.sha256(query['query'].encode()).hexdigest()==expected.sql_sha256,'SQL_FINGERPRINT_MISMATCH')
-        _require(set(query)<=set(('query','useLegacySql','useQueryCache','maximumBytesBilled','priority','allowLargeResults')),'UNREVIEWED_QUERY_CONFIGURATION')
+        extra={'destinationTable','createDisposition','writeDisposition'} if named_result is not None else set()
+        _require(set(query)<=set(('query','useLegacySql','useQueryCache','maximumBytesBilled','priority','allowLargeResults'))|extra,'UNREVIEWED_QUERY_CONFIGURATION')
+        if named_result is not None:
+            _require(query.get('destinationTable')==named_result['destination'] and query.get('writeDisposition')=='WRITE_EMPTY'
+                and query.get('createDisposition')=='CREATE_IF_NEEDED','NAMED_DESTINATION_MISMATCH')
         _require(query.get('useLegacySql') is False and query.get('useQueryCache') is False
                  and query.get('priority')=='INTERACTIVE' and query.get('allowLargeResults',False) is False,'EXECUTION_POLICY_MISMATCH')
         cap=_number(query.get('maximumBytesBilled'));timeout=_number(conf.get('jobTimeoutMs'))

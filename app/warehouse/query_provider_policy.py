@@ -29,7 +29,12 @@ class ProviderPolicy:
 
 
 def verify_exact_metadata(raw, core, lookup_policy, expected) -> MetadataReport:
-    report = verify_metadata(raw, core, lookup_policy)
+    result=None
+    if expected.get('contract_version')==2:
+        from app.warehouse.named_query_results import validate_result_contract
+        try:result=validate_result_contract(expected['result'],expected['project'],expected['dataset'],expected['job_id'])
+        except (ValueError,TypeError,KeyError):return MetadataReport('UNCERTAIN','REJECTED','INVALID_NAMED_RESULT_CONTRACT')
+    report = verify_metadata(raw, core, lookup_policy,named_result=result)
     if report.verdict != 'VERIFIED_METADATA':
         return report
     config = raw['configuration']

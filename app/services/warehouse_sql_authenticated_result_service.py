@@ -48,7 +48,7 @@ def inspect_authenticated_warehouse_result_without_fetch(
     token = request.cookies.get(settings.session_cookie)
     if not token or len(token) > 128:
         raise HTTPException(401, "Sign in to continue.")
-    with repo.transaction(workspace_id) as conn:
+    with repo.transaction(workspace_id,duty='result_authorization') as conn:
         user, session = _session_locked(conn, token)
         workspace = repo.one(
             conn, "SELECT owner,status FROM workspaces WHERE workspace_id=%s FOR SHARE",
@@ -94,7 +94,7 @@ def _authenticated_attempt_id(
     )
     settings=require_secret()
     token=request.cookies.get(settings.session_cookie)
-    with repo.transaction(workspace_id) as conn:
+    with repo.transaction(workspace_id,duty='result_authorization') as conn:
         user,session=_session_locked(conn,token)
         workspace=repo.one(
             conn,"SELECT owner,status FROM workspaces WHERE workspace_id=%s FOR SHARE",

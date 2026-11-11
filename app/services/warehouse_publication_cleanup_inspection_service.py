@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from psycopg.rows import dict_row
 
-from app.db.database import repository_transaction
+from app.db.database import repository_transaction, require_connection_boundary
 
 
 @dataclass(frozen=True)
@@ -36,6 +36,7 @@ def inspect_publication_cleanup_without_deletion(
             or type(publication_id) is not int or publication_id < 1):
         raise ValueError("Positive publication identity required")
 
+    require_connection_boundary('retention_inspection')
     with repository_transaction() as conn:
         conn.execute("SET LOCAL lock_timeout='5s'")
         conn.execute("SET LOCAL statement_timeout='10s'")

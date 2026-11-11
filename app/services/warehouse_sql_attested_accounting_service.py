@@ -41,7 +41,7 @@ def settle_verified_warehouse_terminal(*, attempt_id: int) -> AccountingResult:
     if type(attempt_id) is not int or attempt_id < 1:
         raise ValueError('Server attempt ID required')
 
-    with repo.transaction() as conn:
+    with repo.transaction(duty='accounting') as conn:
         evidence = _inspect_terminal_evidence_locked(conn, attempt_id)
         checkpoint = repo.checkpoint(conn, attempt_id)
         reservation = repo.lock_identity(conn, checkpoint)

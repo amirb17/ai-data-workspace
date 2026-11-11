@@ -1,6 +1,6 @@
 """Authenticated warehouse workflow composition; production provider dependency is absent."""
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import hashlib
 import secrets
 from fastapi import HTTPException, Request
@@ -78,6 +78,8 @@ def _owned(conn,user,session,workspace,handle):
         raise HTTPException(403,'Original query session required')
     if repo.one(conn,'SELECT 1 FROM warehouse_query_dispatch_revocations WHERE attempt_id=%s',(a['attempt_id'],)):
         raise HTTPException(403,'Query access revoked')
+    if binding.get('contract_version',1)==2 and workspace not in policy._RESULT_POLICIES:
+        raise HTTPException(503,'Named result policy unavailable')
     return a
 
 
@@ -112,6 +114,11 @@ def _preflight(runtime,resolved,workspace):
     verify_serving_table_metadata(binding,workspace_id=workspace,
         expected_schemas={draft.model_id:schema},client=runtime.metadata_client,
         project=server.project,location=server.location)
+    named=policy._RESULT_POLICIES.get(workspace)
+    if named is not None:
+        from app.warehouse.named_query_results import validate_fixed_schema,verify_dataset,result_identity,projection_schema
+        validate_fixed_schema(projection_schema(binding.columns),draft.row_limit)
+        verify_dataset(policy._runtime(workspace)[1].transport._client,result_identity(server.project,workspace,'preflight'),server.location)
     estimate=runtime.estimator.estimate(query)
     if (type(estimate) is not QueryEstimate or type(estimate.bytes_processed) is not int
             or estimate.bytes_processed<1 or estimate.confidence not in (EstimateConfidence.EXACT,EstimateConfidence.UPPER_BOUND)):
@@ -155,6 +162,9 @@ def admit_query(request,workspace,model,sql,key,runtime):
             a=repo.one(conn,'SELECT attempt_handle FROM warehouse_query_attempt_registry WHERE attempt_id=%s',(old['attempt_id'],))
             _owned(conn,user,session,workspace,a['attempt_handle'].strip())
             return dict(attempt_handle=a['attempt_handle'].strip(),reused=True,query_execution_enabled=False)
+        if workspace in policy._RESULT_POLICIES:
+            held=conn.execute('SELECT count(*) FROM warehouse_query_result_contracts WHERE workspace_id=%s',(workspace,)).fetchone()[0]
+            if held>=8:raise HTTPException(409,'Named result storage is permanently held; review capacity before admission')
         current=_revalidate(conn,user,workspace,model,sql,before)
         draft,binding,query,_=current
         a,_=attempts.register_attempt(conn,workspace_id=workspace,owner_key=user['owner_key'],
@@ -170,8 +180,24 @@ def admit_query(request,workspace,model,sql,key,runtime):
                 (a['attempt_id'],pin.resource_id,pin.publication_id,pin.publication_revision))
         conn.execute('INSERT INTO warehouse_query_attempt_reservation_links(attempt_id,reservation_id) VALUES(%s,%s)',
             (a['attempt_id'],result['reservation']['reservation_id']))
-        conn.execute('INSERT INTO warehouse_query_api_requests(workspace_id,user_id,key_sha256,request_sha256,session_digest,attempt_id) VALUES(%s,%s,%s,%s,%s,%s)',
-            (workspace,user['user_id'],key_sha,request_sha,session['token_digest'],a['attempt_id']))
+        named=policy._RESULT_POLICIES.get(workspace)
+        if named is None:
+            conn.execute('INSERT INTO warehouse_query_api_requests(workspace_id,user_id,key_sha256,request_sha256,session_digest,attempt_id) VALUES(%s,%s,%s,%s,%s,%s)',
+                (workspace,user['user_id'],key_sha,request_sha,session['token_digest'],a['attempt_id']))
+        else:
+            from app.warehouse.named_query_results import result_identity,validate_fixed_schema,STORAGE_BYTES,WORKSPACE_STORAGE_BYTES,projection_schema
+            schema=projection_schema(binding.columns)
+            validate_fixed_schema(schema,draft.row_limit)
+            conn.execute('INSERT INTO warehouse_query_api_requests(workspace_id,user_id,key_sha256,request_sha256,session_digest,attempt_id,contract_version) VALUES(%s,%s,%s,%s,%s,%s,2)',
+                (workspace,user['user_id'],key_sha,request_sha,session['token_digest'],a['attempt_id']))
+            job=f"dr_query_w{workspace}_r{result['reservation']['reservation_id']}_{a['request_token'].strip()[:32]}"
+            until_ms=conn.execute('SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint+%s',(named.read_seconds*1000,)).fetchone()[0]
+            contract=dict(version=1,destination=result_identity(policy._runtime(workspace)[0].project,workspace,job),
+                schema=[list(c) for c in schema],maximum_rows=draft.row_limit,maximum_storage_bytes=STORAGE_BYTES,
+                workspace_storage_bytes=WORKSPACE_STORAGE_BYTES,read_until_ms=until_ms,policy=asdict(named))
+            from psycopg.types.json import Jsonb
+            conn.execute('INSERT INTO warehouse_query_result_contracts(attempt_id,workspace_id,provider_job_id,sql_sha256,result,read_valid_until) VALUES(%s,%s,%s,%s,%s,to_timestamp(%s/1000.0))',
+                (a['attempt_id'],workspace,job,hashlib.sha256(query.sql.encode()).hexdigest(),Jsonb(contract),until_ms))
     return dict(attempt_handle=a['attempt_handle'].strip(),reused=False,query_execution_enabled=False)
 
 
@@ -188,7 +214,8 @@ def query_status(request,workspace,handle):
             from app.services.warehouse_sql_result_eligibility_service import _inspect_settled_result_eligibility_locked
             try:
                 _inspect_settled_result_eligibility_locked(conn,a['attempt_id']);state='SUCCEEDED'
-            except ValueError: pass
+            except ValueError as error:
+                if str(error)=='NAMED_RESULT_READ_WINDOW_EXPIRED':state='EXPIRED'
         elif r['status']=='FAILED' and j:
             proof=repo.one(conn,'''SELECT a.*,p.expected_sha256,u.provider_job_id AS ledger_job,u.outcome,
                 i.provider_job_id AS original_job,u.bytes_processed AS ledger_processed,u.bytes_billed AS ledger_billed,
@@ -258,6 +285,10 @@ def execute_query(request,workspace,handle,runtime):
             JOIN query_governance_reservations r USING(reservation_id) WHERE l.attempt_id=%s''',(a['attempt_id'],))
         if original['intent_sha256']!=before[2].intent_sha256 or estimate.bytes_processed>original['reserved_bytes']:
             raise HTTPException(409,'Original query input or reserved budget is stale')
+    if workspace in policy._RESULT_POLICIES:
+        with _scope(request,workspace) as (conn,user,session):
+            nr=repo.one(conn,'SELECT read_valid_until>clock_timestamp() AS valid FROM warehouse_query_result_contracts WHERE attempt_id=%s',(a['attempt_id'],))
+            if not nr or not nr['valid']:raise HTTPException(409,'Named result admission is expired or unavailable')
     checkpoint_authenticated_warehouse_dispatch(request=request,workspace_id=workspace,attempt_handle=handle)
     recovery.prepare_authenticated_send_intent(request=request,workspace_id=workspace,attempt_handle=handle)
     policy.pin_authenticated_query_envelope_without_dispatch(request=request,workspace_id=workspace,attempt_handle=handle)
@@ -318,8 +349,16 @@ def query_results(request,workspace,handle,runtime):
     if query_status(request,workspace,handle)['status']!='SUCCEEDED':
         raise HTTPException(409,'Settled successful results are not ready')
     schema=inspect_server_result_schema(attempt_id=a['attempt_id'])
+    reader=runtime.results_transport
+    with _scope(request,workspace) as (conn,user,session):
+        expected=repo.one(conn,'SELECT expected FROM warehouse_query_provider_policies WHERE attempt_id=%s',(a['attempt_id'],))['expected']
+        if expected['contract_version']==2:
+            from app.warehouse.named_query_results import IndependentNamedResultReader
+            if [list(col) for col in schema.columns]!=expected['result']['schema']:raise ValueError('Pinned result schema changed')
+            proof=repo.one(conn,'SELECT metadata_sha256 FROM warehouse_query_result_attestations WHERE attempt_id=%s ORDER BY journal_revision DESC LIMIT 1',(a['attempt_id'],))
+            reader=IndependentNamedResultReader(expected,proof['metadata_sha256'],policy._runtime(workspace)[1].transport._client,reader)
     page=read_authenticated_first_warehouse_page_simulated(request=request,workspace_id=workspace,attempt_handle=handle,
-        transport=SimulatedBigQueryFirstPage(runtime.results_transport,schema.columns))
+        transport=SimulatedBigQueryFirstPage(reader,schema.columns))
     query_status(request,workspace,handle)  # Final session/revocation check before serialization.
     return dict(attempt_handle=handle,columns=list(page.columns),rows=[list(row) for row in page.rows],
         has_more=page.provider_has_more,bytes_encoded=page.bytes_encoded,query_execution_enabled=False)

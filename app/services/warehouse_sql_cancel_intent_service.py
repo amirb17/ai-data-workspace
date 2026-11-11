@@ -24,7 +24,7 @@ def record_cancel_intent_without_provider(
 ) -> CancelIntent:
     """Idempotently persist cancel intent only for exact pinned, possibly sent job."""
     recovery._validate_lease(lease)
-    with recovery._worker(lease.attempt_id) as (conn, c):
+    with recovery._worker(lease.attempt_id,duty='provider_submission') as (conn, c):
         reservation = repo.lock_identity(conn, c)
         intent, event = repo.latest(conn, lease.attempt_id)
         repo.require_owner(conn, event, lease, expected_revision)

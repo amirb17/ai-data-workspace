@@ -51,11 +51,11 @@ def _snapshot(conn,c,lease,revision):
         tuple(tables),ceiling,int(r['execution_started_at'].timestamp()*1000))
 
 
-def _persist(conn,attempt_id,revision,report,policy_sha):
-    conn.execute("""INSERT INTO warehouse_query_recovery_attestations(attempt_id,journal_revision,
+def _persist(conn,attempt_id,revision,report,policy_sha,*,contract_version=1):
+    conn.execute("""INSERT INTO warehouse_query_recovery_attestations(contract_version,attempt_id,journal_revision,
         observation,verdict,reason,policy_sha256,payload_sha256,bytes_processed,bytes_billed,billing_complete)
-        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-        (attempt_id,revision,report.observation,report.verdict,report.reason,policy_sha,report.payload_sha256,
+        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+        (contract_version,attempt_id,revision,report.observation,report.verdict,report.reason,policy_sha,report.payload_sha256,
          report.bytes_processed,report.bytes_billed,report.billing_complete))
 
 
