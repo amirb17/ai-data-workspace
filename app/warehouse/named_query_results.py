@@ -6,7 +6,7 @@ from app.warehouse.query_recovery_attestation import digest
 
 STORAGE_BYTES=8*1024*1024
 WORKSPACE_STORAGE_BYTES=64*1024*1024
-FIXED_TYPES=frozenset({'INTEGER','NUMERIC','BOOLEAN','DATE','TIMESTAMP'})
+FIXED_TYPES=frozenset({'STRING','INTEGER','NUMERIC','BOOLEAN','DATE','TIMESTAMP'})
 
 @dataclass(frozen=True)
 class NamedResultPolicy:
@@ -29,8 +29,9 @@ def validate_fixed_schema(schema, rows):
             or any(not re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]{0,127}',n) or t not in FIXED_TYPES for n,t in schema)
             or len({n for n,_ in schema})!=len(schema)):
         raise ValueError('NAMED_RESULTS_REQUIRE_BOUNDED_FIXED_WIDTH_PROJECTION')
-    # Conservative allowance: 64KiB table metadata plus 256 bytes per cell
-    # and row. Fixed scalar types cannot contain arbitrary strings/arrays.
+    # Conservative reservation allowance; STRING is supported only with hard
+    # per-cell (8192 characters), first-page (256 KiB), and physical table
+    # storage (8 MiB) limits verified before any rows are returned.
     if 65536+rows*(256+len(schema)*256)>STORAGE_BYTES:
         raise ValueError('NAMED_RESULT_STORAGE_BOUND_EXCEEDED')
 
