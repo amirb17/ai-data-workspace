@@ -51,8 +51,12 @@ class WarehouseWorkerClient:
             raw=response.read(4097)
             if len(raw)>4096:
                 raise WorkerRpcRejected("WORKER_RPC_RESPONSE_OVERSIZED")
-            if response.status!=200:
-                raise WorkerRpcRejected("WORKER_RPC_UNAVAILABLE_OR_REJECTED")
+            if response.status == 400:
+                raise WorkerRpcRejected("WORKER_RPC_AUTH_OR_REQUEST_REJECTED")
+            if response.status == 503:
+                raise WorkerRpcRejected("WORKER_RPC_SERVER_OPERATION_UNAVAILABLE")
+            if response.status != 200:
+                raise WorkerRpcRejected("WORKER_RPC_UNEXPECTED_HTTP_STATUS")
             try:
                 result=json.loads(raw)
             except (UnicodeDecodeError,ValueError):
