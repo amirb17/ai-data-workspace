@@ -69,12 +69,19 @@ def _result(response):
 
 
 def run(args, *, session=None, cookie=None, csrf=None, wait=time.sleep):
-    if not re.fullmatch(r"SELECT\s+[\s\S]{1,16000}", args.sql.strip(), re.I):
-        raise AcceptanceError("SELECT_ONLY_DEMO_REQUIRED")
-    if ";" in args.sql or "--" in args.sql or "/*" in args.sql:
-        raise AcceptanceError("ONE_SINGLE_SELECT_REQUIRED")
-    if not 1 <= args.workspace <= 2**63-1 or not 1 <= args.model <= 2**63-1:
+    resume = getattr(args, "resume_handle", None)
+    if resume is not None and (type(resume) is not str or not _HANDLE.fullmatch(resume)):
+        raise AcceptanceError("ORIGINAL_ATTEMPT_HANDLE_REQUIRED")
+    if not 1 <= args.workspace <= 2**63-1:
         raise AcceptanceError("INVALID_WAREHOUSE_SCOPE")
+    if resume is None:
+        if not isinstance(args.sql, str) or not re.fullmatch(
+                r"SELECT\\s+[\\s\\S]{1,16000}", args.sql.strip(), re.I):
+            raise AcceptanceError("SELECT_ONLY_DEMO_REQUIRED")
+        if ";" in args.sql or "--" in args.sql or "/*" in args.sql:
+            raise AcceptanceError("ONE_SINGLE_SELECT_REQUIRED")
+        if args.model is None or not 1 <= args.model <= 2**63-1:
+            raise AcceptanceError("INVALID_WAREHOUSE_SCOPE")
     base = urlsplit(args.backend)
     origin = urlsplit(args.origin)
     if (base.scheme != "http" or base.hostname not in ("127.0.0.1", "localhost")
@@ -98,30 +105,39 @@ def run(args, *, session=None, cookie=None, csrf=None, wait=time.sleep):
     session.cookies.set("datarise_session", cookie, path="/", domain=base.hostname)
     session.cookies.set("datarise_csrf", csrf, path="/", domain=base.hostname)
     session.headers.update({"Origin": args.origin.rstrip("/"), "X-CSRF-Token": csrf})
-    # Reuse exact same request identity to detect duplicate admission.
-    key = "e2e_" + secrets.token_hex(24)
-    assert _KEY.fullmatch(key)
     url = f"{args.backend.rstrip('/')}/workspaces/{args.workspace}/warehouse/queries"
-    print("LIVE: real API endpoint, no dependency overrides or fake cloud")
-    print("CHECK: authenticated SQL validation", flush=True)
-    validated = _post(session, url + "/validate",
-                      {"model_id": args.model, "sql": args.sql})
-    if validated.get("budget_decision") != "ALLOWED":
-        raise AcceptanceError("GOVERNANCE_BUDGET_NOT_ALLOWED")
-    print("CHECK: admission + idempotent duplicate admission", flush=True)
-    payload = {"model_id": args.model, "sql": args.sql, "idempotency_key": key}
-    first = _post(session, url, payload)
-    handle = first.get("attempt_handle")
-    if type(handle) is not str or not _HANDLE.fullmatch(handle):
-        raise AcceptanceError("MISSING_ATTEMPT_HANDLE")
-    again = _post(session, url, payload)
-    if again.get("attempt_handle") != handle or again.get("reused") is not True:
-        raise AcceptanceError("DUPLICATE_ADMISSION_NOT_REUSED")
-    print("CHECK: submit/reconcile verified original job", flush=True)
-    attempt_url = url + "/" + handle
-    state = _post(session, attempt_url + "/execute")
-    if state.get("attempt_handle") != handle:
-        raise AcceptanceError("ATTEMPT_IDENTITY_CHANGED")
+    print("LIVE: real API endpoint, no offline provider or fake cloud")
+    if resume is None:
+        # Reuse exact same request identity to test duplicate admission.
+        key = "e2e_" + secrets.token_hex(24)
+        assert _KEY.fullmatch(key)
+        print("CHECK: authenticated SQL validation", flush=True)
+        validated = _post(session, url + "/validate",
+                          {"model_id": args.model, "sql": args.sql})
+        if validated.get("budget_decision") != "ALLOWED":
+            raise AcceptanceError("GOVERNANCE_BUDGET_NOT_ALLOWED")
+        print("CHECK: admission + idempotent duplicate admission", flush=True)
+        payload = {"model_id": args.model, "sql": args.sql, "idempotency_key": key}
+        first = _post(session, url, payload)
+        handle = first.get("attempt_handle")
+        if type(handle) is not str or not _HANDLE.fullmatch(handle):
+            raise AcceptanceError("MISSING_ATTEMPT_HANDLE")
+        # Print before any possible send. Failures can then resume the same job.
+        print("ORIGINAL ATTEMPT:", handle, flush=True)
+        again = _post(session, url, payload)
+        if again.get("attempt_handle") != handle or again.get("reused") is not True:
+            raise AcceptanceError("DUPLICATE_ADMISSION_NOT_REUSED")
+        print("CHECK: submit/reconcile verified original job", flush=True)
+        attempt_url = url + "/" + handle
+        state = _post(session, attempt_url + "/execute")
+        if state.get("attempt_handle") != handle:
+            raise AcceptanceError("ATTEMPT_IDENTITY_CHANGED")
+    else:
+        # No new validation, admission or submission on recovery.
+        handle = resume
+        print("RESUMING ORIGINAL ATTEMPT:", handle, flush=True)
+        attempt_url = url + "/" + handle
+        state = _get(session, attempt_url)
     deadline = time.monotonic() + args.timeout
     while state.get("status") not in _TERMINAL and time.monotonic() < deadline:
         wait(2)
@@ -158,8 +174,9 @@ def main():
     parser.add_argument("--backend", default="http://127.0.0.1:8000")
     parser.add_argument("--origin", default="http://localhost:5173")
     parser.add_argument("--workspace", type=int, required=True)
-    parser.add_argument("--model", type=int, required=True)
-    parser.add_argument("--sql", required=True)
+    parser.add_argument("--model", type=int)
+    parser.add_argument("--sql")
+    parser.add_argument("--resume-handle", help="Recover one original attempt without a new submission")
     parser.add_argument("--timeout", type=int, default=90)
     args = parser.parse_args()
     if not 10 <= args.timeout <= 300:
