@@ -9,7 +9,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[2]
 DEV = ROOT / "deployment" / "terraform" / "environments" / "dev"
-TARGET_REGION = "ap-south-1"
+TARGET_REGION = "ap-southeast-2"
 EXPECTED_PROFILE = "datarise"
 
 
