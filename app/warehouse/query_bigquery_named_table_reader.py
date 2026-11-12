@@ -26,6 +26,7 @@ _CHUNK = 16 * 1024
 _EMAIL = re.compile(r"[a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com\Z")
 _TOKEN = re.compile(r"Bearer [A-Za-z0-9._~+/-]{16,4096}\Z")
 _KIND = {
+    "STRING": "STRING",
     "INTEGER": "INTEGER",
     "NUMERIC": "NUMERIC",
     "BOOLEAN": "BOOLEAN",
