@@ -46,6 +46,37 @@ def test_single_model_compiles_only_backend_pinned_fields_and_table():
     assert compile_with()==result
 
 
+
+def test_approved_dimension_compiles_using_real_model_type():
+    draft=WarehouseSqlDraft(
+        normalized_sql="SELECT product_id FROM model_12 LIMIT 10",
+        model_id=12,model_version_id=44,
+        projected_columns=("product_id",),row_limit=10,
+    )
+    bound=bind_draft(draft,fact=source(12,44,"DIMENSION"))
+    assert bound.models[0].model_type=="DIMENSION"
+    compiled=compile_single_model_sql(
+        workspace_id=7,draft=draft,binding=bound,
+    )
+    assert compiled.sql==(
+        "SELECT `c0` AS `product_id` FROM "
+        "`synthetic-project.dr_dev_w7.m12_v44_g1_p212_r2` LIMIT 10"
+    )
+
+
+def test_dimension_and_fact_change_immutable_compilation_identity():
+    draft=WarehouseSqlDraft(
+        normalized_sql="SELECT product_id FROM model_12 LIMIT 10",
+        model_id=12,model_version_id=44,
+        projected_columns=("product_id",),row_limit=10,
+    )
+    fact=compile_single_model_sql(workspace_id=7,draft=draft,
+                                  binding=bind_draft(draft,fact=source(12,44,"FACT")))
+    dim=compile_single_model_sql(workspace_id=7,draft=draft,
+                                 binding=bind_draft(draft,fact=source(12,44,"DIMENSION")))
+    assert dim.sql==fact.sql
+    assert dim.intent_sha256!=fact.intent_sha256
+
 def test_change_of_serving_receipt_changes_intent_and_request_token():
     draft,bound=input_pair()
     altered=replace(bound,models=(
