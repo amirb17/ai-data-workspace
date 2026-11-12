@@ -53,16 +53,30 @@ export function WarehouseModelContent({workspace,catalog,relationships=[],reload
       </div>
       <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-lg border bg-white px-3 text-sm"><RefreshCw size={16}/>Check for updates</button>
     </header>
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-      <GitBranch className="mr-2 inline-block" size={16}/>
-      {verified.length ? `${verified.length} explicitly reviewed relationship(s) available below.` : 'No current reviewed FACT-to-DIMENSION relationships. Tables are grouped by type, not connected by inferred keys.'} Warehouse SQL remains disabled.
-    </div>
+    <section className="rounded-xl border border-slate-200 bg-white p-4" aria-label="Star schema relationship overview">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-900"><GitBranch size={18}/>Star schema · FACT to DIMENSION</h2>
+        <span className="text-xs text-slate-600">{verified.length} reviewed connection{verified.length===1?'':'s'}</span>
+      </div>
+      <p className="mt-2 text-sm text-slate-600">Facts record events at a declared grain. Dimensions describe customers, products, dates and other business context. A reviewed foreign-key-to-business-key mapping connects many fact rows to one dimension member; historical SCD2 joins also require an event-time rule.</p>
+      {verified.length>0?<div className="mt-3 grid gap-3 lg:grid-cols-2">
+        {verified.map(relation=><button type="button" key={relation.relationship_id}
+          onClick={()=>{setSelectedRelationId(relation.relationship_id);setSelectedId(null)}}
+          className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-left hover:border-indigo-500">
+          <span className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Reviewed · many-to-one</span>
+          <strong className="mt-1 block break-words text-sm">{current.get(relation.fact_model_id)?.name} (N) → {current.get(relation.dimension_model_id)?.name} (1)</strong>
+          <span className="mt-1 block break-all font-mono text-xs text-slate-700">{relation.key_pairs.map(pair=>pair.fact_column+' = '+pair.dimension_column).join(' · ')}</span>
+          <span className="mt-1 block text-xs text-slate-600">{relation.temporal_policy==='EVENT_TIME_AS_OF'?'Historical as-of / SCD2':'Current dimension member'}</span>
+        </button>)}
+      </div>:<p role="status" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">No current reviewed FACT-to-DIMENSION keys have been registered. The graph shows tables as separate nodes; it must not draw guessed joins merely because column names match. Review source-key uniqueness and relationship contracts before registering an edge.</p>}
+      <p className="mt-3 text-xs text-slate-500">Relationships are logical metadata. Physical tables are published separately in BigQuery; model approval does not guarantee a queryable serving table.</p>
+    </section>
     <section className="rounded-xl border border-slate-200 bg-white p-4" aria-labelledby="warehouse-readiness-title">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="warehouse-readiness-title" className="text-base font-semibold text-slate-900">Warehouse release readiness</h2>
         <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">Review required</span>
       </div>
-      <p className="mt-2 text-sm text-slate-600">Approved model definitions are available for inspection. BigQuery warehouse SQL remains disabled until independent security, serving and execution checks are accepted.</p>
+      <p className="mt-2 text-sm text-slate-600">Approved model definitions are available for inspection. Query execution requires separately verified BigQuery serving tables, authenticated runtime and controlled result authorization.</p>
       <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
         {catalog.readiness.blockers.map(item=><li key={item.code}>{item.label}</li>)}
       </ul>
