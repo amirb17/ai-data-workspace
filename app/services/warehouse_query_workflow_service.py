@@ -154,9 +154,17 @@ def _resolve(conn,user,workspace,model,sql):
                  'Check its publication in the Model workspace.',
         )
     row=rows[0]
-    binding=bind_draft(draft,fact=_source(row,workspace,_publication_state_id(row)))
-    query=compile_single_model_sql(workspace_id=workspace,draft=draft,binding=binding)
-    return draft,binding,query,physical_schema(_context(row))
+    try:
+        source=_source(row,workspace,_publication_state_id(row))
+        binding=bind_draft(draft,fact=source)
+        query=compile_single_model_sql(workspace_id=workspace,draft=draft,binding=binding)
+        schema=physical_schema(_context(row))
+    except ValueError as exc:
+        # The SQL was already parsed against the authenticated model. All
+        # remaining errors here describe publication/physical binding drift,
+        # NOT user-authored SQL syntax. Do not leak a physical table or token.
+        raise HTTPException(409, 'WAREHOUSE_PUBLICATION_BINDING_NOT_READY') from None
+    return draft,binding,query,schema
 
 
 
@@ -173,9 +181,12 @@ def _revalidate(conn,user,workspace,model,sql,before):
 def _preflight(runtime,resolved,workspace):
     draft,binding,query,schema=resolved
     server,_=policy._runtime(workspace)
-    verify_serving_table_metadata(binding,workspace_id=workspace,
-        expected_schemas={draft.model_id:schema},client=runtime.metadata_client,
-        project=server.project,location=server.location)
+    try:
+        verify_serving_table_metadata(binding,workspace_id=workspace,
+            expected_schemas={draft.model_id:schema},client=runtime.metadata_client,
+            project=server.project,location=server.location)
+    except ValueError:
+        raise HTTPException(409, 'WAREHOUSE_SERVING_SCHEMA_NOT_VERIFIED') from None
     named=policy._RESULT_POLICIES.get(workspace)
     if named is not None:
         from app.warehouse.named_query_results import validate_fixed_schema,verify_dataset,result_identity,projection_schema
