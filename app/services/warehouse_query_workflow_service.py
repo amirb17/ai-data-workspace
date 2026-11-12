@@ -149,10 +149,7 @@ def _resolve(conn,user,workspace,model,sql):
         [s['dataset_id'] for s in catalog['models'][0]['sources'] if s['purpose']=='PRIMARY'],environment='development')
     rows=[r for r in rows if (r['warehouse_model_id'],r['warehouse_model_version_id'])==(draft.model_id,draft.model_version_id)]
     if len(rows)!=1:
-        raise HTTPException(
-            409, 'Selected warehouse model has no unique current published serving table. '
-                 'Check its publication in the Model workspace.',
-        )
+        raise HTTPException(409, 'WAREHOUSE_NO_CURRENT_SERVING_PUBLICATION')
     row=rows[0]
     try:
         source=_source(row,workspace,_publication_state_id(row))
