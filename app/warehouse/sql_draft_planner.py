@@ -110,7 +110,10 @@ def plan_draft(sql_text: str, *, workspace_id: int, catalog: dict) -> WarehouseS
     # The normalized statement still contains logical model_<id> names.
     # Never substitute provider paths in this module.
     return WarehouseSqlDraft(
-        normalized_sql=tree.sql(dialect="bigquery"),
+        # Logical drafts are parsed and reparsed with the DuckDB dialect.
+        # BigQuery's backtick quoting must not leak into this internal AST
+        # round-trip; physical BigQuery SQL is generated independently.
+        normalized_sql=tree.sql(dialect="duckdb"),
         model_id=model["model_id"],
         model_version_id=model["model_version_id"],
         projected_columns=tuple(names),
