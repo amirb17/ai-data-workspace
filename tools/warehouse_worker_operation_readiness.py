@@ -1,6 +1,8 @@
 """Read-only live permission readiness for warehouse worker service operations.
 
-Worker health only verifies identities. The provider submission operation is\ncurrently disabled and is never considered live-ready by this report.\nIt does NOT prove that recovery and
+Worker health only verifies identities. The provider submission operation is
+currently disabled and is never considered live-ready by this report.
+It does NOT prove that recovery and
 settlement SQL can acquire row locks or read canonical source tables.
 This audit checks the effective table privileges for the exact known service
 prerequisites, without running a query attempt, obtaining a row lock, modifying
