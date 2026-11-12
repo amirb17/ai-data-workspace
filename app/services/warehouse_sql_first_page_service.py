@@ -54,7 +54,31 @@ def read_first_warehouse_page_simulated(
             project=scope.project, location=scope.location,
             job_id=scope.job_id, max_results=scope.max_page_rows,
         )
-    except Exception:
+    except Exception as exc:
+        # The outer API deliberately masks provider and proof failures.
+        # Preserve a bounded, allowlisted reason in server logs without
+        # leaking credential headers, SQL, job IDs, URLs, or result values.
+        import logging
+        safe_codes = {
+            "NAMED_RESULT_MATERIALIZATION_MISMATCH",
+            "DEDICATED_RESULT_DATASET_POLICY_MISMATCH",
+            "NAMED_TABLE_HTTP_REJECTED",
+            "NAMED_TABLE_READ_UNAVAILABLE",
+            "NONRETRYING_READER_SESSION_REQUIRED",
+            "EXACT_UNEXPIRED_NAMED_TABLE_SCOPE_REQUIRED",
+            "RESULT_SCHEMA_MISMATCH",
+            "PROVIDER_RESPONSE_TOO_LARGE",
+            "INVALID_NAMED_TABLE_RESPONSE",
+            "INVALID_RESULT_ROW",
+            "INVALID_RESULT_CELL",
+            "RESULT_JOB_SCOPE_MISMATCH",
+            "NAMED_RESULT_CHANGED",
+        }
+        reason = str(exc) if type(exc) is ValueError else ""
+        logging.getLogger("datarise.warehouse.results").warning(
+            "WAREHOUSE_RESULT_TRANSPORT_FAILED class=%s reason=%s",
+            type(exc).__name__, reason if reason in safe_codes else "OTHER",
+        )
         raise ResultFetchUnavailable("RESULT_LOOKUP_UNAVAILABLE") from None
 
     # Prevent stale successful settlement or policy evidence from being used
