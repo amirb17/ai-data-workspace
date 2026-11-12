@@ -249,7 +249,7 @@ def query_status(request,workspace,handle):
 def _lease(attempt,runtime):
     # The real multi-process path uses the separately authenticated attester
     # rather than borrowing its PostgreSQL role inside the API process.
-    router=runtime.worker_router
+    router=getattr(runtime,"worker_router",None)
     if router is not None:
         view=router.inspect_recovery(attempt)
         return router.acquire_recovery(
@@ -275,7 +275,7 @@ def _observe_and_settle(request,workspace,handle,lease,revision,runtime=None):
     # Reauthorize before settlement/response; observation remains useful trusted recovery metadata.
     query_status(request,workspace,handle)
     if observation.verdict=='VERIFIED_METADATA' and observation.billing_complete and observation.observation in ('SUCCEEDED','FAILED','CANCELLED'):
-        if runtime is not None and runtime.worker_router is not None:
+        if runtime is not None and getattr(runtime,"worker_router",None) is not None:
             runtime.worker_router.settle_terminal(lease.attempt_id)
         else:
             settle_verified_warehouse_terminal(attempt_id=lease.attempt_id)
@@ -331,7 +331,7 @@ def refresh_query(request,workspace,handle,runtime):
         report=repo.one(conn,'SELECT * FROM warehouse_query_recovery_attestations WHERE attempt_id=%s AND journal_revision=%s',(a['attempt_id'],event['revision']))
     # Recover a successful observation whose accounting commit/response was lost, without another GET or lease.
     if report and report['verdict']=='VERIFIED_METADATA' and report['billing_complete'] and report['observation'] in ('SUCCEEDED','FAILED','CANCELLED'):
-        if runtime.worker_router is not None:
+        if getattr(runtime,"worker_router",None) is not None:
             runtime.worker_router.settle_terminal(a['attempt_id'])
         else:
             settle_verified_warehouse_terminal(attempt_id=a['attempt_id'])
