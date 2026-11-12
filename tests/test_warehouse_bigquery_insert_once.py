@@ -1,5 +1,5 @@
 """A real jobs.insert adapter makes one call, never client.query or retry."""
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 import pytest
 
 from app.warehouse.query_bigquery_insert_once import (
@@ -83,3 +83,27 @@ def test_request_for_other_project_is_blocked_before_cloud():
     with pytest.raises(BigQueryInsertTransportError):
         submit_one_reviewed_job(request=wrong,transport=transport)
     c._call_api.assert_not_called()
+
+
+def test_real_sdk_client_dispatches_one_rest_insert_without_auth_or_network():
+    # Not a live cloud test. Exercise google-cloud-bigquery's actual
+    # _call_api binding against a mocked connection transport.
+    from google.cloud import bigquery
+    from google.auth.credentials import AnonymousCredentials
+    c=bigquery.Client(
+        project="datarise-511817",credentials=AnonymousCredentials(),
+        location="asia-south1",
+    )
+    job=request()
+    with patch.object(c._connection,"api_request",return_value={
+        "jobReference":job.body["jobReference"]
+    }) as api:
+        observation=submit_one_reviewed_job(
+            request=job,
+            transport=BigQueryJobInsertOnce(
+                c,"datarise-511817","asia-south1"),
+        )
+    assert observation.classification=="INSERT_ACKNOWLEDGED_UNVERIFIED"
+    api.assert_called_once()
+    assert api.call_args.kwargs["path"]=="/projects/datarise-511817/jobs"
+    assert api.call_args.kwargs["data"]==job.body
