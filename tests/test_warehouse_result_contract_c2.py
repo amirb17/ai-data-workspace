@@ -29,7 +29,7 @@ def test_named_request_is_deterministic_no_warehouse_overwrite_and_legacy_unchan
 
 @pytest.mark.parametrize('field,value',[
     ('maximum_storage_bytes',STORAGE_BYTES+1),('workspace_storage_bytes',WORKSPACE_STORAGE_BYTES+1),
-    ('maximum_rows',501),('schema',[['name','STRING']]),('version',2),('read_until_ms',0),
+    ('maximum_rows',501),('schema',[['name','JSON']]),('version',2),('read_until_ms',0),
     ('destination',{'projectId':'synthetic-project','datasetId':'dr_dev_w5','tableId':'owned'}),
 ])
 def test_named_contract_cannot_widen_or_replace_destination(field,value):
