@@ -59,11 +59,16 @@ def execute_operation(duty: str, operation: str, args: dict):
             raise WorkerRpcRejected("WORKER_HEALTH_ARGUMENTS_FORBIDDEN")
         from app.db.database import repository_transaction
         with repository_transaction() as conn:
-            current, session, schema = conn.execute(
-                "SELECT current_user, session_user, current_schema()"
+            current, session, schemas = conn.execute(
+                "SELECT current_user, session_user, current_schemas(true)"
             ).fetchone()
+        # pg_catalog intentionally precedes public to resolve trusted
+        # built-ins before canonical application tables; current_schema()
+        # therefore returns pg_catalog, not public.
         if (current != ROLE_BY_DUTY[duty] or session != ROLE_BY_DUTY[duty]
-                or schema != "public"):
+                or tuple(schemas[:3]) != (
+                    "pg_catalog", "public", "datarise_warehouse_dev"
+                )):
             raise WorkerRpcRejected("WORKER_IDENTITY_OR_CANONICAL_PATH_INVALID")
         return {"duty": duty, "database_identity_verified": True,
                 "query_execution_enabled": False}
