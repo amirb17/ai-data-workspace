@@ -469,7 +469,10 @@ def query_results(request,workspace,handle,runtime):
             # Bind job-specific table identity ONLY after authenticated schema
             # and stored immutable policy have been read from PostgreSQL.
             # Tests may still inject the existing fake results transport.
-            if type(reader) is PinnedNamedTableResultReaderFactory:
+            if isinstance(reader, PinnedNamedTableResultReaderFactory):
+                # Trusted local adapters may refresh a short-lived reader
+                # token at the exact pinned-job bind; the concrete factory
+                # still validates the independent reader principal.
                 reader=reader.bind(expected)
             reader=IndependentNamedResultReader(expected,proof['metadata_sha256'],policy._runtime(workspace)[1].transport._client,reader)
     page=read_authenticated_first_warehouse_page_simulated(request=request,workspace_id=workspace,attempt_handle=handle,
