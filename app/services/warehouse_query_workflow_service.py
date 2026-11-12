@@ -367,7 +367,7 @@ def query_results(request,workspace,handle,runtime):
         a=_owned(conn,user,session,workspace,handle)
         # Establish the exact original reservation and job under the
         # authenticated control boundary, never from worker RPC arguments.
-        identity=repo.one(conn,'''SELECT l.reservation_id,i.provider_job_id
+        identity=repo.one(conn,'''SELECT l.reservation_id,i.provider_job_id,i.provider_project,i.provider_location
             FROM warehouse_query_attempt_reservation_links l
             JOIN warehouse_query_send_intents i USING(attempt_id)
             WHERE l.attempt_id=%s''',(a['attempt_id'],))
@@ -379,6 +379,8 @@ def query_results(request,workspace,handle,runtime):
         if (not identity or eligibility.attempt_id!=a['attempt_id']
                 or eligibility.reservation_id!=identity['reservation_id']
                 or eligibility.job_id!=identity['provider_job_id']
+                or eligibility.project!=identity['provider_project']
+                or eligibility.location!=identity['provider_location']
                 or eligibility.classification!='SETTLED_SUCCESS_RESULTS_REVIEW_REQUIRED'
                 or eligibility.provider_dispatched is not False
                 or eligibility.result_fetched is not False):
