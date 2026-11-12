@@ -42,7 +42,9 @@ class FakeSession:
         self.history.append(("GET", url, None))
         if url.endswith("/results"):
             return Reply(200, {"columns": ["check_value"], "rows": [[1]]})
-        raise AssertionError("Terminal job must not poll")
+        if url.endswith("/" + self.handle):
+            return Reply(200, {"attempt_handle": self.handle, "status": "SUCCEEDED"})
+        raise AssertionError("Unexpected job polling")
 
 
 def args():
@@ -93,5 +95,26 @@ def test_remote_hostname_never_receives_credentials():
     value.backend = "https://external.example.org"
     session = FakeSession()
     with pytest.raises(AcceptanceError, match="EXPLICIT_LOOPBACK"):
+        run(value, session=session, cookie="session", csrf="csrf")
+    assert session.history == []
+
+
+def test_resume_never_admits_or_submits_another_job(capsys):
+    session = FakeSession()
+    value = args()
+    value.resume_handle = session.handle
+    value.model = None
+    value.sql = None
+    assert run(value, session=session, cookie="session", csrf="csrf",
+               wait=lambda _: None) == 0
+    assert [method for method, _, _ in session.history] == ["GET", "GET"]
+    assert "RESUMING ORIGINAL ATTEMPT" in capsys.readouterr().out
+
+
+def test_resume_rejects_invalid_original_handle_without_http():
+    session = FakeSession()
+    value = args()
+    value.resume_handle = "not_an_attempt"
+    with pytest.raises(AcceptanceError, match="ORIGINAL_ATTEMPT_HANDLE_REQUIRED"):
         run(value, session=session, cookie="session", csrf="csrf")
     assert session.history == []
