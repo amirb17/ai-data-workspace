@@ -93,6 +93,16 @@ def api_case(genuinely_served_query,monkeypatch):
     monkeypatch.setenv('AUTH_MODE','session');monkeypatch.setenv('AUTH_COOKIE_SECURE','false')
     monkeypatch.setenv('AUTH_SECRET','synthetic-dispatch-session-test-secret-414d5')
     from app.main import app
+    # This integration fixture uses a disposable PostgreSQL schema and fake
+    # BigQuery runtime. The real status gateway requires a dedicated
+    # datarise_wh_control DSN, deliberately absent from this fixture.
+    # Override only that route-local gateway for offline HTTP lifecycle tests;
+    # production gateway and restricted-role acceptance remain unchanged.
+    from contextlib import nullcontext
+    from app.api import warehouse_queries
+    monkeypatch.setattr(
+        warehouse_queries, "query_control_boundary", lambda request: nullcontext()
+    )
     with f.pg['connect']() as conn:
         for migration in sorted((ROOT/'migrations').glob('*.sql')):
             if '0053'<=migration.name[:4]<='0061':conn.execute(migration.read_text(encoding='utf-8-sig'))
