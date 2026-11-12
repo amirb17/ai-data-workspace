@@ -65,9 +65,14 @@ REQUIREMENTS = {
         (Q+".warehouse_query_provider_policies", "SELECT", "pinned_policy"),
         (Q+".warehouse_query_send_journal", "INSERT", "record_boundary"),
     ),
-    "recovery_attestation": BASE + (
+    # Only RPC-exposed inspect_recovery/acquire_recovery are evaluated.
+    # Both use the global advisory transaction lock and read immutable
+    # metadata without row locks; acquire appends a fenced journal revision.
+    # Other recovery/attestation service methods require a separate review.
+    "recovery_attestation": tuple(
+        entry for entry in BASE if entry[1] != "UPDATE"
+    ) + (
         (Q+".warehouse_query_send_journal", "INSERT", "recovery_lease_journal"),
-        (Q+".warehouse_query_recovery_attestations", "INSERT", "attestation"),
     ),
     # Accounting still takes the governance reservation FOR UPDATE when
     # writing the durable usage ledger. Immutable attempt and send-intent
