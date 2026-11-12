@@ -10,10 +10,11 @@ and actual rows remain unverified. NEVER run the local privileged
 
 - **Amplify Hosting**: React/Vite static UI from `frontend/` and this
   repository's root `amplify.yml`.
-- **FastAPI container service**: use a reviewed ECR image deployed via App
-  Runner after its Dockerfile, health, least-privilege IAM, secrets and
-  network access pass review. The existing Dockerfile.worker is NOT a web
-  container and must not be used as the API image.
+- **FastAPI container service**: evaluate ECS/Fargate (including ECS Express
+  Mode) only after confirming actual account permissions, costs, private RDS
+  networking and outbound connectivity. App Runner stopped accepting new
+  customers on April 30, 2026 and is not our target. The existing worker
+  Dockerfile is NOT a web API container.
 - **Private RDS PostgreSQL**: no public IP, secrets in AWS Secrets Manager,
   TLS certificates and a transactional schema migration strategy. The
   current Terraform RDS configuration is opt-in; verify the target engine
@@ -24,6 +25,28 @@ and actual rows remain unverified. NEVER run the local privileged
   GCP workload-identity authorization, controlled network egress, independent
   worker duties, and result-read acceptance are release prerequisites.
   Do not copy developer impersonation credentials into AWS.
+
+## Permission-first service inventory — read-only
+
+The Sydney project account has private RDS and a running EC2 worker.
+`apprunner:ListServices` was explicitly denied by the AWS Organizations SCP.
+AWS's new-account Free-plan catalog lists Amplify, ECS, CloudFront and S3,
+but each actual operation must be checked against the project-specific SCP
+and identity policies. Do not upgrade merely to enable App Runner.
+
+```powershell
+$profile = 'datarise'
+$region = 'ap-southeast-2'
+aws amplify list-apps --region $region --profile $profile --query 'apps[].{Name:name,Id:appId}' --output table
+aws ecs list-clusters --region $region --profile $profile --output json
+aws cloudfront list-distributions --profile $profile --query 'DistributionList.Items[].{Id:Id,Domain:DomainName}' --output table
+aws s3api list-buckets --profile $profile --query 'Buckets[].Name' --output table
+```
+
+These calls are read-only; successful listing does not establish create
+permissions. An explicit SCP deny is a stop signal, not a reason to try a
+different role or workaround. Existing infrastructure and spending controls
+must be reviewed before deployment.
 
 ## Stage 0: inspect target identity without mutating AWS
 
@@ -56,7 +79,7 @@ monthly cost require review. Existing `docs/aws_dev_readiness.md` is NO-GO.
 3. Configure production `APP_ENV`, `AUTH_MODE=session`,
    `AUTH_COOKIE_SECURE=true`, `AUTH_SECRET`, `AUTH_FRONTEND_URL`,
    `AUTH_BACKEND_URL`, `DATABASE_URL` via AWS secret/config controls.
-4. Use App Runner VPC egress to reach RDS. Assess S3, cloud API and OAuth
+4. Review ECS task networking for private RDS access. Assess S3, cloud API and OAuth
    connectivity **separately**—VPC routing can change public egress.
 5. Health checks: `/health` for process; authenticated API/db integration
    separately. Do not use a public DB health endpoint as proof of security.
