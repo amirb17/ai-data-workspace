@@ -24,7 +24,7 @@ def test_live_e2e_gate_fails_closed_when_runtime_cannot_execute():
 def test_acceptance_gate_does_not_enable_live_send_or_invoke_bigquery():
     with patch.object(gate.workflow,"get_query_runtime",side_effect=Exception(
             "No live provider runtime")), patch.object(
-        gate.execute_operation,side_effect=gate.WorkerRpcRejected(
+        gate,"execute_operation",side_effect=gate.WorkerRpcRejected(
             "PROVIDER_SEND_BOUNDARY_NOT_APPROVED")
     ) as call:
         blockers=gate.runtime_blockers()
