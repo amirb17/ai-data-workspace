@@ -181,6 +181,38 @@ def run():
                         'read_seconds':named.read_seconds,
                     },
                 )
+                # The named-result trigger requires this exact joined
+                # record to exist, including a non-expired ACTIVE reservation.
+                # Check each leg inside the same transaction immediately
+                # before INSERT; report only booleans, never IDs or tokens.
+                stage = 'contract_admission_join'
+                evidence = conn.execute("""
+                    SELECT
+                      EXISTS(SELECT 1 FROM datarise_warehouse_dev.warehouse_query_attempt_registry
+                        WHERE attempt_id=%(a)s) AS attempt,
+                      EXISTS(SELECT 1 FROM datarise_warehouse_dev.warehouse_query_api_requests
+                        WHERE attempt_id=%(a)s AND contract_version=2) AS api_version_two,
+                      EXISTS(SELECT 1 FROM datarise_warehouse_dev.warehouse_query_attempt_reservation_links
+                        WHERE attempt_id=%(a)s AND reservation_id=%(r)s) AS reservation_link,
+                      EXISTS(SELECT 1 FROM datarise_warehouse_dev.warehouse_query_attempt_logical_drafts
+                        WHERE attempt_id=%(a)s) AS logical_draft,
+                      EXISTS(SELECT 1 FROM public.query_governance_reservations
+                        WHERE reservation_id=%(r)s AND status='ACTIVE') AS active_reservation,
+                      EXISTS(SELECT 1 FROM public.query_governance_reservations
+                        WHERE reservation_id=%(r)s AND expires_at>clock_timestamp()) AS unexpired_reservation,
+                      EXISTS(
+                        SELECT 1
+                        FROM datarise_warehouse_dev.warehouse_query_attempt_registry q
+                        JOIN datarise_warehouse_dev.warehouse_query_api_requests api USING(attempt_id)
+                        JOIN datarise_warehouse_dev.warehouse_query_attempt_reservation_links l USING(attempt_id)
+                        JOIN public.query_governance_reservations r USING(reservation_id)
+                        JOIN datarise_warehouse_dev.warehouse_query_attempt_logical_drafts d USING(attempt_id)
+                        WHERE q.attempt_id=%(a)s AND api.contract_version=2
+                          AND r.status='ACTIVE' AND r.expires_at>clock_timestamp()
+                          AND q.workspace_id=18
+                      ) AS exact_guard_join
+                """, {"a":attempt["attempt_id"], "r":reservation["reservation_id"]}).fetchone()
+                result["admission_invariants"] = dict(evidence)
                 stage = 'contract_postgres_insert'
                 conn.execute(
                     'INSERT INTO warehouse_query_result_contracts'
