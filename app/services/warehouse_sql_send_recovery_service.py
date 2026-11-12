@@ -254,7 +254,10 @@ def record_authenticated_control_send_boundary_without_dispatch(
             or type(attempt_handle) is not str
             or not re.fullmatch(r"[a-f0-9]{32}", attempt_handle)):
         raise ValueError("AUTHENTICATED_CONTROL_SEND_SCOPE_REQUIRED")
-    token = request.cookies.get(require_secret().session_cookie)
+    settings = require_secret()
+    if settings.mode != "session":
+        raise HTTPException(503, "Warehouse session authentication unavailable")
+    token = request.cookies.get(settings.session_cookie)
     if not token or len(token) > 128:
         raise HTTPException(401, "Sign in to continue.")
     # Match worker lock order: global advisory first, then workspace scope.
@@ -283,6 +286,8 @@ def record_authenticated_control_send_boundary_without_dispatch(
         reservation, _, _ = _live_context(conn, checkpoint)
         intent, event = repo.latest(conn, lease.attempt_id)
         repo.require_owner(conn, event, lease, expected_revision)
+        if lease.job != _identity(intent):
+            raise repo.RecoveryConflict("ORIGINAL_PROVIDER_JOB_LEASE_REQUIRED")
         if event["phase"] != "INTENT_RECORDED":
             raise repo.RecoveryConflict("BOUNDARY_ALREADY_RECORDED_LOOKUP_ONLY")
         pinned = repo.one(conn, """
