@@ -11,7 +11,8 @@ from app.db import warehouse_query_send_repository as repo
 from app.services import warehouse_sql_send_recovery_service as recovery
 
 
-CHECKPOINT={"attempt_id":7,"workspace_id":18}
+CHECKPOINT={"attempt_id":7,"workspace_id":18,
+            "valid_until":datetime.now(timezone.utc)+timedelta(hours=1)}
 RESERVATION={"status":"EXECUTING"}
 INTENT={"provider_project":"datarise-511817",
         "provider_location":"asia-south1","provider_job_id":"job_7"}
@@ -21,9 +22,15 @@ EVENT={"revision":4,"phase":"INTENT_RECORDED","observation":None,
 
 class Conn:
     def execute(self, statement, params=()):
+        if "SELECT EXISTS" in statement:
+            value=False
+        elif "SELECT %s<=clock_timestamp()" in statement:
+            value=False
+        else:
+            value=datetime.now(timezone.utc)+timedelta(seconds=30)
         class Result:
             def fetchone(self):
-                return (datetime.now(timezone.utc)+timedelta(seconds=30),)
+                return (value,)
         return Result()
 
 
