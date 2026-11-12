@@ -32,7 +32,7 @@ def test_unsafe_region_and_enabled_resources_fail_closed(tmp_path):
         copyfile(DEV / filename, tmp_path / filename)
     p = tmp_path / "variables.tf"
     content = p.read_text(encoding="utf-8")
-    content = content.replace('default     = "ap-south-1"', 'default     = "eu-west-1"', 1)
+    content = content.replace('default     = "ap-southeast-2"', 'default     = "eu-west-1"', 1)
     content = content.replace('default     = false', 'default     = true', 1)
     p.write_text(content, encoding="utf-8")
     result = review_aws_source(tmp_path)
