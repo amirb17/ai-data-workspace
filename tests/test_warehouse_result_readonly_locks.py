@@ -10,13 +10,17 @@ from app.services import warehouse_sql_result_eligibility_service as eligibility
 
 
 class FakeConnection:
-    def __init__(self):
+    def __init__(self, publication_resources=()):
         self.sql=[]
+        self.publication_resources=tuple(publication_resources)
     def execute(self, statement, params=()):
         self.sql.append(statement)
+        rows = ([(resource,) for resource in self.publication_resources]
+                if "SELECT resource_id FROM warehouse_query_attempt_publication_pins" in statement
+                else [])
         class R:
             def fetchone(self): return (1,)
-            def __iter__(self): return iter(())
+            def __iter__(self): return iter(rows)
         return R()
 
 
@@ -39,7 +43,9 @@ def test_identity_default_preserves_strong_row_locking():
 
 
 def test_identity_read_only_mode_omits_all_row_update_locks():
-    conn=FakeConnection()
+    # A real publication pin causes the per-publication advisory lock. The
+    # global lock is acquired by repo.transaction(), outside this unit.
+    conn=FakeConnection(publication_resources=(731,))
     checkpoint={
         "attempt_id":101,"reservation_id":202,
         "workspace_id":18,"owner_key":"owner","request_token":"a"*64,
@@ -55,6 +61,7 @@ def test_identity_read_only_mode_omits_all_row_update_locks():
         assert "FOR UPDATE" not in one.call_args.args[1]
     assert not any("FOR UPDATE" in sql for sql in conn.sql)
     assert any("pg_advisory_xact_lock" in sql for sql in conn.sql)
+    assert not any("FOR SHARE" in sql for sql in conn.sql)
 
 
 def test_result_eligibility_uses_read_only_id_and_send_intent():
