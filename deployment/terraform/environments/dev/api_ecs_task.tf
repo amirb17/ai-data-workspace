@@ -50,8 +50,8 @@ variable "api_auth_secret_arn" {
   default     = ""
 }
 
-variable "api_database_url_secret_arn" {
-  description = "Secrets Manager ARN for API-only PostgreSQL DATABASE_URL (never plaintext)"
+variable "api_database_secret_arn" {
+  description = "Secrets Manager ARN for API-only PostgreSQL JSON secret (username/password/host/port/dbname)"
   type        = string
   default     = ""
 }
@@ -99,7 +99,11 @@ resource "aws_ecs_task_definition" "api" {
     ]
     secrets = [
       { name = "AUTH_SECRET", valueFrom = var.api_auth_secret_arn },
-      { name = "DATABASE_URL", valueFrom = var.api_database_url_secret_arn }
+      { name = "DATARISE_DB_USERNAME", valueFrom = "${var.api_database_secret_arn}:username::" },
+      { name = "DATARISE_DB_PASSWORD", valueFrom = "${var.api_database_secret_arn}:password::" },
+      { name = "DATARISE_DB_HOST", valueFrom = "${var.api_database_secret_arn}:host::" },
+      { name = "DATARISE_DB_PORT", valueFrom = "${var.api_database_secret_arn}:port::" },
+      { name = "DATARISE_DB_NAME", valueFrom = "${var.api_database_secret_arn}:dbname::" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -120,7 +124,7 @@ resource "aws_ecs_task_definition" "api" {
         var.api_public_host != "" &&
         var.api_backend_origin == "https://${var.api_public_host}" &&
         startswith(var.api_auth_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:") &&
-        startswith(var.api_database_url_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:"))
+        startswith(var.api_database_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:"))
       error_message = "Task needs reviewed ECR/foundation/role, matching HTTPS host and Sydney Secrets Manager ARNs."
     }
     prevent_destroy = true
@@ -132,7 +136,7 @@ data "aws_iam_policy_document" "api_execution_secrets" {
   count = var.enable_api_task_definition ? 1 : 0
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [var.api_auth_secret_arn, var.api_database_url_secret_arn]
+    resources = [var.api_auth_secret_arn, var.api_database_secret_arn]
   }
 }
 
