@@ -371,12 +371,12 @@ def execute_query(request,workspace,handle,runtime):
         # A live worker cannot inspect user/session/publication tables. The
         # authenticated query-control identity owns the durable send fence.
         # Keep that transaction committed before any external provider I/O.
-        from app.services.warehouse_query_control_gateway import query_control_boundary
-        with query_control_boundary(request):
-            marker = recovery.record_authenticated_control_send_boundary_without_dispatch(
-                request=request, workspace_id=workspace, attempt_handle=handle,
-                lease=lease, expected_revision=lease.revision,
-            )
+        # The FastAPI route already owns the restricted query-control boundary.
+        # Opening another one here is forbidden by connection_boundary().
+        marker = recovery.record_authenticated_control_send_boundary_without_dispatch(
+            request=request, workspace_id=workspace, attempt_handle=handle,
+            lease=lease, expected_revision=lease.revision,
+        )
     else:
         # Offline injected test runtimes retain the original deterministic path.
         marker = recovery.record_pinned_send_boundary_without_dispatch(
