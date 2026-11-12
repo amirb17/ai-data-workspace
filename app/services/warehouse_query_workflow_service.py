@@ -365,16 +365,18 @@ def query_results(request,workspace,handle,runtime):
     from app.warehouse.query_bigquery_first_page_bridge import SimulatedBigQueryFirstPage
     with _scope(request,workspace) as (conn,user,session):
         a=_owned(conn,user,session,workspace,handle)
-        # Establish the exact original reservation and job under the
-        # authenticated control boundary, never from worker RPC arguments.
-        identity=repo.one(conn,'''SELECT l.reservation_id,i.provider_job_id,i.provider_project,i.provider_location
-            FROM warehouse_query_attempt_reservation_links l
-            JOIN warehouse_query_send_intents i USING(attempt_id)
-            WHERE l.attempt_id=%s''',(a['attempt_id'],))
     if query_status(request,workspace,handle)['status']!='SUCCEEDED':
         raise HTTPException(409,'Settled successful results are not ready')
     router=getattr(runtime,"worker_router",None)
     if router is not None:
+        # Establish exact immutable job identity inside the authenticated
+        # control boundary; legacy offline test runtimes remain unchanged.
+        with _scope(request,workspace) as (conn,user,session):
+            _owned(conn,user,session,workspace,handle)
+            identity=repo.one(conn,'''SELECT l.reservation_id,i.provider_job_id,i.provider_project,i.provider_location
+                FROM warehouse_query_attempt_reservation_links l
+                JOIN warehouse_query_send_intents i USING(attempt_id)
+                WHERE l.attempt_id=%s''',(a['attempt_id'],))
         eligibility=router.inspect_eligibility(a['attempt_id'])
         if (not identity or eligibility.attempt_id!=a['attempt_id']
                 or eligibility.reservation_id!=identity['reservation_id']
