@@ -246,7 +246,14 @@ def main():
     if not 1024 <= args.port <= 65535:
         parser.error("Port must be between 1024 and 65535")
 
-    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+    root_env = Path(__file__).resolve().parents[1] / ".env"
+    # Preserve the existing project's local-only credential location when
+    # running from the separate warehouse feature worktree.
+    fallback_env = Path("D:/Project/ai-data-workspace/.env")
+    if root_env.is_file():
+        load_dotenv(root_env)
+    elif fallback_env.is_file():
+        load_dotenv(fallback_env)
     _assert_local_development()
     _bind_canonical_local_database()
 
