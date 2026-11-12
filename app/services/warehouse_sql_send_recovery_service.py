@@ -236,6 +236,75 @@ def _record_observation_locked(conn,c,lease,expected_revision,job,observation):
     return _view(conn,c,r,intent,updated)
 
 
+
+def record_authenticated_control_send_boundary_without_dispatch(
+    *, request: Request, workspace_id: int, attempt_handle: str,
+    lease: RecoveryLease, expected_revision: int,
+) -> RecoveryView:
+    """Commit the single possible-send fence under original user authority.
+
+    Unlike a submission worker, query control can check the original session,
+    model publication, compilation, governance limits and pinned request.
+    This function NEVER calls BigQuery or returns SQL, provider credentials,
+    an execution permit, or raw stored policy.
+    """
+    _validate_lease(lease)
+    if (not isinstance(request, Request)
+            or type(workspace_id) is not int or workspace_id < 1
+            or type(attempt_handle) is not str
+            or not re.fullmatch(r"[a-f0-9]{32}", attempt_handle)):
+        raise ValueError("AUTHENTICATED_CONTROL_SEND_SCOPE_REQUIRED")
+    token = request.cookies.get(require_secret().session_cookie)
+    if not token or len(token) > 128:
+        raise HTTPException(401, "Sign in to continue.")
+    # Match worker lock order: global advisory first, then workspace scope.
+    # The API must run this exclusively under its query-control DB boundary.
+    with repo.transaction(duty="query_control") as conn:
+        budgets._lock_scopes(conn, workspace_id)
+        user, session = _session_locked(conn, token)
+        w = repo.one(
+            conn, "SELECT owner,status FROM workspaces WHERE workspace_id=%s FOR SHARE",
+            (workspace_id,),
+        )
+        if (not w or w["owner"] != user["owner_key"]
+                or w["status"] != "ACTIVE"):
+            raise HTTPException(403, "Workspace unavailable")
+        a = attempts.read_attempt(
+            conn, workspace_id=workspace_id,
+            owner_key=user["owner_key"], attempt_handle=attempt_handle,
+        )
+        if a["attempt_id"] != lease.attempt_id:
+            raise repo.RecoveryConflict("ORIGINAL_ATTEMPT_LEASE_REQUIRED")
+        checkpoint = repo.checkpoint(conn, lease.attempt_id)
+        if (checkpoint["workspace_id"] != workspace_id
+                or checkpoint["user_id"] != user["user_id"]
+                or checkpoint["session_digest"] != session["token_digest"]):
+            raise repo.RecoveryConflict("ORIGINAL_SESSION_CHECKPOINT_REQUIRED")
+        reservation, _, _ = _live_context(conn, checkpoint)
+        intent, event = repo.latest(conn, lease.attempt_id)
+        repo.require_owner(conn, event, lease, expected_revision)
+        if event["phase"] != "INTENT_RECORDED":
+            raise repo.RecoveryConflict("BOUNDARY_ALREADY_RECORDED_LOOKUP_ONLY")
+        pinned = repo.one(conn, """
+            SELECT e.provider_job_id,e.request_sha256,e.policy_sha256,
+                   p.expected_sha256,p.expected
+            FROM warehouse_query_request_envelopes e
+            JOIN warehouse_query_provider_policies p USING(attempt_id)
+            WHERE e.attempt_id=%s
+        """, (lease.attempt_id,))
+        if (not pinned or pinned["provider_job_id"] != intent["provider_job_id"]
+                or pinned["provider_job_id"] != checkpoint["provider_job_id"]
+                or pinned["policy_sha256"] != pinned["expected_sha256"]
+                or pinned["expected"].get("job_id") != intent["provider_job_id"]
+                or type(pinned["request_sha256"]) is not str
+                or not re.fullmatch(r"[a-f0-9]{64}",
+                                    pinned["request_sha256"].strip())):
+            raise repo.RecoveryConflict("EXACT_PINNED_REQUEST_REQUIRED")
+        updated = repo.append(
+            conn, lease.attempt_id, event, "SEND_BOUNDARY", "SEND_UNKNOWN",
+        )
+        return _view(conn, checkpoint, reservation, intent, updated)
+
 def record_pinned_send_boundary_without_dispatch(
     *, lease: RecoveryLease, expected_revision: int,
 ) -> RecoveryView:
