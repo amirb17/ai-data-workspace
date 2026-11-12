@@ -258,7 +258,7 @@ def admit_query(request,workspace,model,sql,key,runtime):
 
 
 def _admit_query_impl(request,workspace,model,sql,key,runtime):
-    _admission_stage.stage='lookup_original' 
+    _admission_stage.set('lookup_original') 
     key_sha=hashlib.sha256(key.encode()).hexdigest(); request_sha=digest(dict(model=model,sql=sql.strip()))
     with _scope(request,workspace) as (conn,user,session):
         old=repo.one(conn,'SELECT * FROM warehouse_query_api_requests WHERE workspace_id=%s AND user_id=%s AND key_sha256=%s',
@@ -269,9 +269,9 @@ def _admit_query_impl(request,workspace,model,sql,key,runtime):
             _owned(conn,user,session,workspace,a['attempt_handle'].strip())
             return dict(attempt_handle=a['attempt_handle'].strip(),reused=True,query_execution_enabled=False)
         before=_resolve(conn,user,workspace,model,sql)
-    _admission_stage.stage='provider_preflight'
+    _admission_stage.set('provider_preflight')
     estimate=_preflight(runtime,before,workspace)
-    _admission_stage.stage='revalidate_and_reserve'
+    _admission_stage.set('revalidate_and_reserve')
     with _scope(request,workspace) as (conn,user,session):
         # Serialize duplicate admission after provider IO and recheck all source authority.
         old=repo.one(conn,'SELECT * FROM warehouse_query_api_requests WHERE workspace_id=%s AND user_id=%s AND key_sha256=%s',
@@ -287,22 +287,22 @@ def _admit_query_impl(request,workspace,model,sql,key,runtime):
             if held>=8:raise HTTPException(409,'Named result storage is permanently held; review capacity before admission')
         current=_revalidate(conn,user,workspace,model,sql,before)
         draft,binding,query,_=current
-        _admission_stage.stage='attempt_registration'
+        _admission_stage.set('attempt_registration')
         a,_=attempts.register_attempt(conn,workspace_id=workspace,owner_key=user['owner_key'],
             attempt_handle=secrets.token_hex(16),logical_intent_sha256=drafts.logical_draft_digest(draft))
-        _admission_stage.stage='logical_draft_registration'
+        _admission_stage.set('logical_draft_registration')
         governance=QueryGovernanceService(workspace,user)
         drafts._register_in_transaction(conn,governance,a['attempt_handle'].strip(),model,sql)
-        _admission_stage.stage='budget_reservation'
+        _admission_stage.set('budget_reservation')
         result=budgets.reserve(conn,workspace_id=workspace,owner_key=user['owner_key'],consumer='SQL',provider='BIGQUERY',
             request_token=a['request_token'].strip(),intent_sha256=query.intent_sha256,estimate=estimate,
             requested_rows=draft.row_limit,policy=QueryPolicy.from_environment())
         if not result['reservation']: raise HTTPException(409,'Query budget requires review or is exhausted')
-        _admission_stage.stage='publication_pins'
+        _admission_stage.set('publication_pins')
         for pin in binding.models:
             conn.execute('INSERT INTO warehouse_query_attempt_publication_pins(attempt_id,resource_id,publication_id,publication_revision) VALUES(%s,%s,%s,%s)',
                 (a['attempt_id'],pin.resource_id,pin.publication_id,pin.publication_revision))
-        _admission_stage.stage='reservation_link'
+        _admission_stage.set('reservation_link')
         conn.execute('INSERT INTO warehouse_query_attempt_reservation_links(attempt_id,reservation_id) VALUES(%s,%s)',
             (a['attempt_id'],result['reservation']['reservation_id']))
         named=policy._RESULT_POLICIES.get(workspace)
@@ -311,10 +311,10 @@ def _admit_query_impl(request,workspace,model,sql,key,runtime):
                 (workspace,user['user_id'],key_sha,request_sha,session['token_digest'],a['attempt_id']))
         else:
             from app.warehouse.named_query_results import result_identity,validate_fixed_schema,STORAGE_BYTES,WORKSPACE_STORAGE_BYTES,projection_schema
-            _admission_stage.stage='named_result_schema'
+            _admission_stage.set('named_result_schema')
             schema=projection_schema(binding.columns)
             validate_fixed_schema(schema,draft.row_limit)
-            _admission_stage.stage='api_request_registration'
+            _admission_stage.set('api_request_registration')
             conn.execute('INSERT INTO warehouse_query_api_requests(workspace_id,user_id,key_sha256,request_sha256,session_digest,attempt_id,contract_version) VALUES(%s,%s,%s,%s,%s,%s,2)',
                 (workspace,user['user_id'],key_sha,request_sha,session['token_digest'],a['attempt_id']))
             job=f"dr_query_w{workspace}_r{result['reservation']['reservation_id']}_{a['request_token'].strip()[:32]}"
@@ -323,7 +323,7 @@ def _admit_query_impl(request,workspace,model,sql,key,runtime):
                 schema=[list(c) for c in schema],maximum_rows=draft.row_limit,maximum_storage_bytes=STORAGE_BYTES,
                 workspace_storage_bytes=WORKSPACE_STORAGE_BYTES,read_until_ms=until_ms,policy=asdict(named))
             from psycopg.types.json import Jsonb
-            _admission_stage.stage='named_result_contract'
+            _admission_stage.set('named_result_contract')
             conn.execute('INSERT INTO warehouse_query_result_contracts(attempt_id,workspace_id,provider_job_id,sql_sha256,result,read_valid_until) VALUES(%s,%s,%s,%s,%s,to_timestamp(%s/1000.0))',
                 (a['attempt_id'],workspace,job,hashlib.sha256(query.sql.encode()).hexdigest(),Jsonb(contract),until_ms))
     return dict(attempt_handle=a['attempt_handle'].strip(),reused=False,query_execution_enabled=False)
