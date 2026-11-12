@@ -18,9 +18,16 @@ def test_task_registration_is_opt_in_and_digest_pinned():
 
 def test_only_secrets_manager_not_plaintext_creds():
     assert '{ name = "AUTH_SECRET", valueFrom = var.api_auth_secret_arn }' in SOURCE
-    assert '{ name = "DATABASE_URL", valueFrom = var.api_database_url_secret_arn }' in SOURCE
+    for field, key in [
+        ("DATARISE_DB_USERNAME", "username"),
+        ("DATARISE_DB_PASSWORD", "password"),
+        ("DATARISE_DB_HOST", "host"),
+        ("DATARISE_DB_PORT", "port"),
+        ("DATARISE_DB_NAME", "dbname"),
+    ]:
+        assert f'{{ name = "{field}", valueFrom = "${{var.api_database_secret_arn}}:{key}::" }}' in SOURCE
     assert 'actions   = ["secretsmanager:GetSecretValue"]' in SOURCE
-    assert 'resources = [var.api_auth_secret_arn, var.api_database_url_secret_arn]' in SOURCE
+    assert 'resources = [var.api_auth_secret_arn, var.api_database_secret_arn]' in SOURCE
     assert '"AUTH_FRONTEND_URL"' in SOURCE
     assert '"DATARISE_PUBLIC_HOSTS"' in SOURCE
     assert 'var.api_backend_origin == "https://${var.api_public_host}"' in SOURCE
