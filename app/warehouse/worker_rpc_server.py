@@ -160,22 +160,29 @@ def create_server(*, duty: str, secret: bytes, port: int,
                 return
             body = self.rfile.read(size)
             try:
+                # Authentication errors must remain indistinguishable to
+                # unauthenticated clients, but must not be conflated with a
+                # *verified* request that failed inside the handler.
                 operation, args = verify(
                     secret,duty=duty,body=body,
                     signature=self.headers.get("X-Datarise-Signature",""),
                     guard=guard)
-                # DB role is process-bound and verified at startup.
-                with boundary():
-                    response = {"ok": True, "result": handler(duty,operation,args)}
-                encoded = json.dumps(response,separators=(",",":"),
-                                     allow_nan=False).encode("utf-8")
-                if len(encoded) > _MAX_RESPONSE:
-                    raise WorkerRpcRejected("WORKER_RESPONSE_TOO_LARGE")
-                status = 200
-            except (WorkerRpcRejected,ValueError,TypeError):
-                status,encoded = 400,b'{"ok":false,"error":"REJECTED"}'
-            except Exception:
-                status,encoded = 503,b'{"ok":false,"error":"UNAVAILABLE"}'
+            except (WorkerRpcRejected, ValueError, TypeError):
+                status,encoded = 401,b'{"ok":false,"error":"AUTHENTICATION_REJECTED"}'
+            else:
+                try:
+                    # DB role is process-bound and verified at startup.
+                    with boundary():
+                        response = {"ok": True, "result": handler(duty,operation,args)}
+                    encoded = json.dumps(response,separators=(",",":"),
+                                         allow_nan=False).encode("utf-8")
+                    if len(encoded) > _MAX_RESPONSE:
+                        raise WorkerRpcRejected("WORKER_RESPONSE_TOO_LARGE")
+                    status = 200
+                except (WorkerRpcRejected,ValueError,TypeError):
+                    status,encoded = 422,b'{"ok":false,"error":"OPERATION_REJECTED"}'
+                except Exception:
+                    status,encoded = 503,b'{"ok":false,"error":"UNAVAILABLE"}'
             self.send_response(status)
             self.send_header("Content-Type","application/json")
             self.send_header("Content-Length",str(len(encoded)))
