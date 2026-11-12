@@ -53,9 +53,62 @@ class InjectedQueryRuntime:
                 raise ValueError('Independent warehouse worker router required')
 
 
+# Trusted process-startup registration only. Never construct Google credentials,
+# workers, or policies as a side effect of an HTTP request or environment flag.
+_reviewed_live_runtime: InjectedQueryRuntime | None = None
+
+
+def bind_reviewed_query_runtime(runtime: InjectedQueryRuntime) -> None:
+    """Install one preverified live runtime from trusted application startup.
+
+    The binding is intentionally separate from credential provisioning.
+    Real workers and reviewed project-specific cloud policies must already
+    exist. An offline test runtime, or a configuration with one missing
+    independent duty, can never become the production dependency.
+    """
+    from app.services import warehouse_sql_recovery_attestation_service as attestation
+    from app.services.warehouse_worker_router import WarehouseWorkerRouter
+    from app.warehouse.query_provider_policy import ProviderPolicy
+    from app.warehouse.named_query_results import NamedResultPolicy
+
+    if (type(runtime) is not InjectedQueryRuntime
+            or type(runtime.worker_router) is not WarehouseWorkerRouter
+            or not policy._POLICIES
+            or set(policy._POLICIES) != set(policy._RESULT_POLICIES)):
+        raise ValueError("REVIEWED_LIVE_WAREHOUSE_RUNTIME_REQUIRED")
+    for workspace, provider_policy in policy._POLICIES.items():
+        if (type(workspace) is not int or workspace < 1
+                or type(provider_policy) is not ProviderPolicy
+                or type(policy._RESULT_POLICIES.get(workspace)) is not NamedResultPolicy):
+            raise ValueError("REVIEWED_WORKSPACE_POLICY_REQUIRED")
+        # Validates immutable expected policies, creator and attester identity,
+        # and project/location binding against the separately supplied client.
+        policy._runtime(workspace)
+    if not all(callable(getattr(runtime.submit_transport, name, None))
+               for name in ("insert_job_once",)):
+        raise ValueError("LIVE_SENDER_TRANSPORT_REQUIRED")
+    if not callable(getattr(runtime.estimator, "estimate", None)):
+        raise ValueError("LIVE_ESTIMATOR_REQUIRED")
+    if not callable(getattr(runtime.metadata_client, "get_table", None)):
+        raise ValueError("LIVE_METADATA_CLIENT_REQUIRED")
+    if not callable(getattr(runtime.results_transport, "bind", None)):
+        raise ValueError("LIVE_NAMED_RESULT_READER_REQUIRED")
+    # Signed RPC health checks perform no provider IO or SQL submission.
+    if set(runtime.worker_router.probe_workers()) != {
+            "provider_submission", "recovery_attestation",
+            "accounting", "result_authorization"}:
+        raise ValueError("INDEPENDENT_WORKER_HEALTH_REQUIRED")
+    global _reviewed_live_runtime
+    if _reviewed_live_runtime is not None:
+        raise RuntimeError("LIVE_WAREHOUSE_RUNTIME_ALREADY_BOUND")
+    _reviewed_live_runtime = runtime
+
+
 def get_query_runtime() -> InjectedQueryRuntime:
-    # Deliberately no environment switch or SDK construction. Production stays closed.
-    raise HTTPException(503, 'Warehouse query execution is disabled')
+    # Absent explicit trusted startup setup, every production request stays 503.
+    if _reviewed_live_runtime is None:
+        raise HTTPException(503, "Warehouse query execution is disabled")
+    return _reviewed_live_runtime
 
 
 def _token(request):
