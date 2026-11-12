@@ -176,16 +176,23 @@ def _worker(attempt_id,*,duty='recovery_attestation'):
 def inspect_recovery(*,attempt_id:int):
     """Trusted backend inspection, including revoked accounts; NOT a public API."""
     with _worker(attempt_id) as (conn,c):
-        r=repo.lock_identity(conn,c);intent,event=repo.latest(conn,attempt_id)
+        # The worker transaction holds the global query-governance advisory
+        # lock. Inspection needs no row UPDATE rights on immutable metadata.
+        r=repo.lock_identity(conn,c,lock=False)
+        intent,event=repo.latest(conn,attempt_id,lock=False)
         return _view(conn,c,r,intent,event)
 
 
 def acquire_recovery(*,attempt_id:int,expected_revision:int,lease_seconds:int=30):
     if type(lease_seconds) is not int or not 1<=lease_seconds<=120:raise ValueError('Bounded recovery lease required')
     with _worker(attempt_id) as (conn,c):
-        r=repo.lock_identity(conn,c)
+        # Competing acquisitions serialize on the same global advisory
+        # transaction lock; a unique append-only journal revision fences the
+        # winner. No UPDATE permission on identity or send intent is needed.
+        r=repo.lock_identity(conn,c,lock=False)
         if r['status']!='EXECUTING':raise repo.RecoveryConflict('RESERVATION_SETTLED_HELD')
-        intent,event=repo.latest(conn,attempt_id);repo.require_revision(event,expected_revision)
+        intent,event=repo.latest(conn,attempt_id,lock=False)
+        repo.require_revision(event,expected_revision)
         if event['lease_until'] is not None and conn.execute('SELECT %s>clock_timestamp()',(event['lease_until'],)).fetchone()[0]:
             raise repo.RecoveryConflict('RECOVERY_BUSY')
         token=uuid4();until=conn.execute('SELECT clock_timestamp()+make_interval(secs=>%s)',(lease_seconds,)).fetchone()[0]
