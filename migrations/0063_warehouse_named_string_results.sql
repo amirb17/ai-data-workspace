@@ -44,7 +44,7 @@ END $$;
 
 DO $acl$
 BEGIN
- EXECUTE format('ALTER FUNCTION %I.warehouse_query_named_result_guard() SET search_path = pg_catalog, %I, pg_temp',current_schema(),current_schema());
+ EXECUTE format('ALTER FUNCTION %I.warehouse_query_named_result_guard() SET search_path = pg_catalog, %I, public, pg_temp',current_schema(),current_schema());
  EXECUTE format('REVOKE ALL ON FUNCTION %I.warehouse_query_named_result_guard() FROM PUBLIC',current_schema());
 END $acl$;
 COMMIT;
