@@ -193,18 +193,24 @@ def _preflight(runtime,resolved,workspace):
 def validate_query(request,workspace,model,sql,runtime):
     import logging
     logger=logging.getLogger('datarise.warehouse.validation')
+    def safe_code(exc):
+        # Only stable uppercase internal failure codes, never exception prose,
+        # SQL, BigQuery paths, cloud tokens or database identifiers.
+        import re
+        candidate=str(exc) if type(exc) is ValueError else ''
+        return candidate if re.fullmatch(r'[A-Z][A-Z0-9_]{4,79}',candidate) else 'UNCLASSIFIED'
     try:
         with _scope(request,workspace) as (conn,user,_):
             before=_resolve(conn,user,workspace,model,sql)
     except Exception as exc:
         # No SQL, physical table names, session identifiers or provider error
         # text in logs. Internal exception class + stage only.
-        logger.warning("WAREHOUSE_VALIDATION_FAILED stage=resolve class=%s",type(exc).__name__)
+        logger.warning("WAREHOUSE_VALIDATION_FAILED stage=resolve class=%s code=%s",type(exc).__name__,safe_code(exc))
         raise
     try:
         estimate=_preflight(runtime,before,workspace)
     except Exception as exc:
-        logger.warning("WAREHOUSE_VALIDATION_FAILED stage=preflight class=%s",type(exc).__name__)
+        logger.warning("WAREHOUSE_VALIDATION_FAILED stage=preflight class=%s code=%s",type(exc).__name__,safe_code(exc))
         raise
     with _scope(request,workspace) as (conn,user,_):
         _revalidate(conn,user,workspace,model,sql,before)
