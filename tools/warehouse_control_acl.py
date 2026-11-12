@@ -49,6 +49,7 @@ QUERY_WRITES = {
     "warehouse_query_send_intents": ("INSERT",),
     "warehouse_query_provider_policies": ("INSERT",),
     "warehouse_query_request_envelopes": ("INSERT",),
+    "warehouse_query_send_journal": ("INSERT",),
 }
 # All 17 bounded query protocol tables, reviewed against live dependency report.
 # Read-only access to the other protocol stages is used for status/recovery.
