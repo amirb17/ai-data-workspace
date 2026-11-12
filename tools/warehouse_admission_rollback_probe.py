@@ -1,7 +1,7 @@
 """Reproduce a warehouse query admission transaction and always ROLLBACK.
 
 This deliberately uses the current canonical local PostgreSQL schema and the
-same server-owned model binding, query estimate, reservation, and result
+same server-owned model binding, current auth session, query estimate, reservation, and result
 contract writes as the FastAPI admission handler. It NEVER commits an attempt,
 opens a session, calls jobs.insert, fetches result rows or edits cloud IAM.
 
@@ -80,7 +80,22 @@ def run():
                 if not user_row:
                     raise ValueError('WORKSPACE_USER_NOT_ACTIVE')
                 user = principal(user_row)
-                sql = 'SELECT "customer_id", "city", "active" FROM model_1 LIMIT 10'
+                # Use a currently live server-side session digest, not a
+                # fabricated digest that the authenticated trigger must reject.
+                # Never return or print the digest or token.
+                stage = 'current_authenticated_session'
+                active_session = conn.execute(
+                    """SELECT token_digest FROM public.auth_sessions
+                       WHERE user_id=%s AND revoked_at IS NULL
+                         AND expires_at>clock_timestamp()
+                         AND last_seen_at>clock_timestamp()-interval '30 minutes'
+                       ORDER BY last_seen_at DESC LIMIT 1""",
+                    (user['user_id'],),
+                ).fetchone()
+                if not active_session:
+                    raise ValueError('CURRENT_AUTHENTICATED_SESSION_NOT_FOUND')
+                session_digest = active_session['token_digest']
+                sql = 'SELECT "customer_id", "city", "active" FROM model_1 LIMIT 100'
                 stage = 'resolve_and_preflight'
                 resolved = workflow._resolve(conn,user,18,1,sql)
                 runtime = make_runtime()
@@ -142,7 +157,7 @@ def run():
                     'VALUES(%s,%s,%s,%s,%s,%s,2)',
                     (18,user['user_id'],hashlib.sha256(key.encode()).hexdigest(),
                      digest({'model':1,'sql':sql}),
-                     'f'*64,attempt['attempt_id']),
+                     session_digest,attempt['attempt_id']),
                 )
                 stage = 'insert_named_result_contract'
                 job=f"dr_query_w18_r{reservation['reservation_id']}_{attempt['request_token'].strip()[:32]}"
@@ -185,6 +200,18 @@ def run():
                     result['sqlstate']=state
                 else:
                     result['sqlstate']='NONE'
+                # Only disclose enumerated trigger errors, never unreviewed
+                # PostgreSQL exception text, credentials, or data.
+                allowlisted = {
+                    'Current named API admission required': 'NAMED_ADMISSION_NOT_CURRENT',
+                    'Bounded exact named result identity required': 'NAMED_CONTRACT_IDENTITY_MISMATCH',
+                    'Permanent result storage budget exhausted': 'NAMED_STORAGE_CAP_EXHAUSTED',
+                    'Current authenticated API request binding required': 'AUTH_SESSION_BINDING_NOT_CURRENT',
+                }
+                diag = getattr(exc, 'diag', None)
+                result['reason'] = allowlisted.get(
+                    getattr(diag, 'message_primary', None), 'OTHER'
+                )
             finally:
                 conn.rollback()
         return result
