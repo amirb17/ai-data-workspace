@@ -256,6 +256,11 @@ def main():
         load_dotenv(fallback_env)
     _assert_local_development()
     _bind_canonical_local_database()
+    # Metadata/catalog is separately feature-gated from query execution.
+    # This explicit, loopback-only runner is the operator opt-in; do not
+    # enable warehouse metadata globally or in the normal production API.
+    os.environ["WAREHOUSE_ENABLED"] = "true"
+    os.environ["WAREHOUSE_PROVIDER"] = "bigquery"
 
     from app.main import app
     from app.api import warehouse_queries
