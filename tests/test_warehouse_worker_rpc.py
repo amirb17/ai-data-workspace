@@ -96,3 +96,34 @@ def test_rpc_client_rejects_weak_secrets_and_unreviewed_ports():
 def test_worker_host_cannot_start_without_explicit_database_boundary():
     with pytest.raises(ValueError, match="EXPLICIT_WORKER_DATABASE_BOUNDARY"):
         create_server(duty="accounting",secret=KEY,port=18085)
+
+
+def test_live_worker_rejects_wrong_key_as_authentication_not_operation():
+    server=create_server(duty="accounting",secret=KEY,port=18086,
+                         handler=lambda duty,op,args: {"ok":True},
+                         boundary=nullcontext)
+    thread=Thread(target=server.serve_forever,daemon=True)
+    thread.start()
+    try:
+        with pytest.raises(WorkerRpcRejected,match="AUTHENTICATION_REJECTED"):
+            WarehouseWorkerClient("accounting",18086,OTHER_KEY).invoke("health",{})
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_live_worker_distinguishes_validly_signed_handler_validation_error():
+    def invalid(duty,op,args):
+        raise WorkerRpcRejected("OPERATION_BAD_INPUT")
+    server=create_server(duty="accounting",secret=KEY,port=18087,
+                         handler=invalid,boundary=nullcontext)
+    thread=Thread(target=server.serve_forever,daemon=True)
+    thread.start()
+    try:
+        with pytest.raises(WorkerRpcRejected,match="OPERATION_REJECTED"):
+            WarehouseWorkerClient("accounting",18087,KEY).invoke("health",{})
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
