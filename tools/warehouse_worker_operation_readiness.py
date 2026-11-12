@@ -129,6 +129,8 @@ def inspect(conn):
             x["permissions_ready"] for x in report.values()
         ),
         "query_execution_enabled":False,
+        "provider_send_boundary_enabled":False,
+        "provider_requires_atomic_control_authorization":True,
         "workers":report,
     }
 
