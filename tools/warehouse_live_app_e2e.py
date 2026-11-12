@@ -76,7 +76,7 @@ def run(args, *, session=None, cookie=None, csrf=None, wait=time.sleep):
         raise AcceptanceError("INVALID_WAREHOUSE_SCOPE")
     if resume is None:
         if not isinstance(args.sql, str) or not re.fullmatch(
-                r"SELECT\\s+[\\s\\S]{1,16000}", args.sql.strip(), re.I):
+                r"SELECT\s+[\s\S]{1,16000}", args.sql.strip(), re.I):
             raise AcceptanceError("SELECT_ONLY_DEMO_REQUIRED")
         if ";" in args.sql or "--" in args.sql or "/*" in args.sql:
             raise AcceptanceError("ONE_SINGLE_SELECT_REQUIRED")
