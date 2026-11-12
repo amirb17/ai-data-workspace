@@ -42,10 +42,15 @@ class InjectedQueryRuntime:
     results_transport: object
     cancel_transport: object
     lease_seconds: int = 30
+    worker_router: object | None = None
 
     def __post_init__(self):
         if type(self.lease_seconds) is not int or not 1<=self.lease_seconds<=120:
             raise ValueError('Bounded recovery lease required')
+        if self.worker_router is not None:
+            from app.services.warehouse_worker_router import WarehouseWorkerRouter
+            if type(self.worker_router) is not WarehouseWorkerRouter:
+                raise ValueError('Independent warehouse worker router required')
 
 
 def get_query_runtime() -> InjectedQueryRuntime:
@@ -242,6 +247,13 @@ def query_status(request,workspace,handle):
 
 
 def _lease(attempt,runtime):
+    # The real multi-process path uses the separately authenticated attester
+    # rather than borrowing its PostgreSQL role inside the API process.
+    router=runtime.worker_router
+    if router is not None:
+        view=router.inspect_recovery(attempt)
+        return router.acquire_recovery(
+            attempt,revision=view.revision,seconds=runtime.lease_seconds)
     view=recovery.inspect_recovery(attempt_id=attempt)
     try: return recovery.acquire_recovery(attempt_id=attempt,expected_revision=view.revision,lease_seconds=runtime.lease_seconds)
     except repo.RecoveryConflict as error:
