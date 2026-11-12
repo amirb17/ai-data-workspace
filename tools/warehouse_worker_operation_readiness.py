@@ -74,7 +74,11 @@ REQUIREMENTS = {
         (Q+".warehouse_query_recovery_attestations", "SELECT", "attested_proof"),
         (P+".query_governance_usage", "INSERT", "settlement_ledger"),
     ),
-    "result_authorization": BASE + (
+    # Result authorization is inspection-only. It shares the transaction's
+    # advisory lock but requests NO row UPDATE privileges.
+    "result_authorization": tuple(
+        entry for entry in BASE if entry[1] != "UPDATE"
+    ) + (
         (P+".query_governance_usage", "SELECT", "settled_ledger"),
         (Q+".warehouse_query_request_envelopes", "SELECT", "pinned_request"),
         (Q+".warehouse_query_recovery_attestations", "SELECT", "attested_proof"),
