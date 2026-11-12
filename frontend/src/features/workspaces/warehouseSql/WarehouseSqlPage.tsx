@@ -16,7 +16,7 @@ function WarehouseSqlContent({workspace}:{workspace:string}){
  const template=()=>{if(model)q.change(model.model_id,`SELECT ${model.columns.slice(0,32).map(c=>'"'+c.name.replaceAll('"','""')+'"').join(', ')} FROM model_${model.model_id} LIMIT 100`)}
  return <section className="min-w-0 space-y-5 text-slate-900">
   <header><h1 className="text-2xl font-semibold">Warehouse SQL</h1><p className="mt-2 text-sm text-slate-600">Query approved warehouse models. This is separate from <Link className="underline text-indigo-700" to={`/app/workspaces/${workspace}/sql`}>dataset / Gold SQL</Link>.</p></header>
-  <aside role="note" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Live BigQuery execution remains disabled. A controlled backend must be explicitly available for this workflow; this screen does not enable it. Approved definitions do not prove serving readiness.{readOnly&&' Public read-only mode blocks query operations.'}</aside>
+  <aside role="note" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Warehouse queries run only when an authorized backend runtime is available. Validation does not submit a job; execution may incur BigQuery charges within the configured budget. Refresh the original query instead of resubmitting when status is uncertain.{readOnly&&' Public read-only mode blocks query operations.'}</aside>
   {!q.blocked&&catalog.error&&<div role="alert">{catalog.error}<button className={button} onClick={catalog.retry}>Retry models</button></div>}
   {!q.blocked&&!catalog.data&&!catalog.error&&<p role="status">Loading approved warehouse models...</p>}
   {!q.blocked&&catalog.data&&<div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(15rem,1fr)_minmax(0,3fr)]">
