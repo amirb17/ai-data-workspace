@@ -16,6 +16,7 @@ class FakeConnection:
         self.sql.append(statement)
         class R:
             def fetchone(self): return (1,)
+            def __iter__(self): return iter(())
         return R()
 
 
