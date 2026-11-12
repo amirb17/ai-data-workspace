@@ -66,7 +66,11 @@ def inspect(conn):
     issues = runtime_blockers()
     workers = grants["workers"]
     for duty, value in workers.items():
-        if not value["permissions_ready"]:
+        # A disabled operation has zero required grants by design; zero
+        # missing grants MUST NOT be reported as a runnable worker.
+        if value.get("operation_implemented") is False:
+            issues.append("WORKER_OPERATION_NOT_IMPLEMENTED:" + duty)
+        elif not value["permissions_ready"]:
             issues.append("WORKER_PRIVILEGES_INCOMPLETE:" + duty)
     # These are supported static/runtime preconditions, NOT a claim that
     # browser, API, cloud, DB accounting and result data round-tripped.
