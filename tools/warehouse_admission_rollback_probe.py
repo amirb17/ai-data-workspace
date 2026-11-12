@@ -163,9 +163,9 @@ def run():
                 job=f"dr_query_w18_r{reservation['reservation_id']}_{attempt['request_token'].strip()[:32]}"
                 stage = 'contract_expiry'
                 read_until_ms=conn.execute(
-                    'SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint+%s',
+                    'SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint+%s AS read_until_ms',
                     (named.read_seconds*1000,),
-                ).fetchone()[0]
+                ).fetchone()['read_until_ms']
                 stage = 'contract_assembly'
                 contract=dict(
                     version=1,
