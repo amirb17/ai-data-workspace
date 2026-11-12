@@ -71,6 +71,8 @@ READS = {
         (SCHEMA, "warehouse_query_result_attestations"),
         (SCHEMA, "warehouse_query_provider_policies"),
         (SCHEMA, "warehouse_query_api_requests"),
+        (SCHEMA, "warehouse_query_request_envelopes"),
+        (SCHEMA, "warehouse_query_recovery_attestations"),
     },
 }
 WRITES = {
