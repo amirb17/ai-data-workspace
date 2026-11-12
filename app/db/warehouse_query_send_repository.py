@@ -33,11 +33,17 @@ def transaction(workspace_id=None,*,duty='query_control'):
         yield conn
 
 
-def lock_identity(conn,c):
+def lock_identity(conn,c,*,lock=True):
     for (resource,) in conn.execute('SELECT resource_id FROM warehouse_query_attempt_publication_pins WHERE attempt_id=%s ORDER BY resource_id',(c['attempt_id'],)):
         conn.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s,0))',(f'datarise-publication-retirement:{resource}',))
-    conn.execute('SELECT 1 FROM warehouse_query_attempt_registry WHERE attempt_id=%s FOR UPDATE',(c['attempt_id'],))
-    r=one(conn,'SELECT * FROM query_governance_reservations WHERE reservation_id=%s FOR UPDATE',(c['reservation_id'],))
+    if type(lock) is not bool:
+        raise ValueError('EXPLICIT_IDENTITY_LOCK_MODE_REQUIRED')
+    # The enclosing repo.transaction obtains the shared global advisory lock.
+    # Read-only eligibility needs identity consistency, not row UPDATE rights.
+    # Stateful workers retain FOR UPDATE by default.
+    suffix=' FOR UPDATE' if lock else ''
+    conn.execute('SELECT 1 FROM warehouse_query_attempt_registry WHERE attempt_id=%s'+suffix,(c['attempt_id'],))
+    r=one(conn,'SELECT * FROM query_governance_reservations WHERE reservation_id=%s'+suffix,(c['reservation_id'],))
     if (not r or r['workspace_id']!=c['workspace_id'] or r['owner_key']!=c['owner_key']
             or r['request_token']!=c['request_token'].strip() or r['intent_sha256']!=c['compiled_intent_sha256']
             or r['consumer']!='SQL' or r['provider']!='BIGQUERY'):
