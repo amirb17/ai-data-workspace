@@ -43,10 +43,14 @@ def test_reports_missing_lock_privilege_without_attempting_update():
                for sql, params in conn.calls_sql)
 
 
-def test_every_duty_requires_real_reservation_lock_permission():
-    for duty,requirements in REQUIREMENTS.items():
+def test_each_enabled_duty_has_only_its_required_grants():
+    for duty, requirements in REQUIREMENTS.items():
+        if duty == "provider_submission":
+            # Live submission RPC remains disabled. No broad grants are needed.
+            assert requirements == ()
+            continue
         if duty == "recovery_attestation":
-            assert not any(privilege == "UPDATE" for _,privilege,_ in requirements)
+            assert not any(privilege == "UPDATE" for _, privilege, _ in requirements)
             assert ("datarise_warehouse_dev.warehouse_query_send_journal",
                     "INSERT", "recovery_lease_journal") in requirements
             continue
@@ -55,20 +59,14 @@ def test_every_duty_requires_real_reservation_lock_permission():
             assert ("datarise_warehouse_dev.warehouse_query_request_envelopes",
                     "SELECT", "pinned_request") in requirements
             continue
-        assert ("public.query_governance_reservations","UPDATE",
+        assert duty == "accounting"
+        assert ("public.query_governance_reservations", "UPDATE",
                 "reservation_for_update") in requirements
-        if duty == "accounting":
-            assert not any(privilege == "UPDATE" and relation.startswith(
-                "datarise_warehouse_dev.") for relation, privilege, _ in requirements)
-            assert ("public.workspaces", "SELECT", "canonical_owner") in requirements
-            assert ("datarise_warehouse_dev.warehouse_query_request_envelopes",
-                    "SELECT", "pinned_request_evidence") in requirements
-            continue
-        # Submission is disabled at the RPC dispatch layer, so it must not
-        # demand cross-duty access to users/auth_sessions/publication data.
-        assert duty == "provider_submission"
-        assert requirements == ()
-        assert not report if False else True
+        assert not any(privilege == "UPDATE" and relation.startswith(
+            "datarise_warehouse_dev.") for relation, privilege, _ in requirements)
+        assert ("public.workspaces", "SELECT", "canonical_owner") in requirements
+        assert ("datarise_warehouse_dev.warehouse_query_request_envelopes",
+                "SELECT", "pinned_request_evidence") in requirements
 
 
 def test_disabled_submission_is_not_reported_as_live_ready():
