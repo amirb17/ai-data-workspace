@@ -37,6 +37,68 @@ def _code(exc):
     return type(exc).__name__
 
 
+def _metadata_differences(runtime, resolved):
+    """Compare only pinned identity properties; never print cloud identifiers."""
+    from app.warehouse.providers.base import Binding
+    from app.services import warehouse_sql_provider_policy_service as policy
+
+    draft, binding, _query, expected_schema = resolved
+    server, _ = policy._runtime(18)
+    model = binding.models[0]
+    generated = Binding(
+        server.project, 18, model.model_id, model.model_version_id,
+        model.resource_id, model.generation, location=server.location,
+    )
+    expected_table = generated.publication_physical(
+        model.publication_id, model.publication_revision,
+    )
+    checks = {"pinned_physical_identity": model.physical_table == expected_table}
+    if not checks["pinned_physical_identity"]:
+        return checks
+    try:
+        found = runtime.metadata_client.get_table(
+            expected_table, retry=None, timeout=10,
+        )
+    except Exception as exc:
+        checks["provider_metadata_fetch"] = _code(exc)
+        return checks
+    checks["provider_metadata_fetch"] = "OK"
+    checks["table_identity"] = getattr(found, "full_table_id", None) == expected_table.replace(".", ":", 1)
+    checks["table_type"] = getattr(found, "table_type", None) == "TABLE"
+    checks["location"] = getattr(found, "location", None) == server.location
+    alias = {"INTEGER": "INT64", "BOOLEAN": "BOOL"}
+    actual = tuple(
+        (str(f.name), alias.get(str(f.field_type), str(f.field_type)), str(f.mode))
+        for f in found.schema
+    )
+    expected = tuple(
+        (name, alias.get(kind, kind), mode) for name, kind, mode in expected_schema
+    )
+    checks["schema_column_count"] = len(actual) == len(expected)
+    checks["schema_field_names"] = tuple(x[0] for x in actual) == tuple(x[0] for x in expected)
+    checks["schema_field_types"] = tuple(x[1] for x in actual) == tuple(x[1] for x in expected)
+    checks["schema_field_modes"] = tuple(x[2] for x in actual) == tuple(x[2] for x in expected)
+    checks["partitioning"] = getattr(found, "time_partitioning", None) is None and getattr(found, "range_partitioning", None) is None
+    checks["clustering"] = getattr(found, "clustering_fields", None) is None
+    checks["partition_filter"] = not bool(getattr(found, "require_partition_filter", False))
+    checks["no_expiry"] = getattr(found, "expires", None) is None
+    expected_labels = {
+        "datarise": "warehouse", "environment": "development",
+        "workspace": "18", "model": str(model.model_id),
+        "generation": str(model.generation),
+        "contract": model.schema_sha256[:63],
+        "publication": str(model.publication_id),
+        "revision": str(model.publication_revision),
+    }
+    actual_labels = getattr(found, "labels", None)
+    checks["labels_available"] = isinstance(actual_labels, dict)
+    if isinstance(actual_labels, dict):
+        checks["labels"] = {
+            key: actual_labels.get(key) == expected_value
+            for key, expected_value in expected_labels.items()
+        }
+    return checks
+
 def check():
     from app.db import database
     from app.services import warehouse_query_workflow_service as workflow
@@ -82,6 +144,12 @@ def check():
                     workflow._preflight(runtime, resolved, 18)
                 except Exception as exc:
                     stages["provider_preflight"] = _code(exc)
+                    if (stages["provider_preflight"] == "WAREHOUSE_SERVING_SCHEMA_NOT_VERIFIED"
+                            and "runtime" in locals()):
+                        try:
+                            stages["metadata_checks"] = _metadata_differences(runtime, resolved)
+                        except Exception as diagnostic_exc:
+                            stages["metadata_checks"] = {"diagnostic_status": _code(diagnostic_exc)}
                     return stages
                 stages["provider_preflight"] = "OK"
                 return stages
