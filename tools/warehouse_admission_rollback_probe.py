@@ -159,12 +159,14 @@ def run():
                      digest({'model':1,'sql':sql}),
                      session_digest,attempt['attempt_id']),
                 )
-                stage = 'insert_named_result_contract'
+                stage = 'contract_job_identity'
                 job=f"dr_query_w18_r{reservation['reservation_id']}_{attempt['request_token'].strip()[:32]}"
+                stage = 'contract_expiry'
                 read_until_ms=conn.execute(
                     'SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint+%s',
                     (named.read_seconds*1000,),
                 ).fetchone()[0]
+                stage = 'contract_assembly'
                 contract=dict(
                     version=1,
                     destination=result_identity(policy._runtime(18)[0].project,18,job),
@@ -179,6 +181,7 @@ def run():
                         'read_seconds':named.read_seconds,
                     },
                 )
+                stage = 'contract_postgres_insert'
                 conn.execute(
                     'INSERT INTO warehouse_query_result_contracts'
                     '(attempt_id,workspace_id,provider_job_id,sql_sha256,'
@@ -195,6 +198,14 @@ def run():
             except Exception as exc:
                 result['stage']=stage
                 result['exception_class']=type(exc).__name__
+                if isinstance(exc, KeyError):
+                    # Only approved internal field names. Never expose
+                    # arbitrary SQL or session-token material.
+                    key = exc.args[0] if exc.args else None
+                    allowed = {'reservation_id','request_token','project',
+                               'read_seconds','reader_principal','revision',
+                               'schema','destination','result','owner_key'}
+                    result['missing_internal_field']=key if key in allowed else 'OTHER'
                 state=getattr(exc,'sqlstate',None)
                 if isinstance(state,str) and len(state)==5 and state.isalnum():
                     result['sqlstate']=state
