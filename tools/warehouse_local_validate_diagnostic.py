@@ -56,9 +56,10 @@ def check():
         _assert_local_development()
         _bind_canonical_local_database()
         with connect(database.DATABASE_URL, row_factory=dict_row) as conn:
-            # Read-only, rollback at end: publication state is never changed.
+            # Application ownership checks require SELECT FOR SHARE, which
+            # PostgreSQL rejects in a READ ONLY transaction. This code issues
+            # only SELECTs plus cloud metadata/dry-run calls, and rolls back.
             with conn.transaction():
-                conn.execute("SET TRANSACTION READ ONLY")
                 scope = conn.execute(
                     "SELECT owner,status FROM public.workspaces WHERE workspace_id=18"
                 ).fetchone()
