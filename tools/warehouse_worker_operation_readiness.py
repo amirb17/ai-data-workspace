@@ -1,6 +1,6 @@
 """Read-only live permission readiness for warehouse worker service operations.
 
-Worker health only verifies identities. It does NOT prove that recovery and
+Worker health only verifies identities. The provider submission operation is\ncurrently disabled and is never considered live-ready by this report.\nIt does NOT prove that recovery and
 settlement SQL can acquire row locks or read canonical source tables.
 This audit checks the effective table privileges for the exact known service
 prerequisites, without running a query attempt, obtaining a row lock, modifying
@@ -60,11 +60,14 @@ LIVE_CONTEXT = (
     (P+".datasets", "UPDATE", "source_dataset_for_share"),
 )
 REQUIREMENTS = {
-    "provider_submission": BASE + LIVE_CONTEXT + (
-        (Q+".warehouse_query_request_envelopes", "SELECT", "pinned_envelope"),
-        (Q+".warehouse_query_provider_policies", "SELECT", "pinned_policy"),
-        (Q+".warehouse_query_send_journal", "INSERT", "record_boundary"),
-    ),
+    # The live provider_submission RPC currently rejects record_send_boundary
+    # *before* any DB access. Its only executable operation is health,
+    # which checks identity through a separate restricted-role startup gate.
+    # Do NOT demand broad user/session/publication grants for unreachable
+    # legacy _live_context code: they would weaken the sender's isolation.
+    # A nonempty permission matrix may be added only when a newly reviewed,
+    # callable send operation exists; this is NOT approval for BigQuery I/O.
+    "provider_submission": (),
     # Only RPC-exposed inspect_recovery/acquire_recovery are evaluated.
     # Both use the global advisory transaction lock and read immutable
     # metadata without row locks; acquire appends a fenced journal revision.
@@ -130,6 +133,7 @@ def inspect(conn):
         ),
         "query_execution_enabled":False,
         "provider_send_boundary_enabled":False,
+        "provider_submission_operation_implemented":False,
         "provider_requires_atomic_control_authorization":True,
         "workers":report,
     }
