@@ -62,3 +62,37 @@ def test_never_uses_downloaded_service_account_keys(monkeypatch):
     ):
         with pytest.raises(RuntimeError, match="KEYFILE_CREDENTIAL_OVERRIDES_FORBIDDEN"):
             _assert_local_development()
+
+
+def test_local_dryrun_estimator_uses_bounded_server_query_only():
+    from types import SimpleNamespace
+    from app.query_governance.types import EstimateConfidence
+    from tools.warehouse_local_live_api import LocalDryRunEstimator
+
+    class Client:
+        def __init__(self):
+            self.calls = []
+        def query(self, sql, **kwargs):
+            self.calls.append((sql, kwargs))
+            return SimpleNamespace(total_bytes_processed=1024)
+
+    cloud = Client()
+    result = LocalDryRunEstimator(cloud).estimate(
+        SimpleNamespace(sql="SELECT 1 FROM `datarise-511817.dr_dev_w18.foo`")
+    )
+    assert result.bytes_processed == 10 * 1024 * 1024
+    assert result.confidence == EstimateConfidence.UPPER_BOUND
+    assert len(cloud.calls) == 1
+    assert cloud.calls[0][1]["retry"] is None
+    assert cloud.calls[0][1]["job_retry"] is None
+    assert cloud.calls[0][1]["job_config"].dry_run is True
+
+
+def test_local_dryrun_rejects_non_select_without_provider_call():
+    from types import SimpleNamespace
+    from tools.warehouse_local_live_api import LocalDryRunEstimator
+    class Forbidden:
+        def query(self, *_args, **_kwargs):
+            raise AssertionError("Provider must not be reached")
+    with pytest.raises(ValueError, match="COMPILED_SELECT_REQUIRED"):
+        LocalDryRunEstimator(Forbidden()).estimate(SimpleNamespace(sql="DELETE FROM users"))
