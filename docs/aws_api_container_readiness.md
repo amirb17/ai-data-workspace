@@ -34,7 +34,7 @@ never use a mutable tag alone. Calculate the requirements hash from the
 ```powershell
 $base = 'python:3.13-slim@sha256:REPLACE_WITH_REVIEWED_DIGEST'
 $revision = (git rev-parse HEAD).Trim()
-$lockHash = (Get-FileHash deployment/docker/requirements.lock -Algorithm SHA256).Hash.ToLowerInvariant()
+$lockHash = (python -c "from deployment.docker.verify_lock import sha; from pathlib import Path; print(sha(Path('deployment/docker/requirements.lock').read_text(encoding='utf-8')))").Trim()
 
 docker build --file deployment/docker/Dockerfile.api `
   --build-arg API_BASE_IMAGE=$base `
@@ -42,6 +42,8 @@ docker build --file deployment/docker/Dockerfile.api `
   --build-arg RUNTIME_LOCK_SHA=$lockHash `
   --tag datarise-api:review .
 ```
+
+On Windows, do **not** substitute `Get-FileHash` for this command: the verifier hashes UTF-8 text with normalized newlines, whereas `Get-FileHash` hashes checkout bytes (which may have CRLF). A mismatch causes `Build dependency identity differs` even with an unchanged lock.
 
 The provided `REPLACE_WITH_REVIEWED_DIGEST` is intentionally invalid.
 Do not invent or blindly paste a digest. Review base provenance and
