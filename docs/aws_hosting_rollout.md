@@ -1,6 +1,6 @@
 # DataRise AWS web deployment — staged, no-go for public launch
 
-**Scope:** GitHub branch `feature/warehouse-model-ux`, AWS `ap-south-1`.
+**Scope:** GitHub branch `feature/warehouse-model-ux`, AWS `ap-southeast-2`.
 The app is **not deployed by these files**. The current local warehouse
 query was observed `SUCCEEDED`, but production result reader authorization
 and actual rows remain unverified. NEVER run the local privileged
@@ -41,7 +41,7 @@ terraform -chdir=deployment/terraform/environments/dev validate
 
 Confirm STS account is the account pinned in
 `deployment/terraform/environments/dev/versions.tf` and the region is
-`ap-south-1`. Share neither credential files nor session tokens.
+`ap-southeast-2`. Share neither credential files nor session tokens.
 
 **Do not apply Terraform yet**: it uses a local tfstate backend; state
 security, ownership, existing assets, default-off variables, and expected
