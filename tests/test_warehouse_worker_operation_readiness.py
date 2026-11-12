@@ -12,10 +12,12 @@ class Catalog:
     def __init__(self, denies=()):
         self.denies=set(denies)
         self.calls=[]
+        self.calls_sql=[]
     def execute(self, statement, params):
         assert statement.strip()=="SELECT has_table_privilege(%s, %s, %s)"
         assert len(params)==3
         self.calls.append(params)
+        self.calls_sql.append((statement,params))
         return Row((params not in self.denies,))
 
 
@@ -37,7 +39,8 @@ def test_reports_missing_lock_privilege_without_attempting_update():
     blockers=report["workers"]["recovery_attestation"]["missing_privileges"]
     assert any(b["relation"]==missing[1] and b["privilege"]=="UPDATE"
                for b in blockers)
-    assert all("INSERT" not in sql for sql,params in [])  # read-only catalog
+    assert all(sql.strip()=="SELECT has_table_privilege(%s, %s, %s)"
+               for sql, params in conn.calls_sql)
 
 
 def test_every_duty_requires_real_reservation_lock_permission():
