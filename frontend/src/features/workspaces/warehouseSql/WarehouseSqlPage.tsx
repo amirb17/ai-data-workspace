@@ -9,7 +9,7 @@ import {WarehouseQueryResults} from './WarehouseQueryResults'
 
 const button='min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-50'
 const primary='min-h-11 rounded-lg bg-indigo-700 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-40'
-const fixedTypes=new Set(['INTEGER','INT64','NUMERIC','DECIMAL','BOOLEAN','BOOL','DATE','TIMESTAMP'])
+const fixedTypes=new Set(['STRING','INTEGER','INT64','NUMERIC','DECIMAL','BOOLEAN','BOOL','DATE','TIMESTAMP'])
 const quote=(name:string)=>'"'+name.replaceAll('"','""')+'"'
 const bytes=(count:number)=>count>=1024*1024*1024?(count/(1024**3)).toFixed(2)+' GiB':count>=1024*1024?(count/(1024**2)).toFixed(2)+' MiB':count>=1024?(count/1024).toFixed(1)+' KiB':count+' B'
 function example(model:WarehouseModel, names?:string[]) {
