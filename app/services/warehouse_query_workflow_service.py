@@ -248,9 +248,20 @@ def admit_query(request,workspace,model,sql,key,runtime):
         sqlstate=getattr(exc,'sqlstate',None)
         if not isinstance(sqlstate,str) or len(sqlstate)!=5 or not sqlstate.isalnum():
             sqlstate='NONE'
+        # PostgreSQL P0001 is a family of deliberate trigger rejections.
+        # Expose only reviewed, fixed messages from the named-result guard;
+        # NEVER log a raw exception (which could contain SQL or identifiers).
+        safe_trigger_messages = {
+            'Current named API admission required': 'NAMED_ADMISSION_NOT_CURRENT',
+            'Bounded exact named result identity required': 'NAMED_CONTRACT_IDENTITY_MISMATCH',
+            'Permanent result storage budget exhausted': 'NAMED_STORAGE_CAP_EXHAUSTED',
+        }
+        diagnostic = getattr(exc, 'diag', None)
+        primary = getattr(diagnostic, 'message_primary', None)
+        reason = safe_trigger_messages.get(primary, 'OTHER')
         logging.getLogger('datarise.warehouse.admission').warning(
-            'WAREHOUSE_ADMISSION_FAILED stage=%s class=%s sqlstate=%s',
-            _admission_stage.get(),type(exc).__name__,sqlstate,
+            'WAREHOUSE_ADMISSION_FAILED stage=%s class=%s sqlstate=%s reason=%s',
+            _admission_stage.get(),type(exc).__name__,sqlstate,reason,
         )
         raise
     finally:
