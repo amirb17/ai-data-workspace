@@ -12,6 +12,7 @@ import json
 import sys
 
 from app.warehouse.worker_rpc_client import WarehouseWorkerClient
+from app.warehouse.worker_rpc_protocol import WorkerRpcRejected
 from app.warehouse.worker_rpc_server import _rpc_key
 from tools.warehouse_local_worker_run import PORTS
 
@@ -46,8 +47,10 @@ def main():
                          indent=2))
         return 0
     except Exception as exc:
-        # Never print RPC keys or transport details.
-        if type(exc) in (ValueError,RuntimeError):
+        # WorkerRpcRejected carries only stable non-secret error codes.
+        if isinstance(exc, WorkerRpcRejected):
+            print("WAREHOUSE_LOCAL_WORKER_PROBE_BLOCKED:",str(exc),file=sys.stderr)
+        elif type(exc) in (ValueError,RuntimeError):
             print("WAREHOUSE_LOCAL_WORKER_PROBE_BLOCKED:",str(exc),file=sys.stderr)
         else:
             print("WAREHOUSE_LOCAL_WORKER_PROBE_BLOCKED:",
