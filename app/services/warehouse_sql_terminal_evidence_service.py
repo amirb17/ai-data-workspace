@@ -37,8 +37,11 @@ def inspect_terminal_evidence(*, attempt_id: int) -> TerminalEvidence:
 def _inspect_terminal_evidence_locked(conn, attempt_id: int) -> TerminalEvidence:
     """Same-transaction evidence gate for the accounting controller."""
     c = repo.checkpoint(conn, attempt_id)
-    r = repo.lock_identity(conn, c)
-    intent, latest = repo.latest(conn, attempt_id)
+    # The surrounding repo.transaction serializes the governed workflow.
+    # Only the governance reservation is mutated during settlement; its
+    # FOR UPDATE lock is acquired by accounting.complete/fail.
+    r = repo.lock_identity(conn, c, lock=False)
+    intent, latest = repo.latest(conn, attempt_id, lock=False)
     pinned = repo.one(conn, """
         SELECT e.provider_job_id,e.request_sha256,e.policy_sha256,
                p.expected_sha256,p.expected
