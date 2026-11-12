@@ -363,9 +363,26 @@ def query_results(request,workspace,handle,runtime):
     from app.services.warehouse_sql_server_result_schema_service import inspect_server_result_schema
     from app.services.warehouse_sql_authenticated_first_page_service import read_authenticated_first_warehouse_page_simulated
     from app.warehouse.query_bigquery_first_page_bridge import SimulatedBigQueryFirstPage
-    with _scope(request,workspace) as (conn,user,session):a=_owned(conn,user,session,workspace,handle)
+    with _scope(request,workspace) as (conn,user,session):
+        a=_owned(conn,user,session,workspace,handle)
+        # Establish the exact original reservation and job under the
+        # authenticated control boundary, never from worker RPC arguments.
+        identity=repo.one(conn,'''SELECT l.reservation_id,i.provider_job_id
+            FROM warehouse_query_attempt_reservation_links l
+            JOIN warehouse_query_send_intents i USING(attempt_id)
+            WHERE l.attempt_id=%s''',(a['attempt_id'],))
     if query_status(request,workspace,handle)['status']!='SUCCEEDED':
         raise HTTPException(409,'Settled successful results are not ready')
+    router=getattr(runtime,"worker_router",None)
+    if router is not None:
+        eligibility=router.inspect_eligibility(a['attempt_id'])
+        if (not identity or eligibility.attempt_id!=a['attempt_id']
+                or eligibility.reservation_id!=identity['reservation_id']
+                or eligibility.job_id!=identity['provider_job_id']
+                or eligibility.classification!='SETTLED_SUCCESS_RESULTS_REVIEW_REQUIRED'
+                or eligibility.provider_dispatched is not False
+                or eligibility.result_fetched is not False):
+            raise HTTPException(409,'Independent result authorization disagrees')
     schema=inspect_server_result_schema(attempt_id=a['attempt_id'])
     reader=runtime.results_transport
     with _scope(request,workspace) as (conn,user,session):
