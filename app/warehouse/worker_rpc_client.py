@@ -51,6 +51,10 @@ class WarehouseWorkerClient:
             raw=response.read(4097)
             if len(raw)>4096:
                 raise WorkerRpcRejected("WORKER_RPC_RESPONSE_OVERSIZED")
+            if response.status == 401:
+                raise WorkerRpcRejected("WORKER_RPC_AUTHENTICATION_REJECTED")
+            if response.status == 422:
+                raise WorkerRpcRejected("WORKER_RPC_OPERATION_REJECTED")
             if response.status == 400:
                 raise WorkerRpcRejected("WORKER_RPC_AUTH_OR_REQUEST_REJECTED")
             if response.status == 503:
