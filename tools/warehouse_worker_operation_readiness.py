@@ -122,9 +122,10 @@ def inspect(conn):
                     "required_by":usage,
                 })
         report[duty]={
-            "permissions_ready":not blockers,
+            "permissions_ready":not blockers and duty != "provider_submission",
             "missing_privileges":blockers,
             "requirements_checked":len(REQUIREMENTS[duty]),
+            "operation_implemented":duty != "provider_submission",
         }
     return {
         "worker_health_is_not_operation_readiness":True,
