@@ -57,3 +57,45 @@ def test_probe_rejects_false_identity():
         }):
         with pytest.raises(ValueError,match="IDENTITY_PROBE_FAILED"):
             router.probe_workers()
+
+
+def test_health_accepts_catalog_first_canonical_worker_search_path():
+    class Result:
+        def __init__(self, value):
+            self.value=value
+        def fetchone(self):
+            return self.value
+    class Conn:
+        def execute(self, query):
+            assert "current_schemas(true)" in query
+            return Result((
+                "datarise_wh_account", "datarise_wh_account",
+                ["pg_catalog", "public", "datarise_warehouse_dev"],
+            ))
+    from contextlib import contextmanager
+    @contextmanager
+    def transaction():
+        yield Conn()
+    with patch("app.db.database.repository_transaction", transaction):
+        assert execute_operation("accounting","health",{})=={
+            "duty":"accounting",
+            "database_identity_verified":True,
+            "query_execution_enabled":False,
+        }
+
+
+def test_health_rejects_incorrect_schema_order():
+    class Result:
+        def fetchone(self):
+            return ("datarise_wh_account","datarise_wh_account",
+                    ["pg_catalog","datarise_warehouse_dev","public"])
+    class Conn:
+        def execute(self, query):
+            return Result()
+    from contextlib import contextmanager
+    @contextmanager
+    def transaction():
+        yield Conn()
+    with patch("app.db.database.repository_transaction", transaction):
+        with pytest.raises(WorkerRpcRejected, match="CANONICAL_PATH_INVALID"):
+            execute_operation("accounting","health",{})
