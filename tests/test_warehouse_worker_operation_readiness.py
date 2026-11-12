@@ -52,5 +52,12 @@ def test_every_duty_requires_real_reservation_lock_permission():
             continue
         assert ("public.query_governance_reservations","UPDATE",
                 "reservation_for_update") in requirements
+        if duty == "accounting":
+            assert not any(privilege == "UPDATE" and relation.startswith(
+                "datarise_warehouse_dev.") for relation, privilege, _ in requirements)
+            assert ("public.workspaces", "SELECT", "canonical_owner") in requirements
+            assert ("datarise_warehouse_dev.warehouse_query_request_envelopes",
+                    "SELECT", "pinned_request_evidence") in requirements
+            continue
         assert ("datarise_warehouse_dev.warehouse_query_send_intents",
                 "UPDATE","send_intent_for_update") in requirements
