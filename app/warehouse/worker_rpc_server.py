@@ -96,6 +96,12 @@ def execute_operation(duty: str, operation: str, args: dict):
         return _serializable(inspect_settled_result_eligibility(
             attempt_id=bounded_id(args)))
     if duty == "provider_submission" and operation == "record_send_boundary":
+        # Intentionally closed until control-side session/publication checks
+        # and the provider-side atomic authorization fence have a reviewed
+        # cross-process contract. HMAC authentication alone is NOT dispatch
+        # authority. Never weaken the submission role by granting access to
+        # users/auth_sessions/publication source tables.
+        raise WorkerRpcRejected("PROVIDER_SEND_BOUNDARY_NOT_APPROVED")
         # No SQL or BigQuery job is accepted. The exact lease must still be
         # checked inside PostgreSQL before its send-unknown marker commits.
         from app.services import warehouse_sql_send_recovery_service as recovery
