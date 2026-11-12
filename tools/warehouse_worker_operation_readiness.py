@@ -69,9 +69,21 @@ REQUIREMENTS = {
         (Q+".warehouse_query_send_journal", "INSERT", "recovery_lease_journal"),
         (Q+".warehouse_query_recovery_attestations", "INSERT", "attestation"),
     ),
-    "accounting": BASE + (
+    # Accounting still takes the governance reservation FOR UPDATE when
+    # writing the durable usage ledger. Immutable attempt and send-intent
+    # rows are inspected beneath the shared global advisory transaction.
+    "accounting": tuple(
+        entry for entry in BASE
+        if not (entry[1] == "UPDATE" and entry[0] in {
+            Q+".warehouse_query_attempt_registry",
+            Q+".warehouse_query_send_intents",
+        })
+    ) + (
+        (P+".workspaces", "SELECT", "canonical_owner"),
+        (Q+".warehouse_query_request_envelopes", "SELECT", "pinned_request_evidence"),
         (Q+".warehouse_query_provider_policies", "SELECT", "attestation_policy"),
         (Q+".warehouse_query_recovery_attestations", "SELECT", "attested_proof"),
+        (P+".query_governance_usage", "SELECT", "settled_ledger_readback"),
         (P+".query_governance_usage", "INSERT", "settlement_ledger"),
     ),
     # Result authorization is inspection-only. It shares the transaction's
