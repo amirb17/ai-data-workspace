@@ -9,9 +9,9 @@ variable "enable_api_task_definition" {
 variable "api_image_digest" {
   description = "Immutable ECR image sha256 digest (not a tag)"
   type        = string
-  default     = "sha256:2366c2f8769bfbed7f5eabdf0dd312f25eb0f3af92352c4bc2b388ea7c1e56bb"
+  default     = ""
   validation {
-    condition     = can(regex("^sha256:[0-9a-f]{64}$", var.api_image_digest))
+    condition     = var.api_image_digest == "" || can(regex("^sha256:[0-9a-f]{64}$", var.api_image_digest))
     error_message = "API image digest must be a lowercase sha256 digest."
   }
 }
@@ -120,7 +120,7 @@ resource "aws_ecs_task_definition" "api" {
   lifecycle {
     precondition {
       condition = (var.enable_api_ecs_execution_role && var.enable_api_ecs_foundation &&
-        var.enable_api_ecr && var.api_backend_origin != "" &&
+        var.enable_api_ecr && can(regex("^sha256:[0-9a-f]{64}$", var.api_image_digest)) && var.api_backend_origin != "" &&
         var.api_public_host != "" &&
         var.api_backend_origin == "https://${var.api_public_host}" &&
         startswith(var.api_auth_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:") &&
