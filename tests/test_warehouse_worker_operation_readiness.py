@@ -24,7 +24,8 @@ class Catalog:
 def test_audit_passes_if_all_required_grants_are_present():
     conn=Catalog()
     report=inspect(conn)
-    assert report["all_operations_permission_ready"] is True
+    assert report["all_operations_permission_ready"] is False
+    assert report["workers"]["provider_submission"]["operation_implemented"] is False
     assert report["query_execution_enabled"] is False
     assert len(conn.calls)==sum(map(len,REQUIREMENTS.values()))
     assert set(report["workers"])==set(ROLES)
@@ -72,6 +73,7 @@ def test_each_enabled_duty_has_only_its_required_grants():
 def test_disabled_submission_is_not_reported_as_live_ready():
     report = inspect(Catalog())
     assert report["workers"]["provider_submission"]["missing_privileges"] == []
+    assert report["workers"]["provider_submission"]["permissions_ready"] is False
     assert report["provider_submission_operation_implemented"] is False
     assert report["provider_send_boundary_enabled"] is False
     assert report["query_execution_enabled"] is False
