@@ -37,8 +37,10 @@ def inspect_settled_result_eligibility(*, attempt_id: int) -> ResultEligibility:
 def _inspect_settled_result_eligibility_locked(conn, attempt_id: int) -> ResultEligibility:
     """Composed with authenticated request locking in one DB transaction."""
     checkpoint = repo.checkpoint(conn, attempt_id)
-    reservation = repo.lock_identity(conn, checkpoint)
-    intent, event = repo.latest(conn, attempt_id)
+    # This is an inspection-only operation under repo.transaction advisory
+    # locks. Do not demand row UPDATE grants from a result-reader principal.
+    reservation = repo.lock_identity(conn, checkpoint, lock=False)
+    intent, event = repo.latest(conn, attempt_id, lock=False)
     if reservation["status"] != "COMPLETED":
         raise ResultEligibilityConflict("SETTLED_SUCCESS_REQUIRED")
     if event["phase"] != "SUCCEEDED_OBSERVED" or event["event"] != "OBSERVATION" or event["observation"] != "SUCCEEDED":
