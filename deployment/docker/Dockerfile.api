@@ -1,0 +1,52 @@
+# Dedicated FastAPI web image. Not the EC2 processing worker or local live BigQuery runner.
+# Review and supply an immutable Python 3.13 Linux base-image digest at build time.
+ARG API_BASE_IMAGE
+FROM ${API_BASE_IMAGE}
+ARG API_BASE_IMAGE
+ARG SOURCE_REVISION
+ARG RUNTIME_LOCK_SHA
+
+LABEL org.opencontainers.image.revision=${SOURCE_REVISION} \
+      io.datarise.base-image=${API_BASE_IMAGE} \
+      io.datarise.requirements-sha256=${RUNTIME_LOCK_SHA}
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PYTHON_DOTENV_DISABLED=1 \
+    APP_ENV=production \
+    AUTH_MODE=session \
+    AUTH_COOKIE_SECURE=true \
+    ENABLE_DEV_IDENTITY=false \
+    DATARISE_PUBLIC_LAUNCH_MODE=csv-readonly \
+    DATARISE_PROCESSING_DEPLOYMENT_APPROVED=false \
+    DATARISE_PROCESSING_READERS=false \
+    DATARISE_DISPATCH_APPROVED=false \
+    WAREHOUSE_ENABLED=false \
+    METRIC_BIGQUERY_SHADOW_ENABLED=false \
+    METRIC_BIGQUERY_PRIMARY_ENABLED=false \
+    OPENBLAS_NUM_THREADS=1 \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1
+
+WORKDIR /app
+COPY pyproject.toml uv.lock README.md ./
+COPY deployment/docker/requirements.lock deployment/docker/verify_lock.py ./deployment/docker/
+COPY deployment/docker/certs/global-bundle.pem /app/certs/global-bundle.pem
+
+RUN python -c "import sys; assert sys.version_info[:2] == (3, 13)" \
+    && python deployment/docker/verify_lock.py --base "$API_BASE_IMAGE" --revision "$SOURCE_REVISION" --requirements-hash "$RUNTIME_LOCK_SHA" \
+    && python -m pip install --no-cache-dir --no-deps --only-binary=:all: --require-hashes -r deployment/docker/requirements.lock \
+    && useradd --create-home --uid 10002 --shell /usr/sbin/nologin datarise
+
+COPY --chown=10002:10002 app ./app
+ENV PGSSLMODE=verify-full \
+    PGSSLROOTCERT=/app/certs/global-bundle.pem
+
+USER 10002
+EXPOSE 8000
+
+# Do not trust arbitrary X-Forwarded-* headers. The AWS ingress topology and
+# externally authenticated HTTPS scheme must be reviewed before traffic is public.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-proxy-headers"]
