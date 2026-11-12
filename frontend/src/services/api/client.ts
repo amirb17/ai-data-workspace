@@ -1,6 +1,6 @@
 import {resolveApiBase} from './apiOrigin'
 const apiConfiguration = (() => {
-  try { return {base:resolveApiBase(import.meta.env.VITE_API_BASE_URL, Boolean(import.meta.env.PROD)),valid:true} }
+  try { return {base:resolveApiBase(import.meta.env.VITE_API_BASE_URL, Boolean(import.meta.env.PROD)),valid:!(import.meta.env.PROD && import.meta.env.VITE_STATIC_PREVIEW === 'true')} }
   catch { return {base:'',valid:false} }
 })()
 export const API_BASE_URL = apiConfiguration.base
