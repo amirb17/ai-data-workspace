@@ -314,8 +314,24 @@ def execute_query(request,workspace,handle,runtime):
         job=build_reviewed_query_job_request(expected=expected,compiled_sql=q.sql)
         envelope=repo.one(conn,'SELECT request_sha256 FROM warehouse_query_request_envelopes WHERE attempt_id=%s',(a['attempt_id'],))
         if envelope['request_sha256']!=digest(job.body): raise ValueError('Original request fingerprint differs')
-    marker=recovery.record_pinned_send_boundary_without_dispatch(lease=lease,expected_revision=lease.revision)
-    # Only an explicitly injected offline runtime reaches this path. No production factory exists.
+    if getattr(runtime, "worker_router", None) is not None:
+        # A live worker cannot inspect user/session/publication tables. The
+        # authenticated query-control identity owns the durable send fence.
+        # Keep that transaction committed before any external provider I/O.
+        from app.services.warehouse_query_control_gateway import query_control_boundary
+        with query_control_boundary(request):
+            marker = recovery.record_authenticated_control_send_boundary_without_dispatch(
+                request=request, workspace_id=workspace, attempt_handle=handle,
+                lease=lease, expected_revision=lease.revision,
+            )
+    else:
+        # Offline injected test runtimes retain the original deterministic path.
+        marker = recovery.record_pinned_send_boundary_without_dispatch(
+            lease=lease, expected_revision=lease.revision,
+        )
+    if marker.job != lease.job or marker.phase != "SEND_UNKNOWN":
+        raise repo.RecoveryConflict("PINNED_SEND_BOUNDARY_NOT_VERIFIED")
+    # A second request must recover the original job, never submit again.
     submit_exact_job_attempt_after_boundary(request=job,transport=runtime.submit_transport)
     return _observe_and_settle(request,workspace,handle,lease,marker.revision,runtime)
 
