@@ -32,12 +32,12 @@ def test_audit_passes_if_all_required_grants_are_present():
 
 def test_reports_missing_lock_privilege_without_attempting_update():
     role=ROLES["recovery_attestation"]
-    missing=(role,"datarise_warehouse_dev.warehouse_query_send_intents","UPDATE")
+    missing=(role,"datarise_warehouse_dev.warehouse_query_send_journal","INSERT")
     conn=Catalog(denies={missing})
     report=inspect(conn)
     assert not report["all_operations_permission_ready"]
     blockers=report["workers"]["recovery_attestation"]["missing_privileges"]
-    assert any(b["relation"]==missing[1] and b["privilege"]=="UPDATE"
+    assert any(b["relation"]==missing[1] and b["privilege"]=="INSERT"
                for b in blockers)
     assert all(sql.strip()=="SELECT has_table_privilege(%s, %s, %s)"
                for sql, params in conn.calls_sql)
@@ -45,6 +45,11 @@ def test_reports_missing_lock_privilege_without_attempting_update():
 
 def test_every_duty_requires_real_reservation_lock_permission():
     for duty,requirements in REQUIREMENTS.items():
+        if duty == "recovery_attestation":
+            assert not any(privilege == "UPDATE" for _,privilege,_ in requirements)
+            assert ("datarise_warehouse_dev.warehouse_query_send_journal",
+                    "INSERT", "recovery_lease_journal") in requirements
+            continue
         if duty == "result_authorization":
             assert not any(privilege == "UPDATE" for _, privilege, _ in requirements)
             assert ("datarise_warehouse_dev.warehouse_query_request_envelopes",
