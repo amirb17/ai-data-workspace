@@ -16,7 +16,7 @@ function example(model:WarehouseModel, names?:string[]) {
  const fields=(names?.length?names:model.columns.slice(0,32).map(c=>c.name))
  return 'SELECT '+fields.map(quote).join(', ')+' FROM model_'+model.model_id+' LIMIT 100'
 }
-function stageName(number:number){return ['Choose model','Write SQL','Validate & budget','Admit & execute','Inspect results'][number]}
+function stageName(number:number){return ['Choose model','Write SQL','Run query','View results','Done'][number]}
 
 export function WarehouseSqlPage(){const {workspaceId=''}=useParams();return <WarehouseSqlWorkspace workspace={workspaceId}/>}
 export function WarehouseSqlWorkspace({workspace}:{workspace:string}){return <WarehouseSqlContent key={workspace} workspace={workspace}/>}
@@ -47,13 +47,13 @@ function WarehouseSqlContent({workspace}:{workspace:string}){
   <header className="flex flex-wrap items-start justify-between gap-3">
    <div><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-indigo-700">Analytics / Warehouse</div>
     <h1 className="text-2xl font-bold tracking-tight">Warehouse SQL workspace</h1>
-    <p className="mt-2 max-w-3xl text-sm text-slate-600">Explore approved analytical models, validate a bounded query, review the scan estimate, then execute and inspect verified results. For dataset-level SQL, use <Link className="font-medium text-indigo-700 underline" to={`/app/workspaces/${workspace}/sql`}>dataset / Gold SQL</Link>.</p>
+    <p className="mt-2 max-w-3xl text-sm text-slate-600">Explore approved analytical models, run a governed query in one click, and inspect verified results. For dataset-level SQL, use <Link className="font-medium text-indigo-700 underline" to={`/app/workspaces/${workspace}/sql`}>dataset / Gold SQL</Link>.</p>
    </div>
    <button className={button} onClick={()=>setShowGuide(v=>!v)} aria-expanded={showGuide}>{showGuide?'Hide workflow guide':'How this works'}</button>
   </header>
   {showGuide&&<section className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-slate-800" aria-label="Warehouse workflow guide">
    <h2 className="font-semibold">How teams query a real warehouse</h2>
-   <p className="mt-2">Data engineers publish tested fact and dimension models. Analysts discover a trusted model, inspect its grain and columns, validate SQL and estimated bytes, run a governed query, then use the result in a dashboard or business decision. Read-only query access is separate from pipeline administration.</p>
+   <p className="mt-2">Data engineers publish tested fact and dimension models. Analysts choose a trusted model, write a query, and click Run query. The server automatically validates SQL, enforces scan budgets, authorizes access, executes, and verifies results. Read-only query access is separate from pipeline administration.</p>
    <p className="mt-2">This workspace currently supports <strong>one approved logical model</strong>, explicitly selected columns and a literal LIMIT. It does not yet support free-form joins, WHERE, GROUP BY, aggregations or direct physical BigQuery table names. Those capabilities must be supported by the backend compiler before the editor can offer them.</p>
   </section>}
   <section className="rounded-xl border border-slate-200 bg-white px-4 py-3" aria-label="Query progress">
@@ -100,10 +100,18 @@ function WarehouseSqlContent({workspace}:{workspace:string}){
       <strong>Result type compatibility needs attention.</strong> {unsupportedSelected?'All columns':'Some columns'} in this model use types the current named-results contract does not support ({[...new Set(selectedUnsupported.map(c=>c.type))].join(', ')}). The SQL may be syntactically valid while live validation still rejects the projected result schema. Choose a compatible model/columns; supporting text results requires a reviewed backend change.
      </div>}
      <div className="mt-4 flex flex-wrap items-center gap-3">
-      <button className={primary} disabled={disabled||q.locked||!model||!q.sql.trim()} onClick={()=>void q.validate()}>Validate SQL</button>
-      <button className={button} disabled={disabled||!!q.handle||q.validation?.budget_decision!=='ALLOWED'} onClick={()=>void q.admit()}>{q.locked&&!q.handle?'Retry original admission':'Admit query'}</button>
+      <button className={primary} disabled={disabled||q.locked||!model||!q.sql.trim()} onClick={()=>void q.run()}>Run query</button>
       <button className={button} disabled={disabled||(q.locked&&!q.terminal)} onClick={q.reset}>New query</button>
+      <span className="text-xs text-slate-500">Validation, budget and admission run automatically. No extra clicks.</span>
      </div>
+     <details className="mt-3 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+      <summary className="cursor-pointer font-medium text-slate-600">Advanced · inspect query validation</summary>
+      <p className="mt-2 text-xs text-slate-500">Use these controls only for diagnosis or for retrying the original admission. A run always enforces the same backend checks.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+       <button className={button} disabled={disabled||q.locked||!model||!q.sql.trim()} onClick={()=>void q.validate()}>Validate SQL</button>
+       <button className={button} disabled={disabled||!!q.handle||q.validation?.budget_decision!=='ALLOWED'} onClick={()=>void q.admit()}>{q.locked&&!q.handle?'Retry original admission':'Admit query'}</button>
+      </div>
+     </details>
      {q.locked&&!q.handle&&<p className="mt-3 text-sm text-amber-800">Keep this original request for retries. Do not create a replacement while admission is unresolved.</p>}
      {q.validation&&<div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm" role="status">
       <div className="flex flex-wrap items-center justify-between gap-2"><strong>Validation: {q.validation.budget_decision}</strong><span className="font-mono text-xs">{bytes(q.validation.estimated_bytes)} estimated</span></div>
