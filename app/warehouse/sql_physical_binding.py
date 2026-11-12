@@ -32,6 +32,7 @@ class InternalModelBinding:
     serving_sha256: str
     # Sensitive backend-only. Never serialize this object to an API response.
     physical_table: str
+    model_type: str = 'FACT'
 
 
 @dataclass(frozen=True)
@@ -54,7 +55,7 @@ def _source(source, model_id, version_id, model_type):
         source.model_id,source.model_version_id,source.resource_id,source.generation,
         source.publication_id,source.publication_revision,
         source.serving_materialization_id,source.schema_sha256,
-        source.serving_sha256,source.physical_table,
+        source.serving_sha256,source.physical_table,source.model_type,
     )
 
 
