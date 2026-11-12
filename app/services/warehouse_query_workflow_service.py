@@ -148,7 +148,11 @@ def _resolve(conn,user,workspace,model,sql):
     rows=warehouse.metric_warehouse_bindings(conn,workspace,
         [s['dataset_id'] for s in catalog['models'][0]['sources'] if s['purpose']=='PRIMARY'],environment='development')
     rows=[r for r in rows if (r['warehouse_model_id'],r['warehouse_model_version_id'])==(draft.model_id,draft.model_version_id)]
-    if len(rows)!=1: raise ValueError('One current materialized publication required')
+    if len(rows)!=1:
+        raise HTTPException(
+            409, 'Selected warehouse model has no unique current published serving table. '
+                 'Check its publication in the Model workspace.',
+        )
     row=rows[0]
     binding=bind_draft(draft,fact=_source(row,workspace,_publication_state_id(row)))
     query=compile_single_model_sql(workspace_id=workspace,draft=draft,binding=binding)
@@ -187,8 +191,21 @@ def _preflight(runtime,resolved,workspace):
 
 
 def validate_query(request,workspace,model,sql,runtime):
-    with _scope(request,workspace) as (conn,user,_): before=_resolve(conn,user,workspace,model,sql)
-    estimate=_preflight(runtime,before,workspace)
+    import logging
+    logger=logging.getLogger('datarise.warehouse.validation')
+    try:
+        with _scope(request,workspace) as (conn,user,_):
+            before=_resolve(conn,user,workspace,model,sql)
+    except Exception as exc:
+        # No SQL, physical table names, session identifiers or provider error
+        # text in logs. Internal exception class + stage only.
+        logger.warning("WAREHOUSE_VALIDATION_FAILED stage=resolve class=%s",type(exc).__name__)
+        raise
+    try:
+        estimate=_preflight(runtime,before,workspace)
+    except Exception as exc:
+        logger.warning("WAREHOUSE_VALIDATION_FAILED stage=preflight class=%s",type(exc).__name__)
+        raise
     with _scope(request,workspace) as (conn,user,_):
         _revalidate(conn,user,workspace,model,sql,before)
         decision=decide(estimate,budgets._snapshot_locked(conn,workspace),requested_rows=before[0].row_limit,policy=QueryPolicy.from_environment())
