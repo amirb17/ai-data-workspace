@@ -509,12 +509,38 @@ def cancel_query(request,workspace,handle,runtime):
     return _observe_and_settle(request,workspace,handle,lease,lease.revision,runtime)
 
 
+from contextvars import ContextVar as _ResultStageVar
+_result_stage = _ResultStageVar('datarise_warehouse_result_stage', default='start')
+
+
 def query_results(request,workspace,handle,runtime):
+    """Read-only failure diagnostics. Never print SQL, rows, tokens or job IDs."""
+    marker = _result_stage.set('start')
+    try:
+        return _query_results_impl(request,workspace,handle,runtime)
+    except Exception as exc:
+        # A stable, non-sensitive error code is useful for diagnosing expected
+        # result validation failures; arbitrary exception text is never logged.
+        import re
+        code = str(exc) if type(exc) is ValueError else ''
+        if not re.fullmatch(r'[A-Z][A-Z0-9_]{4,79}', code):
+            code = 'OTHER'
+        logging.getLogger('datarise.warehouse.results').warning(
+            'WAREHOUSE_RESULT_READ_FAILED stage=%s class=%s code=%s',
+            _result_stage.get(),type(exc).__name__,code,
+        )
+        raise
+    finally:
+        _result_stage.reset(marker)
+
+
+def _query_results_impl(request,workspace,handle,runtime):
     from app.services.warehouse_sql_server_result_schema_service import inspect_server_result_schema
     from app.services.warehouse_sql_authenticated_first_page_service import read_authenticated_first_warehouse_page_simulated
     from app.warehouse.query_bigquery_first_page_bridge import SimulatedBigQueryFirstPage
     with _scope(request,workspace) as (conn,user,session):
         a=_owned(conn,user,session,workspace,handle)
+    _result_stage.set('settled_success_gate')
     if query_status(request,workspace,handle)['status']!='SUCCEEDED':
         raise HTTPException(409,'Settled successful results are not ready')
     router=getattr(runtime,"worker_router",None)
@@ -537,14 +563,18 @@ def query_results(request,workspace,handle,runtime):
                 or eligibility.provider_dispatched is not False
                 or eligibility.result_fetched is not False):
             raise HTTPException(409,'Independent result authorization disagrees')
+    _result_stage.set('approved_result_schema')
     schema=inspect_server_result_schema(attempt_id=a['attempt_id'])
     reader=runtime.results_transport
+    _result_stage.set('pinned_result_policy')
     with _scope(request,workspace) as (conn,user,session):
         expected=repo.one(conn,'SELECT expected FROM warehouse_query_provider_policies WHERE attempt_id=%s',(a['attempt_id'],))['expected']
         if expected['contract_version']==2:
             from app.warehouse.named_query_results import IndependentNamedResultReader
             from app.warehouse.query_bigquery_named_table_reader import PinnedNamedTableResultReaderFactory
+            _result_stage.set('pinned_schema_match')
             if [list(col) for col in schema.columns]!=expected['result']['schema']:raise ValueError('Pinned result schema changed')
+            _result_stage.set('materialization_proof')
             proof=repo.one(conn,'SELECT metadata_sha256 FROM warehouse_query_result_attestations WHERE attempt_id=%s ORDER BY journal_revision DESC LIMIT 1',(a['attempt_id'],))
             if not proof:raise ValueError('Pinned materialization proof required')
             # Bind job-specific table identity ONLY after authenticated schema
@@ -554,10 +584,14 @@ def query_results(request,workspace,handle,runtime):
                 # Trusted local adapters may refresh a short-lived reader
                 # token at the exact pinned-job bind; the concrete factory
                 # still validates the independent reader principal.
+                _result_stage.set('independent_reader_bind')
                 reader=reader.bind(expected)
+            _result_stage.set('independent_reader_attestation')
             reader=IndependentNamedResultReader(expected,proof['metadata_sha256'],policy._runtime(workspace)[1].transport._client,reader)
+    _result_stage.set('bounded_first_page_fetch')
     page=read_authenticated_first_warehouse_page_simulated(request=request,workspace_id=workspace,attempt_handle=handle,
         transport=SimulatedBigQueryFirstPage(reader,schema.columns))
+    _result_stage.set('final_session_recheck')
     query_status(request,workspace,handle)  # Final session/revocation check before serialization.
     return dict(attempt_handle=handle,columns=list(page.columns),rows=[list(row) for row in page.rows],
         has_more=page.provider_has_more,bytes_encoded=page.bytes_encoded,query_execution_enabled=False)
