@@ -30,11 +30,13 @@ def _call(operation):
 
 @router.post('/validate')
 def validate(workspace_id:int,body:QueryInput,request:Request,user=Depends(get_current_user),runtime=Depends(workflow.get_query_runtime)):
-    return _call(lambda:workflow.validate_query(request,workspace_id,body.model_id,body.sql,runtime))
+    with query_control_boundary(request):
+        return _call(lambda:workflow.validate_query(request,workspace_id,body.model_id,body.sql,runtime))
 
 @router.post('',status_code=201)
 def admit(workspace_id:int,body:AdmissionInput,request:Request,user=Depends(get_current_user),runtime=Depends(workflow.get_query_runtime)):
-    return _call(lambda:workflow.admit_query(request,workspace_id,body.model_id,body.sql,body.idempotency_key,runtime))
+    with query_control_boundary(request):
+        return _call(lambda:workflow.admit_query(request,workspace_id,body.model_id,body.sql,body.idempotency_key,runtime))
 
 @router.get('/{attempt_handle}')
 def status(workspace_id:int,attempt_handle:str,request:Request,user=Depends(get_current_user)):
@@ -43,16 +45,20 @@ def status(workspace_id:int,attempt_handle:str,request:Request,user=Depends(get_
 
 @router.post('/{attempt_handle}/execute')
 def execute(workspace_id:int,attempt_handle:str,request:Request,user=Depends(get_current_user),runtime=Depends(workflow.get_query_runtime)):
-    return _call(lambda:workflow.execute_query(request,workspace_id,attempt_handle,runtime))
+    with query_control_boundary(request):
+        return _call(lambda:workflow.execute_query(request,workspace_id,attempt_handle,runtime))
 
 @router.post('/{attempt_handle}/refresh')
 def refresh(workspace_id:int,attempt_handle:str,request:Request,user=Depends(get_current_user),runtime=Depends(workflow.get_query_runtime)):
-    return _call(lambda:workflow.refresh_query(request,workspace_id,attempt_handle,runtime))
+    with query_control_boundary(request):
+        return _call(lambda:workflow.refresh_query(request,workspace_id,attempt_handle,runtime))
 
 @router.post('/{attempt_handle}/cancel')
 def cancel(workspace_id:int,attempt_handle:str,request:Request,user=Depends(get_current_user),runtime=Depends(workflow.get_query_runtime)):
-    return _call(lambda:workflow.cancel_query(request,workspace_id,attempt_handle,runtime))
+    with query_control_boundary(request):
+        return _call(lambda:workflow.cancel_query(request,workspace_id,attempt_handle,runtime))
 
 @router.get('/{attempt_handle}/results')
 def results(workspace_id:int,attempt_handle:str,request:Request,user=Depends(get_current_user),runtime=Depends(workflow.get_query_runtime)):
-    return _call(lambda:workflow.query_results(request,workspace_id,attempt_handle,runtime))
+    with query_control_boundary(request):
+        return _call(lambda:workflow.query_results(request,workspace_id,attempt_handle,runtime))
