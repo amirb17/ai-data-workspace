@@ -45,6 +45,11 @@ def test_reports_missing_lock_privilege_without_attempting_update():
 
 def test_every_duty_requires_real_reservation_lock_permission():
     for duty,requirements in REQUIREMENTS.items():
+        if duty == "result_authorization":
+            assert not any(privilege == "UPDATE" for _, privilege, _ in requirements)
+            assert ("datarise_warehouse_dev.warehouse_query_request_envelopes",
+                    "SELECT", "pinned_request") in requirements
+            continue
         assert ("public.query_governance_reservations","UPDATE",
                 "reservation_for_update") in requirements
         assert ("datarise_warehouse_dev.warehouse_query_send_intents",
