@@ -36,6 +36,21 @@ def test_one_logical_model_projection_is_non_executable():
     assert "synthetic-project" not in result.normalized_sql
 
 
+def test_quoted_customer_dimension_logical_sql_round_trips():
+    model = {**CATALOG["models"][0], "model_id": 1,
+        "model_version_id": 1, "model_type": "DIMENSION",
+        "columns": [{"name": "customer_id", "type": "STRING", "role": "IDENTITY"}]}
+    scoped = {"workspace_id": 18, "models": [model]}
+    first = plan_draft(
+        'SELECT "customer_id" FROM model_1 LIMIT 100',
+        workspace_id=18, catalog=scoped,
+    )
+    second = plan_draft(first.normalized_sql, workspace_id=18, catalog=scoped)
+    assert second == first
+    assert first.projected_columns == ("customer_id",)
+    assert first.row_limit == 100
+
+
 def test_alias_qualified_columns_only():
     result=draft("SELECT f.line_id, f.product_id FROM model_12 AS f LIMIT 5")
     assert result.projected_columns==("line_id","product_id")
