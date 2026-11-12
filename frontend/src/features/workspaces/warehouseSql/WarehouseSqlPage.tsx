@@ -107,6 +107,7 @@ function WarehouseSqlContent({workspace}:{workspace:string}){
      {q.locked&&!q.handle&&<p className="mt-3 text-sm text-amber-800">Keep this original request for retries. Do not create a replacement while admission is unresolved.</p>}
      {q.validation&&<div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm" role="status">
       <div className="flex flex-wrap items-center justify-between gap-2"><strong>Validation: {q.validation.budget_decision}</strong><span className="font-mono text-xs">{bytes(q.validation.estimated_bytes)} estimated</span></div>
+      <p className="mt-2 text-xs text-slate-600">Estimated bytes: {q.validation.estimated_bytes.toLocaleString()}</p>
       <div className="mt-3 grid grid-cols-2 gap-3 text-xs"><div><span className="text-slate-500">Requested rows</span><p className="mt-1 font-semibold">{q.validation.row_limit}</p></div><div><span className="text-slate-500">Governance</span><p className="mt-1 font-semibold">{q.validation.reason}</p></div></div>
       <p className="mt-3 text-xs text-slate-600">Validation estimates scan bytes; it does not execute the query. Actual billable bytes may differ.</p>
      </div>}
