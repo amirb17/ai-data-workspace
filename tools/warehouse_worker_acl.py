@@ -57,6 +57,8 @@ READS = {
         (SCHEMA, "warehouse_query_cancel_attempt_boundaries"),
     },
     "accounting": _COMMON_READS | {
+        ("public", "workspaces"),
+        (SCHEMA, "warehouse_query_request_envelopes"),
         ("public", "query_governance_usage"),
         (SCHEMA, "warehouse_query_recovery_attestations"),
         (SCHEMA, "warehouse_query_result_attestations"),
