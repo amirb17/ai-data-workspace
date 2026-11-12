@@ -57,6 +57,38 @@ def _assert_local_development():
         raise RuntimeError("KEYFILE_CREDENTIAL_OVERRIDES_FORBIDDEN")
 
 
+def _bind_canonical_local_database():
+    """Use the post-cutover canonical + isolated schema, never shadow copies."""
+    import psycopg
+    from psycopg.conninfo import make_conninfo
+    from app.db import database
+
+    # The process is already confined to local development by _assert_local_development.
+    # PostgreSQL resolves auth/governance in public and query protocol tables
+    # exclusively in the isolated schema.
+    database.DATABASE_URL = make_conninfo(
+        database.DATABASE_URL,
+        options="-c search_path=pg_catalog,public,datarise_warehouse_dev,pg_temp",
+    )
+    with psycopg.connect(database.DATABASE_URL) as conn:
+        schema = conn.execute("SELECT current_schemas(true)").fetchone()[0]
+        if tuple(schema[:3]) != (
+                "pg_catalog", "public", "datarise_warehouse_dev"):
+            raise RuntimeError("CANONICAL_WAREHOUSE_SCHEMA_NOT_INSTALLED")
+        exists = conn.execute(
+            "SELECT to_regclass('datarise_warehouse_dev.warehouse_query_attempt_registry') IS NOT NULL"
+        ).fetchone()[0]
+        shadow = conn.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+                WHERE n.nspname='public' AND c.relname LIKE 'warehouse_query_%'
+                  AND c.relkind IN ('r','p','v','m','f','S')
+            )
+        """).fetchone()[0]
+        if exists is not True or shadow is not False:
+            raise RuntimeError("POST_CUTOVER_WAREHOUSE_SCHEMA_REQUIRED")
+
+
 def _credential(source, target):
     from google.auth import impersonated_credentials
     from google.auth.transport.requests import Request
@@ -216,6 +248,7 @@ def main():
 
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     _assert_local_development()
+    _bind_canonical_local_database()
 
     from app.main import app
     from app.api import warehouse_queries
