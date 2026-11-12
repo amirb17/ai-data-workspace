@@ -129,6 +129,7 @@ resource "aws_ecs_task_definition" "api" {
 
 # Fargate agent must fetch ONLY these two approved API secrets.
 data "aws_iam_policy_document" "api_execution_secrets" {
+  count = var.enable_api_task_definition ? 1 : 0
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [var.api_auth_secret_arn, var.api_database_url_secret_arn]
@@ -139,7 +140,7 @@ resource "aws_iam_role_policy" "api_execution_secrets" {
   count  = var.enable_api_task_definition ? 1 : 0
   name   = "ai-workspace-${var.environment}-api-bootstrap-secrets"
   role   = aws_iam_role.api_ecs_execution[0].id
-  policy = data.aws_iam_policy_document.api_execution_secrets.json
+  policy = data.aws_iam_policy_document.api_execution_secrets[0].json
 }
 
 output "api_task_definition_arn" {
