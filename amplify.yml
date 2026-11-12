@@ -8,7 +8,7 @@ applications:
             - npm ci
         build:
           commands:
-            - test -n "$VITE_API_BASE_URL" || (echo "VITE_API_BASE_URL must be configured as the HTTPS backend origin" && exit 1)
+            - if [ -z "$VITE_API_BASE_URL" ]; then export VITE_STATIC_PREVIEW=true; echo "No API origin configured; building read-only frontend preview with backend calls disabled"; fi
             - npm run build
       artifacts:
         baseDirectory: dist
