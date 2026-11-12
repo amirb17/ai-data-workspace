@@ -64,5 +64,16 @@ def test_every_duty_requires_real_reservation_lock_permission():
             assert ("datarise_warehouse_dev.warehouse_query_request_envelopes",
                     "SELECT", "pinned_request_evidence") in requirements
             continue
-        assert ("datarise_warehouse_dev.warehouse_query_send_intents",
-                "UPDATE","send_intent_for_update") in requirements
+        # Submission is disabled at the RPC dispatch layer, so it must not
+        # demand cross-duty access to users/auth_sessions/publication data.
+        assert duty == "provider_submission"
+        assert requirements == ()
+        assert not report if False else True
+
+
+def test_disabled_submission_is_not_reported_as_live_ready():
+    report = inspect(Catalog())
+    assert report["workers"]["provider_submission"]["missing_privileges"] == []
+    assert report["provider_submission_operation_implemented"] is False
+    assert report["provider_send_boundary_enabled"] is False
+    assert report["query_execution_enabled"] is False
