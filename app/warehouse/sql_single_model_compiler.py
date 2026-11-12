@@ -59,7 +59,7 @@ def compile_single_model_sql(
         "models": [{
             "model_id": model.model_id,
             "model_version_id": model.model_version_id,
-            "model_type": "FACT",
+            "model_type": model.model_type,
             "status": "APPROVED",
             "columns": [
                 {"name":name,"role":"ATTRIBUTE"} for name in draft.projected_columns
