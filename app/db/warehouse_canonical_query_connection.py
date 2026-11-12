@@ -106,13 +106,17 @@ def verify_control_write_boundary(conn):
         ("datarise_warehouse_dev", "warehouse_query_send_intents"): ("INSERT",),
         ("datarise_warehouse_dev", "warehouse_query_provider_policies"): ("INSERT",),
         ("datarise_warehouse_dev", "warehouse_query_request_envelopes"): ("INSERT",),
+        # The authenticated query-control role commits SEND_UNKNOWN under the
+        # original session, pinned lease and immutable-request checks. This is
+        # append-only; it has no UPDATE/DELETE/TRUNCATE or worker attestation
+        # permissions. Match the existing warehouse_control_acl manifest.
+        ("datarise_warehouse_dev", "warehouse_query_send_journal"): ("INSERT",),
     }
     forbidden = (
         ("public", "users"),
         ("public", "auth_sessions"),
         ("public", "warehouse_publications"),
         ("public", "warehouse_model_versions"),
-        ("datarise_warehouse_dev", "warehouse_query_send_journal"),
         ("datarise_warehouse_dev", "warehouse_query_recovery_attestations"),
         ("datarise_warehouse_dev", "warehouse_query_result_attestations"),
         ("datarise_warehouse_dev", "warehouse_query_dispatch_revocations"),
