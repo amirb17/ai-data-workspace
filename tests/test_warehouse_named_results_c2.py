@@ -46,7 +46,9 @@ class Reader:
 @pytest.fixture
 def named(api_case,monkeypatch):
     s=api_case
-    with s.f.pg['connect']() as conn:conn.execute((ROOT/'migrations/0062_warehouse_named_query_results.sql').read_text())
+    with s.f.pg['connect']() as conn:
+        conn.execute((ROOT/'migrations/0062_warehouse_named_query_results.sql').read_text())
+        conn.execute((ROOT/'migrations/0063_warehouse_named_string_results.sql').read_text())
     s.sql=f'SELECT line FROM model_{s.f.model} LIMIT 5'
     s.metadata=Metadata(s.fake);s.reader=Reader(s.fake)
     monkeypatch.setattr(policy,'_RESULT_POLICIES',MappingProxyType({s.f.pg['workspace']:NamedResultPolicy(READER,'named-test-1')}))
@@ -89,12 +91,13 @@ def test_untrusted_or_oversized_result_never_settles_or_returns_rows(named,kind)
     assert s.client.get(s.base+'/'+h+'/results').status_code==409 and not s.reader.calls
 
 
-def test_default_dataset_expiration_and_unbounded_string_are_refused_before_admission(named):
+def test_default_dataset_expiration_rejected_and_bounded_string_admitted(named):
     s=named;s.metadata.default_ttl='60000'
     assert post(s,model_id=s.f.model,sql=s.sql,idempotency_key='ttl-rejected-00001').status_code in (400,503)
     s.metadata.default_ttl=None;s.sql=f'SELECT id FROM model_{s.f.model} LIMIT 5'
-    assert post(s,model_id=s.f.model,sql=s.sql,idempotency_key='string-rejected-001').status_code==400
-    assert count(s,'warehouse_query_api_requests')==0 and not s.fake.inserts
+    response=post(s,model_id=s.f.model,sql=s.sql,idempotency_key='string-accepted-001')
+    assert response.status_code==201,response.text
+    assert count(s,'warehouse_query_api_requests')==1 and not s.fake.inserts
 
 
 def test_independent_reader_and_post_attestation_generation_are_required(named):
