@@ -44,7 +44,10 @@ def settle_verified_warehouse_terminal(*, attempt_id: int) -> AccountingResult:
     with repo.transaction(duty='accounting') as conn:
         evidence = _inspect_terminal_evidence_locked(conn, attempt_id)
         checkpoint = repo.checkpoint(conn, attempt_id)
-        reservation = repo.lock_identity(conn, checkpoint)
+        # Governance complete/fail locks the reservation FOR UPDATE before
+        # mutating ledger state. Do not require UPDATE on immutable attempt
+        # metadata for an accounting-only principal.
+        reservation = repo.lock_identity(conn, checkpoint, lock=False)
         expected_outcome = ('SUCCEEDED' if evidence.observation == 'SUCCEEDED'
                             else 'FAILED' if evidence.observation in ('FAILED', 'CANCELLED')
                             else None)
