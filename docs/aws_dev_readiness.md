@@ -12,8 +12,8 @@ The dev Terraform configuration already defines:
 - ECR and a versioned, encrypted, public-access-blocked S3 artifact bucket
 - A pinned Terraform AWS profile and allowed account list
 
-Region defaults in variables.tf were aligned to `ap-south-1`, matching the
-existing dev tfvars example. **This changes defaults only: it deploys nothing.**
+Region defaults in variables.tf are aligned to `ap-southeast-2`, matching the
+dev tfvars example. **This changes defaults only: it deploys nothing.**
 
 ## Local checks — no cloud mutations
 
@@ -36,7 +36,7 @@ secrets, so review state storage, encryption and access before planning.
 
 ## Work needed to deploy
 
-1. AWS target-account identity and ap-south-1 region evidence; verify
+1. AWS target-account identity and ap-southeast-2 region evidence; verify
    expected inventory already exists and is not managed elsewhere.
 2. Separate production-oriented cloud IAM (S3 writer/reader,
    queue consumer, worker/verifier, secrets access) and network reachability.
