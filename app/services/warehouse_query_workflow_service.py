@@ -260,7 +260,7 @@ def _lease(attempt,runtime):
         raise HTTPException(409,'Query is busy; retry status or refresh later') from error
 
 
-def _observe_and_settle(request,workspace,handle,lease,revision):
+def _observe_and_settle(request,workspace,handle,lease,revision,runtime=None):
     with recovery._worker(lease.attempt_id) as (conn,c):
         _,event=repo.latest(conn,lease.attempt_id)
         terminal=event['phase'] in ('SUCCEEDED_OBSERVED','FAILED_OBSERVED','CANCELLED_OBSERVED')
@@ -275,7 +275,10 @@ def _observe_and_settle(request,workspace,handle,lease,revision):
     # Reauthorize before settlement/response; observation remains useful trusted recovery metadata.
     query_status(request,workspace,handle)
     if observation.verdict=='VERIFIED_METADATA' and observation.billing_complete and observation.observation in ('SUCCEEDED','FAILED','CANCELLED'):
-        settle_verified_warehouse_terminal(attempt_id=lease.attempt_id)
+        if runtime is not None and runtime.worker_router is not None:
+            runtime.worker_router.settle_terminal(lease.attempt_id)
+        else:
+            settle_verified_warehouse_terminal(attempt_id=lease.attempt_id)
     return query_status(request,workspace,handle)
 
 
@@ -314,7 +317,7 @@ def execute_query(request,workspace,handle,runtime):
     marker=recovery.record_pinned_send_boundary_without_dispatch(lease=lease,expected_revision=lease.revision)
     # Only an explicitly injected offline runtime reaches this path. No production factory exists.
     submit_exact_job_attempt_after_boundary(request=job,transport=runtime.submit_transport)
-    return _observe_and_settle(request,workspace,handle,lease,marker.revision)
+    return _observe_and_settle(request,workspace,handle,lease,marker.revision,runtime)
 
 
 def refresh_query(request,workspace,handle,runtime):
@@ -328,10 +331,13 @@ def refresh_query(request,workspace,handle,runtime):
         report=repo.one(conn,'SELECT * FROM warehouse_query_recovery_attestations WHERE attempt_id=%s AND journal_revision=%s',(a['attempt_id'],event['revision']))
     # Recover a successful observation whose accounting commit/response was lost, without another GET or lease.
     if report and report['verdict']=='VERIFIED_METADATA' and report['billing_complete'] and report['observation'] in ('SUCCEEDED','FAILED','CANCELLED'):
-        settle_verified_warehouse_terminal(attempt_id=a['attempt_id'])
+        if runtime.worker_router is not None:
+            runtime.worker_router.settle_terminal(a['attempt_id'])
+        else:
+            settle_verified_warehouse_terminal(attempt_id=a['attempt_id'])
         return query_status(request,workspace,handle)
     lease=_lease(a['attempt_id'],runtime)
-    return _observe_and_settle(request,workspace,handle,lease,lease.revision)
+    return _observe_and_settle(request,workspace,handle,lease,lease.revision,runtime)
 
 
 def cancel_query(request,workspace,handle,runtime):
@@ -350,7 +356,7 @@ def cancel_query(request,workspace,handle,runtime):
     record_cancel_attempt_boundary_without_provider(lease=lease,expected_revision=lease.revision)
     cancel_exact_job_once_after_intent(project=lease.job.project,location=lease.job.location,
         job_id=lease.job.job_id,transport=runtime.cancel_transport)
-    return _observe_and_settle(request,workspace,handle,lease,lease.revision)
+    return _observe_and_settle(request,workspace,handle,lease,lease.revision,runtime)
 
 
 def query_results(request,workspace,handle,runtime):
