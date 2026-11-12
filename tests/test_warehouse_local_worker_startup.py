@@ -90,3 +90,33 @@ def test_probe_rejects_false_identity_or_wrong_duty_port():
                              "query_execution_enabled":False}):
         with pytest.raises(RuntimeError,match="IDENTITY_MISMATCH"):
             probe("accounting",19083,base64.b64encode(b"a"*32).decode())
+
+
+def test_probe_cli_surfaces_only_stable_transport_error(monkeypatch,capsys):
+    from tools.warehouse_local_worker_probe import main
+    monkeypatch.setattr("sys.argv",["probe","accounting","--port","19083"])
+    monkeypatch.setattr("tools.warehouse_local_worker_probe.getpass",
+                        lambda prompt:"test-only-private-key")
+    def fake_probe(*args):
+        raise WorkerRpcRejected("WORKER_RPC_CONNECTION_FAILED")
+    monkeypatch.setattr("tools.warehouse_local_worker_probe.probe",fake_probe)
+    assert main()==2
+    output=capsys.readouterr()
+    assert "WORKER_RPC_CONNECTION_FAILED" in output.err
+    assert "test-only-private-key" not in output.err
+
+
+def test_probe_distinguishes_authentication_vs_server_side_error(monkeypatch,capsys):
+    from tools.warehouse_local_worker_probe import main
+    monkeypatch.setattr("sys.argv",["probe","accounting","--port","19083"])
+    monkeypatch.setattr("tools.warehouse_local_worker_probe.getpass",
+                        lambda prompt:"test-only-private-key")
+    for code in ("WORKER_RPC_AUTH_OR_REQUEST_REJECTED",
+                 "WORKER_RPC_SERVER_OPERATION_UNAVAILABLE"):
+        def fake_probe(*args):
+            raise WorkerRpcRejected(code)
+        monkeypatch.setattr("tools.warehouse_local_worker_probe.probe",fake_probe)
+        assert main()==2
+        captured=capsys.readouterr()
+        assert code in captured.err
+        assert "test-only-private-key" not in captured.err
