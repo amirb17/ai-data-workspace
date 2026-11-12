@@ -38,9 +38,32 @@ def connection_boundary(duty, factory):
     finally:_connection_boundary.reset(token)
 
 
+def _api_database_connection():
+    """Connect using either legacy DSN or the dedicated API JSON-secret fields.
+
+    ECS injects individual JSON fields from Secrets Manager. Never join the
+    password into a URL (reserved characters would require escaping), and
+    never include credentials in a raised configuration error.
+    """
+    if DATABASE_URL:
+        return psycopg.connect(DATABASE_URL)
+    fields = {
+        "host": os.getenv("DATARISE_DB_HOST"),
+        "port": os.getenv("DATARISE_DB_PORT"),
+        "dbname": os.getenv("DATARISE_DB_NAME"),
+        "user": os.getenv("DATARISE_DB_USERNAME"),
+        "password": os.getenv("DATARISE_DB_PASSWORD"),
+    }
+    if any(value is not None for value in fields.values()):
+        if any(not value for value in fields.values()):
+            raise RuntimeError("API database secret fields are incomplete")
+        return psycopg.connect(**fields)
+    return psycopg.connect(DATABASE_URL)
+
+
 def _open_connection():
     boundary=_connection_boundary.get()
-    if boundary is None:return psycopg.connect(DATABASE_URL)
+    if boundary is None:return _api_database_connection()
     connection=boundary[1]()
     if isinstance(connection,_BorrowedConnection) or connection.closed:
         raise RuntimeError('Fresh owned boundary connection required')
