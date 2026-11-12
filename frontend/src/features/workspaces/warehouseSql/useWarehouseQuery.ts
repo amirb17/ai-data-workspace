@@ -40,7 +40,43 @@ export function useWarehouseQuery(workspace:string){
  })
  const resume=(original:string)=>action('Checking original query',async(signal,valid)=>{if(handle||locked)return;queryHandle(original);const value=await warehouseQueryStatus(workspace,original,undefined,signal);if(valid()){setHandle(original);setLocked(true);setSent(!['ADMITTED','PREPARED'].includes(value.status));setStatus(value)}})
  const loadResults=()=>action('Loading verified results',async(signal,valid)=>{if(!handle||status?.status!=='SUCCEEDED'||!status.results_available)return;const value=await warehouseQueryResults(workspace,handle,signal);if(valid())setResults(value)})
+ const run=()=>action('Running governed query',async(signal,valid)=>{
+  if(handle||locked||!model||!sql.trim())return
+  // One user action, three server-side safety gates. Nothing is bypassed.
+  const checked=await validateWarehouseQuery(workspace,model,sql,signal)
+  if(!valid())return
+  setValidation(checked)
+  if(checked.budget_decision!=='ALLOWED'){
+   setError('Query was not executed. The estimated scan requires review or exceeds the current budget.')
+   return
+  }
+  identity.current ||= crypto.randomUUID()
+  setLocked(true)
+  let original:string
+  try{
+   const admitted=await admitWarehouseQuery(workspace,model,sql,identity.current,signal)
+   original=admitted.attempt_handle
+   if(!valid())return
+   setHandle(original);setStatus(null)
+  }catch(e){
+   if(valid()&&e instanceof ApiError&&[400,409,422].includes(e.status)){
+    identity.current='';setLocked(false);setValidation(null)
+   }
+   throw e
+  }
+  // The original handle is durable. Every subsequent operation MUST use it,
+  // even when the network loses the execution response.
+  setSent(true)
+  const state=await warehouseQueryStatus(workspace,original,'execute',signal)
+  if(!valid())return
+  setStatus(state)
+  if(state.status==='ADMITTED'||state.status==='PREPARED')setSent(false)
+  if(state.status==='SUCCEEDED'&&state.results_available){
+   const page=await warehouseQueryResults(workspace,original,signal)
+   if(valid())setResults(page)
+  }
+ })
  const terminal=!!status&&['SUCCEEDED','FAILED','CANCELLED','EXPIRED'].includes(status.status)
  const reset=()=>{if(gate.current||blocked||(locked&&!terminal))return;identity.current='';setHandle('');setStatus(null);setResults(null);setValidation(null);setLocked(false);setSent(false);setError('')}
- return {model,sql,validation,handle,status,results,busy,error,blocked,locked,sent,terminal,change,validate,admit,update,resume,loadResults,reset}
+ return {model,sql,validation,handle,status,results,busy,error,blocked,locked,sent,terminal,change,validate,admit,run,update,resume,loadResults,reset}
 }
