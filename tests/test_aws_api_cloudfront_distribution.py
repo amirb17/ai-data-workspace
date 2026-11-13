@@ -20,9 +20,14 @@ def test_https_only_private_origin_and_no_cache():
         'vpc_origin_id = aws_cloudfront_vpc_origin.api[0].id',
         'viewer_protocol_policy = "https-only"',
         'cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"',
-        'origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"',
+        'origin_request_policy_id = "33f36d7e-f396-46d9-90e0-52428a34d9dc"',
         'cloudfront_default_certificate = true',
         'var.enable_api_cloudfront_alb_ingress &&',
     ):
         assert setting in SOURCE
     assert 'resource "aws_ecs_service"' not in SOURCE
+
+
+def test_cloudfront_supplies_original_viewer_scheme():
+    assert 'CloudFront-Forwarded-Proto' in SOURCE
+    assert 'AllViewerAndCloudFrontHeaders-2022-06' in SOURCE
