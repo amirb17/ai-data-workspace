@@ -57,6 +57,14 @@ data "aws_db_instance" "workspace" {
 data "aws_security_group" "database" {
   id = var.rds_security_group_id
 }
+
+# An interface endpoint accepts traffic only from sources allowed by its
+# attached security group(s). The existing API has this rule; the new
+# dedicated dispatcher SG must be authorized separately.
+data "aws_vpc_endpoint" "secretsmanager" {
+  vpc_id       = data.aws_subnet.worker.vpc_id
+  service_name = "com.amazonaws.ap-southeast-2.secretsmanager"
+}
 data "aws_sqs_queue" "processing" {
   name = "ai-workspace-dev-processing"
 }
@@ -123,6 +131,16 @@ resource "aws_security_group" "dispatcher" {
   vpc_id      = data.aws_subnet.worker.vpc_id
   tags        = { Name = "ai-workspace-dev-dispatcher-sg" }
 }
+resource "aws_vpc_security_group_ingress_rule" "dispatch_to_secrets_endpoint" {
+  for_each                     = toset(data.aws_vpc_endpoint.secretsmanager.security_group_ids)
+  security_group_id            = each.value
+  referenced_security_group_id = aws_security_group.dispatcher.id
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+  description                  = "Allow isolated dispatcher to retrieve its Secrets Manager credential"
+}
+
 resource "aws_vpc_security_group_egress_rule" "https" {
   security_group_id = aws_security_group.dispatcher.id
   ip_protocol       = "tcp"
