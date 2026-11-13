@@ -22,6 +22,14 @@ variable "worker_subnet_id" {
   type    = string
   default = "subnet-02faa75eeef119039"
 }
+variable "rds_security_group_id" {
+  description = "Existing RDS security group ID from aws rds describe-db-instances"
+  type        = string
+  validation {
+    condition     = can(regex("^sg-[0-9a-f]+$", var.rds_security_group_id))
+    error_message = "Existing RDS security group ID is required."
+  }
+}
 variable "worker_ami_id" {
   type    = string
   default = "ami-062900c135ab91582"
@@ -45,6 +53,9 @@ data "aws_subnet" "worker" {
 }
 data "aws_db_instance" "workspace" {
   db_instance_identifier = "ai-workspace-dev-postgres"
+}
+data "aws_security_group" "database" {
+  id = var.rds_security_group_id
 }
 data "aws_sqs_queue" "processing" {
   name = "ai-workspace-dev-processing"
@@ -122,14 +133,14 @@ resource "aws_vpc_security_group_egress_rule" "https" {
 }
 resource "aws_vpc_security_group_egress_rule" "postgres" {
   security_group_id            = aws_security_group.dispatcher.id
-  referenced_security_group_id = one(data.aws_db_instance.workspace.vpc_security_group_ids)
+  referenced_security_group_id = data.aws_security_group.database.id
   ip_protocol                  = "tcp"
   from_port                    = 5432
   to_port                      = 5432
   description                  = "Private PostgreSQL RDS"
 }
 resource "aws_vpc_security_group_ingress_rule" "rds_dispatch" {
-  security_group_id            = one(data.aws_db_instance.workspace.vpc_security_group_ids)
+  security_group_id            = data.aws_security_group.database.id
   referenced_security_group_id = aws_security_group.dispatcher.id
   ip_protocol                  = "tcp"
   from_port                    = 5432
@@ -174,6 +185,7 @@ resource "aws_instance" "dispatcher" {
       condition = (
         data.aws_caller_identity.current.account_id == local.account_id &&
         data.aws_subnet.worker.vpc_id == "vpc-0235c4ff54488355c" &&
+        data.aws_security_group.database.vpc_id == data.aws_subnet.worker.vpc_id &&
         var.dispatcher_image_uri == "${local.image_repository}@sha256:fe7dac21ff37856203a7d7ded8bc6bc0f4c3de99996327584473c0faed2d86ab"
       )
       error_message = "Dispatcher rollout requires the reviewed account, VPC and verified immutable image."
