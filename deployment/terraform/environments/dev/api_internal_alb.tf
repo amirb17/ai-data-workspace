@@ -35,9 +35,11 @@ resource "aws_lb" "api_internal" {
 
   lifecycle {
     precondition {
-      condition = var.enable_api_internal_alb_security &&
+      condition = (
+        var.enable_api_internal_alb_security &&
         length(var.api_alb_private_subnet_ids) >= 2 &&
         var.api_vpc_id != ""
+      )
       error_message = "Review the internal ALB SG, VPC, and two private subnets first."
     }
     prevent_destroy = true
