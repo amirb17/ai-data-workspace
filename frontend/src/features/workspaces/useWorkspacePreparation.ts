@@ -2,6 +2,7 @@ import { useCallback } from "react"
 import { datasetProcessing, type DatasetProcessing } from "../../services/api/rules"
 import { getAnalyticsReadiness, type DatasetAnalytics } from "../../services/api/analytics"
 import { getWorkspaceAnalytics, type WorkspaceAnalytics } from "../../services/api/workspaceAnalytics"
+import { ApiError } from "../../services/api/client"
 import { getProfileReadiness, type DatasetProfile } from "../../services/api/profile"
 import { getUnderstandingReadiness, type Understanding } from "../../services/api/understanding"
 import { useApiResource } from "../../services/api/useApiResource"
@@ -36,7 +37,16 @@ export function useWorkspacePreparation(workspace: string, datasets: DatasetList
       }
       return {rows, analytics}
     }
-    return { rows, analytics: await getWorkspaceAnalytics(workspace, signal) }
+    // Workspace-wide analytics is unavailable in this public release.
+    // Keep it unknown rather than hiding authorized dataset metadata.
+    let analytics: WorkspaceAnalytics | null
+    try {
+      analytics = await getWorkspaceAnalytics(workspace, signal)
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 403) throw error
+      analytics = null
+    }
+    return { rows, analytics }
   }, [workspace, datasets])
   return useApiResource(`preparation:${workspace}:${identity}`, load)
 }
