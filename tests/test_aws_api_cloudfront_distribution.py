@@ -31,3 +31,9 @@ def test_https_only_private_origin_and_no_cache():
 def test_cloudfront_supplies_original_viewer_scheme():
     assert 'CloudFront-Forwarded-Proto' in SOURCE
     assert 'AllViewerAndCloudFrontHeaders-2022-06' in SOURCE
+
+
+def test_default_cloudfront_certificate_policy_remains_provider_compatible():
+    assert 'cloudfront_default_certificate = true' in SOURCE
+    assert 'minimum_protocol_version       = "TLSv1"' in SOURCE
+    assert 'viewer_protocol_policy = "https-only"' in SOURCE
