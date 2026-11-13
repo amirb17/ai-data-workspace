@@ -17,7 +17,7 @@ class PreviewBusy(Exception): pass
 class SourceMismatch(Exception): pass
 
 
-def _scope(conn, w, d, user):
+def _scope(conn, w, d, user, *, lock=True):
     conn.execute("SET LOCAL statement_timeout = '5s'")
     conn.execute("SET LOCAL lock_timeout = '1s'")
     # Revalidate the authenticated actor against both current owners. Locks keep
@@ -27,7 +27,7 @@ def _scope(conn, w, d, user):
         JOIN datasets d ON d.workspace_id=w.workspace_id AND d.dataset_id=%s
         WHERE u.user_id=%s AND u.owner_key=%s AND w.owner=u.owner_key AND d.owner=u.owner_key
           AND u.account_status='ACTIVE' AND w.status='ACTIVE' AND d.status='ACTIVE'
-        FOR SHARE OF u,w,d""", (w,d,user['user_id'],user['owner_key'])).fetchone()
+        """ + (" FOR SHARE OF u,w,d" if lock else ""), (w,d,user['user_id'],user['owner_key'])).fetchone()
     if found is None: raise PermissionError('Scope unavailable')
     return found[0]
 
@@ -46,6 +46,17 @@ def authorize(w, d, user, upload=None):
     with database.repository_transaction() as conn:
         _scope(conn,w,d,user)
         if upload is not None: _upload(conn,w,d,upload)
+
+
+def authorize_read(w, d, user):
+    """Read-only authorization for dataset GET routes on a SELECT-only API role.
+
+    The public route guard checks current owner/account/status. Individual GET
+    handlers independently enforce dataset/workspace ownership. Row locks are
+    retained by authorize() for preview operations where they are required.
+    """
+    with database.repository_transaction() as conn:
+        _scope(conn, w, d, user, lock=False)
 
 
 def capabilities(w,d,user):
