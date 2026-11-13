@@ -1,0 +1,24 @@
+# Dedicated dispatcher, layered on the reviewed immutable worker runtime.
+# This avoids reconstructing an unknown upstream Python base image.
+# The existing worker must already contain its pinned runtime dependencies,
+# the RDS TLS CA bundle and a non-root execution user.
+ARG WORKER_RUNTIME_IMAGE
+FROM ${WORKER_RUNTIME_IMAGE}
+ARG SOURCE_REVISION
+LABEL org.opencontainers.image.revision=${SOURCE_REVISION} \
+      io.datarise.dispatcher="true" \
+      io.datarise.parent-worker-runtime=${WORKER_RUNTIME_IMAGE}
+
+WORKDIR /app
+COPY --chown=10001:10001 app/ ./app/
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PYTHON_DOTENV_DISABLED=1 \
+    DATARISE_PROCESSING_DEPLOYMENT_APPROVED=false \
+    DATARISE_PROCESSING_READERS=false \
+    DATARISE_DISPATCH_APPROVED=false
+
+USER 10001
+CMD ["python", "-m", "app.processing_worker.dispatcher_container_entrypoint"]
