@@ -1,0 +1,19 @@
+# Refresh verifier application code over the existing digest-pinned Lambda
+# runtime without changing its reviewed dependencies or Lambda entrypoint.
+ARG VERIFIER_RUNTIME_IMAGE
+FROM ${VERIFIER_RUNTIME_IMAGE}
+ARG SOURCE_REVISION
+LABEL org.opencontainers.image.revision=${SOURCE_REVISION} \
+      io.datarise.verifier-runtime-overlay="true" \
+      io.datarise.parent-verifier-runtime=${VERIFIER_RUNTIME_IMAGE}
+
+WORKDIR ${LAMBDA_TASK_ROOT}
+COPY app ./app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHON_DOTENV_DISABLED=1 \
+    DATARISE_PROCESSING_DEPLOYMENT_APPROVED=false \
+    DATARISE_PROCESSING_READERS=false
+
+CMD ["app.lambda_worker.verifier_handler.lambda_handler"]
