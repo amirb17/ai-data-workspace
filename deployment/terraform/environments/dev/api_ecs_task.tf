@@ -90,6 +90,7 @@ resource "aws_ecs_task_definition" "api" {
   # Preserve prior ECS revisions when registering a replacement for rollback.
   skip_destroy             = true
   execution_role_arn       = aws_iam_role.api_ecs_execution[0].arn
+  task_role_arn            = var.enable_api_s3_csv_upload ? aws_iam_role.api_s3_upload_task[0].arn : null
 
   container_definitions = jsonencode([{
     name      = "api"
@@ -110,9 +111,13 @@ resource "aws_ecs_task_definition" "api" {
       { name = "DATARISE_TRUST_CLOUDFRONT_VPC_ORIGIN", value = tostring(var.api_trust_cloudfront_vpc_origin) },
       { name = "DATARISE_PUBLIC_LAUNCH_MODE", value = "csv-readonly" },
       { name = "DATARISE_PUBLIC_WORKSPACE_CREATION", value = tostring(var.api_enable_public_workspace_creation) },
+      { name = "DATARISE_PUBLIC_CSV_UPLOAD", value = tostring(var.enable_api_s3_csv_upload) },
       { name = "ENABLE_DEV_IDENTITY", value = "false" },
       { name = "WAREHOUSE_ENABLED", value = "false" }
-    ], var.enable_api_smtp_delivery ? [
+    ], var.enable_api_s3_csv_upload ? [
+      { name = "AWS_REGION", value = var.api_s3_upload_region },
+      { name = "S3_BUCKET_NAME", value = var.api_s3_upload_bucket }
+    ] : [], var.enable_api_smtp_delivery ? [
       { name = "AUTH_EMAIL_BACKEND", value = "smtp" },
       { name = "SMTP_HOST", value = var.api_smtp_host },
       { name = "SMTP_PORT", value = tostring(var.api_smtp_port) },
