@@ -94,7 +94,7 @@ resource "aws_ecs_task_definition" "api" {
       protocol      = "tcp"
     }]
     readonlyRootFilesystem = true
-    environment = [
+    environment = concat([
       { name = "APP_ENV", value = "production" },
       { name = "AUTH_MODE", value = "session" },
       { name = "AUTH_COOKIE_SECURE", value = "true" },
@@ -105,15 +105,24 @@ resource "aws_ecs_task_definition" "api" {
       { name = "DATARISE_PUBLIC_LAUNCH_MODE", value = "csv-readonly" },
       { name = "ENABLE_DEV_IDENTITY", value = "false" },
       { name = "WAREHOUSE_ENABLED", value = "false" }
-    ]
-    secrets = [
+    ], var.enable_api_smtp_delivery ? [
+      { name = "AUTH_EMAIL_BACKEND", value = "smtp" },
+      { name = "SMTP_HOST", value = var.api_smtp_host },
+      { name = "SMTP_PORT", value = tostring(var.api_smtp_port) },
+      { name = "SMTP_SSL", value = "false" },
+      { name = "SMTP_FROM", value = var.api_smtp_sender }
+    ] : [])
+    secrets = concat([
       { name = "AUTH_SECRET", valueFrom = var.api_auth_secret_arn },
       { name = "DATARISE_DB_USERNAME", valueFrom = "${var.api_database_secret_arn}:username::" },
       { name = "DATARISE_DB_PASSWORD", valueFrom = "${var.api_database_secret_arn}:password::" },
       { name = "DATARISE_DB_HOST", valueFrom = "${var.api_database_secret_arn}:host::" },
       { name = "DATARISE_DB_PORT", valueFrom = "${var.api_database_secret_arn}:port::" },
       { name = "DATARISE_DB_NAME", valueFrom = "${var.api_database_secret_arn}:dbname::" }
-    ]
+    ], var.enable_api_smtp_delivery ? [
+      { name = "SMTP_USERNAME", valueFrom = "${var.api_smtp_secret_arn}:username::" },
+      { name = "SMTP_PASSWORD", valueFrom = "${var.api_smtp_secret_arn}:password::" }
+    ] : [])
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -146,7 +155,7 @@ data "aws_iam_policy_document" "api_execution_secrets" {
   count = var.enable_api_task_definition ? 1 : 0
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [var.api_auth_secret_arn, var.api_database_secret_arn]
+    resources = concat([var.api_auth_secret_arn, var.api_database_secret_arn], var.enable_api_smtp_delivery ? [var.api_smtp_secret_arn] : [])
   }
 }
 
