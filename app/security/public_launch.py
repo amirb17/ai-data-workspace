@@ -144,6 +144,22 @@ class PublicLaunchBoundary:
         if not self.settings.enabled or scope['type'] not in ('http', 'websocket'):
             return await self.app(scope, receive, send)
         if scope['type'] == 'websocket': return await send({'type':'websocket.close','code':1008})
+        # ECS/ALB health probing is HTTP inside the isolated VPC. Permit only
+        # the registered GET /health endpoint; no prefix grants, no DB access,
+        # and no trust in a caller-controlled forwarded scheme or hostname.
+        # In production, the task SG must restrict port 8000 to the ALB SG.
+        if (scope.get('method') == 'GET' and scope.get('path') == '/health'
+            and len([1 for k, _ in scope.get('headers', []) if k.lower() == b'host']) == 1
+            and not scope.get('query_string')):
+            matched_health = next(
+                (route for route in http_routes(self.routes)
+                 if route.matches(scope)[0] == Match.FULL), None
+            )
+            if (matched_health is not None
+                and getattr(matched_health, 'path', None) == '/health'
+                and getattr(matched_health, 'endpoint', None)
+                    is getattr(import_module('app.main'), 'health_check')):
+                return await self.app(scope, receive, send)
         request = Request(scope)
         # TLS scheme must come from the server/trusted proxy configuration, never
         # from a header interpreted here. Untrusted forwarding headers are ignored.
