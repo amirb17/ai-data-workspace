@@ -81,6 +81,8 @@ resource "aws_ecs_task_definition" "api" {
   network_mode             = "awsvpc"
   cpu                      = tostring(var.api_task_cpu)
   memory                   = tostring(var.api_task_memory)
+  # Preserve prior ECS revisions when registering a replacement for rollback.
+  skip_destroy             = true
   execution_role_arn       = aws_iam_role.api_ecs_execution[0].arn
 
   container_definitions = jsonencode([{
@@ -134,7 +136,8 @@ resource "aws_ecs_task_definition" "api" {
         startswith(var.api_database_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:"))
       error_message = "Task needs reviewed ECR/foundation/role, matching HTTPS host and Sydney Secrets Manager ARNs."
     }
-    prevent_destroy = true
+    # ECS task definitions are immutable. skip_destroy retains old revisions
+    # while Terraform replaces the tracked revision with a new registration.
   }
 }
 
