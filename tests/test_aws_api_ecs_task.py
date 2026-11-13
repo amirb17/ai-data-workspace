@@ -38,3 +38,9 @@ def test_no_task_service_or_public_ingress():
                       'resource "aws_security_group"', "assign_public_ip"):
         assert forbidden not in SOURCE
     assert "prevent_destroy = true" in SOURCE
+
+
+def test_cloudfront_vpc_scheme_trust_requires_explicit_optin():
+    assert 'variable "api_trust_cloudfront_vpc_origin"' in SOURCE
+    assert 'description = "Explicitly enable HTTPS viewer scheme only behind CloudFront VPC origin and private ALB SG isolation"' in SOURCE
+    assert '{ name = "DATARISE_TRUST_CLOUDFRONT_VPC_ORIGIN", value = tostring(var.api_trust_cloudfront_vpc_origin) }' in SOURCE
