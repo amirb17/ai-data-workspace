@@ -54,6 +54,10 @@ POLICY = {**AUTH,
 }
 # Creating a workspace or a dataset is a separate, explicit opt-in.
 # No upload, processing, AI or warehouse route is added.
+UPLOAD_ROUTES = {
+    ('POST', '/files/initiate'): 'app.api.files.initiate_upload',
+    ('POST', '/files/complete'): 'app.api.files.complete_upload',
+}
 WORKSPACE_CREATE = {
     ('POST', '/workspaces'): 'app.api.workspaces.create_workspace_endpoint',
     ('POST', W + '/datasets'): 'app.api.workspaces.create_dataset_endpoint',
@@ -66,6 +70,7 @@ class LaunchSettings:
     hosts: tuple[str, ...] = ()
     trusted_cloudfront_vpc_origin: bool = False
     workspace_creation_enabled: bool = False
+    csv_upload_enabled: bool = False
 
 
 def launch_settings():
@@ -92,12 +97,24 @@ def launch_settings():
     creation = os.getenv('DATARISE_PUBLIC_WORKSPACE_CREATION', 'false')
     if creation not in ('true', 'false'):
         raise ValueError('Invalid public workspace creation opt-in')
-    return LaunchSettings(True, hosts, trust == 'true', creation == 'true')
+    upload = os.getenv('DATARISE_PUBLIC_CSV_UPLOAD', 'false')
+    if upload not in ('true', 'false'):
+        raise ValueError('Invalid public CSV upload opt-in')
+    if upload == 'true':
+        from app.config import AWS_REGION, S3_BUCKET_NAME
+        if (creation != 'true' or AWS_REGION != os.getenv('AWS_REGION')
+            or not os.getenv('S3_BUCKET_NAME') or S3_BUCKET_NAME != os.getenv('S3_BUCKET_NAME')):
+            raise ValueError('Public upload requires reviewed workspace creation and S3 runtime settings')
+    return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true')
 
 
 def permitted(route, method, settings=None):
     path = getattr(route, 'path', None)
-    if (method, path) in WORKSPACE_CREATE:
+    if (method, path) in UPLOAD_ROUTES:
+        if settings is None or not settings.csv_upload_enabled:
+            return False
+        name = UPLOAD_ROUTES[(method, path)]
+    elif (method, path) in WORKSPACE_CREATE:
         if settings is None or not settings.workspace_creation_enabled:
             return False
         name = WORKSPACE_CREATE[(method, path)]
