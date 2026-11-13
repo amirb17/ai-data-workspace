@@ -61,7 +61,9 @@ def authorize_read(w, d, user):
 
 def capabilities(w,d,user):
     with database.repository_transaction() as conn:
-        state = _scope(conn,w,d,user)
+        # This is metadata-only GET; the public API uses a SELECT-only role.
+        # Do not require UPDATE privilege for a FOR SHARE owner lock.
+        state = _scope(conn,w,d,user,lock=False)
         models = conn.execute('''SELECT c.warehouse_model_id,c.warehouse_model_version_id,m.display_name,v.version_number
             FROM warehouse_model_configurations c JOIN warehouse_models m USING(workspace_id,warehouse_model_id)
             JOIN warehouse_model_versions v USING(workspace_id,warehouse_model_id,warehouse_model_version_id)
@@ -77,7 +79,7 @@ def capabilities(w,d,user):
 
 def jobs(w,d,user):
     with database.repository_transaction() as conn:
-        _scope(conn,w,d,user)
+        _scope(conn,w,d,user,lock=False)
         values = conn.execute('''SELECT job_id,operation,status,attempt_count FROM processing_jobs
             WHERE workspace_id=%s AND dataset_id=%s ORDER BY created_at DESC,job_id LIMIT 20''',(w,d)).fetchall()
     return dict(workspace_id=w,dataset_id=d,jobs=[dict(job_id=str(j),operation=o,status=s,attempt_count=a) for j,o,s,a in values])
