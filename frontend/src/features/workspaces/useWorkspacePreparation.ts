@@ -1,7 +1,7 @@
 import { useCallback } from "react"
 import { datasetProcessing, type DatasetProcessing } from "../../services/api/rules"
 import { getAnalyticsReadiness, type DatasetAnalytics } from "../../services/api/analytics"
-import { getWorkspaceAnalytics } from "../../services/api/workspaceAnalytics"
+import { getWorkspaceAnalytics, type WorkspaceAnalytics } from "../../services/api/workspaceAnalytics"
 import { getProfileReadiness, type DatasetProfile } from "../../services/api/profile"
 import { getUnderstandingReadiness, type Understanding } from "../../services/api/understanding"
 import { useApiResource } from "../../services/api/useApiResource"
@@ -22,6 +22,19 @@ export function useWorkspacePreparation(workspace: string, datasets: DatasetList
         const understanding = profile?.profile_ready ? await getUnderstandingReadiness(workspace, String(dataset.id), signal) : null
         return { dataset, processing, analytics, profile, understanding }
       })))
+    }
+    // An empty workspace has no derived analytics. Don't call an intentionally
+    // blocked public analytics endpoint just to display the no-data state.
+    if (active.length === 0) {
+      const analytics: WorkspaceAnalytics = {
+        workspace_id: Number(workspace), status: "NO_DATA", readiness: "NO_DATA",
+        metrics_total: 0, metrics_available: 0, metrics_fresh: 0,
+        metrics_stale: 0, metrics_failed: 0, metrics_blocked: 0,
+        last_refreshed: null, can_refresh: false, metrics: [],
+        summary: {trusted_datasets: 0, available_metrics: 0, current_metrics: 0,
+          needs_attention: 0, confirmed_relationships: 0},
+      }
+      return {rows, analytics}
     }
     return { rows, analytics: await getWorkspaceAnalytics(workspace, signal) }
   }, [workspace, datasets])
