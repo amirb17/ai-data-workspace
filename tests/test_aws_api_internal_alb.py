@@ -24,3 +24,12 @@ def test_target_group_private_health_only():
     assert 'protocol          = "HTTP"' in SOURCE
     assert 'resource "aws_ecs_service"' not in SOURCE
     assert 'resource "aws_cloudfront_distribution"' not in SOURCE
+
+
+def test_multiline_precondition_is_parenthesized():
+    # HCL requires an explicit expression grouping across multiple lines.
+    assert """condition = (
+        var.enable_api_internal_alb_security &&
+        length(var.api_alb_private_subnet_ids) >= 2 &&
+        var.api_vpc_id != ""
+      )""" in SOURCE
