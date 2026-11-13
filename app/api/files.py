@@ -1,7 +1,8 @@
 import os
 import tempfile
+import logging
 
-from fastapi import Depends, APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import Depends, APIRouter, UploadFile, File, Form, HTTPException, Request
 from pydantic import BaseModel, Field
 from app.api.identity import get_current_user
 from app.services.upload_session_service import initiate_upload_session, complete_upload_session
@@ -160,18 +161,25 @@ def initiate_upload(request: FileInitiateRequest, user: dict = Depends(get_curre
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=503, detail="Upload initiation unavailable") from exc
+        logging.getLogger("datarise.csv_upload").error("CSV initiate failed: exception_class=%s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Upload initiation unavailable") from None
 
 @router.post("/complete")
-def complete_upload(request: FileCompleteRequest, user: dict = Depends(get_current_user)):
+def complete_upload(request: FileCompleteRequest, http_request: Request, user: dict = Depends(get_current_user)):
     try:
-        return complete_upload_session(request.upload_request_id, user["user_id"])
+        result = complete_upload_session(request.upload_request_id, user["user_id"])
+        if http_request.scope.get('datarise.public_launch'):
+            # Never leak private bucket object paths (including deduplicated data)
+            # to a web client. The frontend uses only the scoped logical IDs.
+            result = {**result, "file": {k:v for k,v in result["file"].items() if k != "storage_path"}}
+        return result
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail="Upload session access denied") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=503, detail="Upload completion failed; retry the same upload_request_id") from exc
+        logging.getLogger("datarise.csv_upload").error("CSV completion failed: exception_class=%s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Upload completion failed; retry the same upload_request_id") from None
 
 @router.post("/uploads/{upload_id}/process")
 def process_file(upload_id: int, user: dict = Depends(get_current_user), workspace_id: int | None = None, dataset_id: int | None = None):
