@@ -52,7 +52,9 @@ resource "aws_cloudfront_distribution" "api" {
 
   viewer_certificate {
     cloudfront_default_certificate = true
-    minimum_protocol_version       = "TLSv1.2_2021"
+    # CloudFront default certificate requires TLSv1 as the API configuration value.
+    # Viewer HTTPS enforcement is separately configured in default_cache_behavior.
+    minimum_protocol_version       = "TLSv1"
   }
 
   tags = merge(local.tags, { Name = "ai-workspace-${var.environment}-api-distribution" })
