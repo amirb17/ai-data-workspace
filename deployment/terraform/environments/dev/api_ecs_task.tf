@@ -68,6 +68,12 @@ variable "api_trust_cloudfront_vpc_origin" {
   default     = false
 }
 
+variable "api_enable_processing_jobs" {
+  description = "Explicit reviewed opt-in for authenticated asynchronous processing admission; never enables dispatcher authority on the API"
+  type        = bool
+  default     = false
+}
+
 variable "api_task_cpu" {
   description = "Fargate CPU units; 512 is an initial allocation pending memory profiling"
   type        = number
@@ -110,7 +116,10 @@ resource "aws_ecs_task_definition" "api" {
       { name = "AUTH_BACKEND_URL", value = var.api_backend_origin },
       { name = "DATARISE_PUBLIC_HOSTS", value = var.api_public_host },
       { name = "DATARISE_TRUST_CLOUDFRONT_VPC_ORIGIN", value = tostring(var.api_trust_cloudfront_vpc_origin) },
-      { name = "DATARISE_PUBLIC_LAUNCH_MODE", value = "csv-readonly" },
+      { name = "DATARISE_PUBLIC_LAUNCH_MODE", value = var.api_enable_processing_jobs ? "csv-processing" : "csv-readonly" },
+      { name = "DATARISE_PROCESSING_DEPLOYMENT_APPROVED", value = tostring(var.api_enable_processing_jobs) },
+      { name = "DATARISE_PROCESSING_READERS", value = tostring(var.api_enable_processing_jobs) },
+      { name = "DATARISE_DISPATCH_APPROVED", value = "false" },
       { name = "DATARISE_PUBLIC_WORKSPACE_CREATION", value = tostring(var.api_enable_public_workspace_creation) },
       { name = "DATARISE_PUBLIC_CSV_UPLOAD", value = tostring(var.api_s3_csv_public_live) },
       { name = "ENABLE_DEV_IDENTITY", value = "false" },
@@ -153,6 +162,7 @@ resource "aws_ecs_task_definition" "api" {
       condition = (var.enable_api_ecs_execution_role && var.enable_api_ecs_foundation &&
         var.enable_api_ecr && can(regex("^sha256:[0-9a-f]{64}$", var.api_image_digest)) && var.api_backend_origin != "" &&
         var.api_public_host != "" &&
+        (!var.api_enable_processing_jobs || (var.api_s3_csv_public_live && var.api_enable_public_workspace_creation)) &&
         var.api_backend_origin == "https://${var.api_public_host}" &&
         startswith(var.api_auth_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:") &&
         startswith(var.api_database_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:"))
