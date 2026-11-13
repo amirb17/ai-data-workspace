@@ -6,6 +6,15 @@ variable "enable_api_s3_csv_upload" {
   default     = false
   description = "Opt-in to a dedicated, narrowly scoped ECS task identity for CSV uploads"
 }
+variable "api_s3_csv_public_live" {
+  type        = bool
+  default     = false
+  description = "Independent emergency-reversible public CSV upload release switch"
+  validation {
+    condition = !var.api_s3_csv_public_live || var.enable_api_s3_csv_upload
+    error_message = "Public CSV uploads require the approved dedicated S3 task role."
+  }
+}
 variable "api_s3_upload_bucket" {
   type        = string
   default     = ""
