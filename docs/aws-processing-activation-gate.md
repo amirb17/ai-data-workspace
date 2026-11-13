@@ -1,3 +1,34 @@
+# Consolidated processing release (corrected architecture audit)
+
+**Use the existing complete integration, not the experimental Bronze implementation.**
+
+The repository already has the integrated executor at app/processing_worker/integrated_executor.py. It executes the established Bronze, Silver and Gold services with lease control, immutable versioned S3 artifacts, independently verified candidate manifests, and atomic publication receipts. The verifier is app/processing_worker/verification_service.py, the SQS transport is app/processing_worker/sqs_transport.py, the runtime bootstrap is app/processing_worker/bootstrap.py and the dispatcher is app/processing_worker/dispatcher.py.
+
+IMPORTANT: execution._not_implemented is a fail-closed fallback only when a trusted executor is not injected. Existing integrated executor and PostgreSQL tests cover real stage execution, crash recovery, duplicate arrivals and stale receipts. The recently created parallel Bronze candidate and boundary files have been removed rather than integrated, because their artifact schema differs from the verified publication path.
+
+## One complete milestone, not many micro-tasks
+
+Production processing cannot yet be declared working. It requires ALL of:
+1. Read-only RDS readiness inventory in deployment/operations/sql/processing_release_readiness.sql, including source version pins for the uploaded file, migration RPCs and distinct API/dispatcher/worker/verifier DB roles.
+2. Review source registration: the live upload-only completion did not automatically create a durable processing_source_objects pin. Do not infer an immutable version from an S3 key; verify the raw object's VersionId, length and SHA-256 and register it only with the existing authorized task20_register_source function.
+3. Dedicated SQS queue, dispatcher, worker, verifier Lambda, S3 artifact read/write rights, DB secrets, distinct IAM identities, network access and logging. The existing public API S3 task identity is NOT the processing worker identity.
+4. Reviewed new processing-admission policy: public csv-readonly still intentionally disallows every processing POST and requires disabled processing flags. Do not flip production flags in-place just to enable a button.
+5. A single live canary covering admitted BRONZE, committed verified data/lexical artifact and receipt, row/schema/profile counts, interrupted execution retry, then approved-rule SILVER with quarantine, then load-policy GOLD with immutable publication and read-only analyst read.
+6. An off switch and rollback retaining audit evidence and S3 versions.
+
+## Consolidated verification
+
+Run this suite once against an isolated local PostgreSQL database, not production:
+
+    $env:RUN_DB_TESTS = "1"
+    python -m pytest -q --tb=short tests/test_task20_processing_postgres.py tests/test_artifact_publication_postgres.py tests/test_task20_security_postgres.py tests/test_execution_boundary.py tests/test_dispatch_supervision.py tests/test_processing_worker_bootstrap.py tests/test_runtime_readiness.py tests/test_upload_sessions_postgres.py tests/test_public_product_capabilities_read.py
+
+This is not a deployment authorization. A live processing milestone is only complete when the whole canary and recovery evidence pass.
+
+---
+
+## Prior design notes (superseded where inconsistent)
+
 # AWS processing activation gate (after live S3 CSV upload)
 
 ## Verified first milestone
