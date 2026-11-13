@@ -27,4 +27,7 @@ END $$;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.upload_requests TO datarise_api;
 -- Required by checksum deduplication and creating the immutable physical file.
 GRANT SELECT, INSERT ON TABLE public.physical_files TO datarise_api;
+-- The Files page reads these even for newly uploaded, unprocessed deliveries.
+GRANT SELECT ON TABLE public.dataset_version_files, public.dataset_versions,
+  public.processing_attempts, public.dataset_profile_summaries TO datarise_api;
 COMMIT;
