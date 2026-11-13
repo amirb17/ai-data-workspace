@@ -4,6 +4,7 @@ This is an outer ASGI boundary, not a replacement for session, CSRF or ownership
 The policy binds a method AND registered path AND actual endpoint callable.
 """
 import os
+import logging
 from ipaddress import ip_address, ip_network
 from dataclasses import dataclass
 from importlib import import_module
@@ -261,7 +262,15 @@ class PublicLaunchBoundary:
             return message
         try:
             await self.app(scope, bounded_receive, safe_send)
-        except Exception:
+        except Exception as exc:
+            # Log only the exception class, never exception text/traceback: auth
+            # exceptions can contain SQL parameters or provider credentials.
+            # The public response remains generic and unchanged.
+            logging.getLogger('datarise.public_launch').error(
+                'Public request handler failed: method=%s route=%s exception_class=%s',
+                method, getattr(matched, 'path', 'unknown'),
+                type(exc).__name__,
+            )
             if not started: await error_response(503)(scope, receive, safe_send)
             elif error is not None: return  # Sanitized server-error response already sent.
             else: raise
