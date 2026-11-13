@@ -43,9 +43,10 @@ def test_task_role_and_runtime_gate_default_off():
     task = (ROOT/'deployment/terraform/environments/dev/api_ecs_task.tf').read_text()
     infra = (ROOT/'deployment/terraform/environments/dev/api_s3_upload.tf').read_text()
     assert 'variable "enable_api_s3_csv_upload"' in infra
+    assert 'variable "api_s3_csv_public_live"' in infra
     assert 'default     = false' in infra
     assert 'arn:aws:s3:::' in infra
     assert 'task_role_arn' in task
     assert '{ name = "S3_BUCKET_NAME", value = var.api_s3_upload_bucket }' in task
     assert '{ name = "AWS_REGION", value = var.api_s3_upload_region }' in task
-    assert '{ name = "DATARISE_PUBLIC_CSV_UPLOAD", value = tostring(var.enable_api_s3_csv_upload) }' in task
+    assert '{ name = "DATARISE_PUBLIC_CSV_UPLOAD", value = tostring(var.api_s3_csv_public_live) }' in task
