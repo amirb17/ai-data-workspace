@@ -1,0 +1,22 @@
+# Refresh the production worker code without changing the trusted,
+# digest-pinned runtime dependencies used by the already deployed EC2 host.
+ARG WORKER_RUNTIME_IMAGE
+FROM ${WORKER_RUNTIME_IMAGE}
+ARG SOURCE_REVISION
+LABEL org.opencontainers.image.revision=${SOURCE_REVISION} \
+      io.datarise.worker-runtime-overlay="true" \
+      io.datarise.parent-worker-runtime=${WORKER_RUNTIME_IMAGE}
+
+WORKDIR /app
+COPY --chown=10001:10001 app/ ./app/
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PYTHON_DOTENV_DISABLED=1 \
+    DATARISE_PROCESSING_DEPLOYMENT_APPROVED=false \
+    DATARISE_PROCESSING_READERS=false \
+    DATARISE_DISPATCH_APPROVED=false
+
+USER 10001
+CMD ["python", "-m", "app.processing_worker.container_entrypoint"]
