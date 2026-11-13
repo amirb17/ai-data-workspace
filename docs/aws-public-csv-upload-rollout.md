@@ -27,7 +27,8 @@ to `staging/user-*/*` and `raw/*`. No S3 public access is required.
    `physical_files` and USAGE on their identity sequences.
 4. Run focused backend and frontend tests and `terraform validate`.
 5. Review `api-ecs-rollout.tfvars`. Enable
-   `enable_api_s3_csv_upload=true`, set `api_s3_upload_bucket` to
+   `enable_api_s3_csv_upload=true` to provision the task role, then set
+   `api_s3_csv_public_live=true` only after the full preflight, and set `api_s3_upload_bucket` to
    the reviewed existing bucket and `api_s3_upload_region` to its region.
    Existing auth, SMTP, workspace creation and CloudFront flags stay enabled.
 6. Build the new backend from the release commit, push to ECR and pin its
@@ -43,10 +44,11 @@ to `staging/user-*/*` and `raw/*`. No S3 public access is required.
    same upload ID must reuse its persisted completion result. Test a duplicate
    upload, mismatched workspace, file too large and disallowed content type.
    Check that /files/upload, processing/dispatch and archive remain blocked.
-9. Rollback by restoring the prior immutable ECS image/revision and setting
-   `enable_api_s3_csv_upload=false`; retain the S3 objects and database
-   delivery records for audit. Do not destroy the role without a separate
-   reviewed Terraform change.
+9. To disable public uploads without destroying the IAM role, set
+   `api_s3_csv_public_live=false` and deploy an updated ECS task revision.
+   For code rollback restore the prior immutable ECS image/revision. Retain
+   S3 objects and database delivery records for audit. Do not change
+   `enable_api_s3_csv_upload` to false until IAM decommission is approved.
 
 ## Deployment cautions
 - S3 CORS is not created by Terraform here, since the bucket is pre-existing;
