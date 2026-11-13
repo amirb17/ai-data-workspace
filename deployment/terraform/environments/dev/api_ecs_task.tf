@@ -56,6 +56,12 @@ variable "api_database_secret_arn" {
   default     = ""
 }
 
+variable "api_trust_cloudfront_vpc_origin" {
+  description = "Explicitly enable HTTPS viewer scheme only behind CloudFront VPC origin and private ALB SG isolation"
+  type        = bool
+  default     = false
+}
+
 variable "api_task_cpu" {
   description = "Fargate CPU units; 512 is an initial allocation pending memory profiling"
   type        = number
@@ -93,6 +99,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "AUTH_FRONTEND_URL", value = var.api_frontend_origin },
       { name = "AUTH_BACKEND_URL", value = var.api_backend_origin },
       { name = "DATARISE_PUBLIC_HOSTS", value = var.api_public_host },
+      { name = "DATARISE_TRUST_CLOUDFRONT_VPC_ORIGIN", value = tostring(var.api_trust_cloudfront_vpc_origin) },
       { name = "DATARISE_PUBLIC_LAUNCH_MODE", value = "csv-readonly" },
       { name = "ENABLE_DEV_IDENTITY", value = "false" },
       { name = "WAREHOUSE_ENABLED", value = "false" }
