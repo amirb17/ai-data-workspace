@@ -27,7 +27,7 @@ def test_only_secrets_manager_not_plaintext_creds():
     ]:
         assert f'{{ name = "{field}", valueFrom = "${{var.api_database_secret_arn}}:{key}::" }}' in SOURCE
     assert 'actions   = ["secretsmanager:GetSecretValue"]' in SOURCE
-    assert 'resources = [var.api_auth_secret_arn, var.api_database_secret_arn]' in SOURCE
+    assert 'resources = concat([var.api_auth_secret_arn, var.api_database_secret_arn], var.enable_api_smtp_delivery ? [var.api_smtp_secret_arn] : [])' in SOURCE
     assert '"AUTH_FRONTEND_URL"' in SOURCE
     assert '"DATARISE_PUBLIC_HOSTS"' in SOURCE
     assert 'var.api_backend_origin == "https://${var.api_public_host}"' in SOURCE
@@ -45,3 +45,12 @@ def test_cloudfront_vpc_scheme_trust_requires_explicit_optin():
     assert 'variable "api_trust_cloudfront_vpc_origin"' in SOURCE
     assert 'description = "Explicitly enable HTTPS viewer scheme only behind CloudFront VPC origin and private ALB SG isolation"' in SOURCE
     assert '{ name = "DATARISE_TRUST_CLOUDFRONT_VPC_ORIGIN", value = tostring(var.api_trust_cloudfront_vpc_origin) }' in SOURCE
+
+
+def test_smtp_credentials_are_opt_in_and_never_plaintext():
+    assert 'var.enable_api_smtp_delivery ? [' in SOURCE
+    assert '{ name = "SMTP_USERNAME", valueFrom = "${var.api_smtp_secret_arn}:username::" }' in SOURCE
+    assert '{ name = "SMTP_PASSWORD", valueFrom = "${var.api_smtp_secret_arn}:password::" }' in SOURCE
+    assert '{ name = "SMTP_HOST", value = var.api_smtp_host }' in SOURCE
+    assert '{ name = "SMTP_FROM", value = var.api_smtp_sender }' in SOURCE
+    assert '{ name = "SMTP_SSL", value = "false" }' in SOURCE
