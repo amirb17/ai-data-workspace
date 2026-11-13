@@ -13,6 +13,12 @@ variable "api_cloudfront_distribution_live" {
   default     = false
 }
 
+variable "api_cloudfront_public_launch_approved" {
+  description = "Explicit operator acknowledgement before public HTTPS canary; not implied by creating the distribution"
+  type        = bool
+  default     = false
+}
+
 resource "aws_cloudfront_distribution" "api" {
   count           = var.enable_api_cloudfront_distribution ? 1 : 0
   enabled         = var.api_cloudfront_distribution_live
@@ -65,9 +71,19 @@ resource "aws_cloudfront_distribution" "api" {
         var.enable_api_internal_alb &&
         var.enable_api_cloudfront_vpc_origin &&
         var.enable_api_cloudfront_alb_ingress &&
-        !var.api_cloudfront_distribution_live
+        (
+          !var.api_cloudfront_distribution_live ||
+          (
+            var.api_cloudfront_public_launch_approved &&
+            var.enable_api_ecs_service &&
+            var.enable_api_task_definition &&
+            var.api_trust_cloudfront_vpc_origin &&
+            var.api_ecs_desired_count == 1 &&
+            var.api_backend_origin == "https://${var.api_public_host}"
+          )
+        )
       )
-      error_message = "First create distribution DISABLED after verified ALB ingress; review HTTPS boundary before enabling."
+      error_message = "Public launch requires explicit approval, running ECS HTTPS-trusted task, and matching backend host."
     }
     prevent_destroy = true
   }
