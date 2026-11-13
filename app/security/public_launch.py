@@ -130,7 +130,7 @@ async def launch_authority(request: Request):
     params = request.path_params
     if 'workspace_id' not in params: return
     from app.api.identity import get_current_user
-    from app.services.product_preview_service import authorize
+    from app.services.product_preview_service import authorize, authorize_read
     from app.db.database import repository_transaction
     def check():
         user = get_current_user(request)
@@ -140,7 +140,13 @@ async def launch_authority(request: Request):
             if 'dataset_id' in params:
                 d = int(params['dataset_id'])
                 if not 0 < d <= 9007199254740991: raise ValueError()
-                authorize(w, d, user)
+                # GET handlers independently enforce ownership; do not require
+                # UPDATE privileges merely to lock rows in a read-only guard.
+                # Keep the locking guard for any approved non-GET operation.
+                if request.method == 'GET':
+                    authorize_read(w, d, user)
+                else:
+                    authorize(w, d, user)
             else:
                 with repository_transaction() as conn:
                     found = conn.execute('''SELECT 1 FROM workspaces w JOIN users u ON u.owner_key=w.owner
