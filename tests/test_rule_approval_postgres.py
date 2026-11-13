@@ -27,7 +27,14 @@ def pg(monkeypatch):
     try:
         with connect() as conn:
             for path in sorted(Path("migrations").glob("*.sql")):
-                conn.execute(path.read_text())
+                # Migration 0064 is a security repair for the separately
+                # deployed datarise_warehouse_dev schema. Its DO guard must
+                # reject other schemas in production. This fixture provisions
+                # an ephemeral test_phase5a_* processing schema instead.
+                # Preserve 0064's real schema guard; do not weaken it.
+                if path.name.startswith("0064_"):
+                    continue
+                conn.execute(path.read_text(encoding="utf-8-sig"))
             user = conn.execute("INSERT INTO users(owner_key,display_name) VALUES ('dev:test','Test') RETURNING user_id").fetchone()[0]
             ws = conn.execute("INSERT INTO workspaces(workspace_name,owner) VALUES ('Test','dev:test') RETURNING workspace_id").fetchone()[0]
             ds = conn.execute("INSERT INTO datasets(workspace_id,dataset_name,owner) VALUES (%s,'Orders','dev:test') RETURNING dataset_id", (ws,)).fetchone()[0]
