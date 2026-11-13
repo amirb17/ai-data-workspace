@@ -38,7 +38,9 @@ def configuration():
     return {'google_available': bool(settings.mode == 'session' and len(settings.secret.encode()) >= 32
                                     and os.getenv('GOOGLE_CLIENT_ID') and os.getenv('GOOGLE_CLIENT_SECRET')),
             'identity_mode': settings.mode,
-            'public_launch_mode': MODE if launch.enabled else 'off'}
+            'public_launch_mode': MODE if launch.enabled else 'off',
+            'workspace_creation_available': launch.workspace_creation_enabled,
+            'csv_upload_available': launch.csv_upload_enabled}
 
 
 @router.get('/csrf')
