@@ -112,7 +112,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "DATARISE_TRUST_CLOUDFRONT_VPC_ORIGIN", value = tostring(var.api_trust_cloudfront_vpc_origin) },
       { name = "DATARISE_PUBLIC_LAUNCH_MODE", value = "csv-readonly" },
       { name = "DATARISE_PUBLIC_WORKSPACE_CREATION", value = tostring(var.api_enable_public_workspace_creation) },
-      { name = "DATARISE_PUBLIC_CSV_UPLOAD", value = tostring(var.enable_api_s3_csv_upload) },
+      { name = "DATARISE_PUBLIC_CSV_UPLOAD", value = tostring(var.api_s3_csv_public_live) },
       { name = "ENABLE_DEV_IDENTITY", value = "false" },
       { name = "WAREHOUSE_ENABLED", value = "false" }
     ], var.enable_api_s3_csv_upload ? [
