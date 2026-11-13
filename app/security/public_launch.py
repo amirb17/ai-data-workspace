@@ -16,6 +16,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Match
 
 MODE = 'csv-readonly'
+PROCESSING_MODE = 'csv-processing'
 
 # Deliberately no prefix grants, automatic GET grants, or processing exceptions.
 AUTH = {
@@ -54,6 +55,9 @@ POLICY = {**AUTH,
 }
 # Creating a workspace or a dataset is a separate, explicit opt-in.
 # No upload, processing, AI or warehouse route is added.
+PROCESSING_ROUTES = {
+    ('POST', '/files/uploads/{upload_id}/jobs'): 'app.api.processing_jobs.admit_stage',
+}
 UPLOAD_ROUTES = {
     ('POST', '/files/initiate'): 'app.api.files.initiate_upload',
     ('POST', '/files/complete'): 'app.api.files.complete_upload',
@@ -71,19 +75,25 @@ class LaunchSettings:
     trusted_cloudfront_vpc_origin: bool = False
     workspace_creation_enabled: bool = False
     csv_upload_enabled: bool = False
+    processing_enabled: bool = False
 
 
 def launch_settings():
     mode = os.getenv('DATARISE_PUBLIC_LAUNCH_MODE', 'off')
     if mode == 'off': return LaunchSettings()
-    if mode != MODE: raise ValueError('Invalid public launch mode')
+    if mode not in (MODE, PROCESSING_MODE): raise ValueError('Invalid public launch mode')
     from app.auth.config import require_secret
     settings = require_secret()
     if (os.getenv('APP_ENV') != 'production' or settings.mode != 'session'
         or not settings.secure or os.getenv('ENABLE_DEV_IDENTITY', 'false') != 'false'):
         raise ValueError('Public launch requires production session authentication')
-    for flag in ('DATARISE_PROCESSING_DEPLOYMENT_APPROVED', 'DATARISE_PROCESSING_READERS', 'DATARISE_DISPATCH_APPROVED'):
-        if os.getenv(flag) != 'false': raise ValueError('Public launch requires disabled processing flags')
+    processing = mode == PROCESSING_MODE
+    for flag in ('DATARISE_PROCESSING_DEPLOYMENT_APPROVED', 'DATARISE_PROCESSING_READERS'):
+        expected = 'true' if processing else 'false'
+        if os.getenv(flag) != expected:
+            raise ValueError('Public processing flags differ from reviewed launch mode')
+    if os.getenv('DATARISE_DISPATCH_APPROVED') != 'false':
+        raise ValueError('The public API must never have dispatcher authority')
     hosts = tuple(os.getenv('DATARISE_PUBLIC_HOSTS', '').split(','))
     # Exact hostnames only: no wildcard, ports, URLs or proxy-header trust.
     import re
@@ -105,12 +115,18 @@ def launch_settings():
         if (creation != 'true' or AWS_REGION != os.getenv('AWS_REGION')
             or not os.getenv('S3_BUCKET_NAME') or S3_BUCKET_NAME != os.getenv('S3_BUCKET_NAME')):
             raise ValueError('Public upload requires reviewed workspace creation and S3 runtime settings')
-    return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true')
+    if processing and (creation != 'true' or upload != 'true'):
+        raise ValueError('Public processing requires approved CSV uploads and workspace creation')
+    return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true', processing)
 
 
 def permitted(route, method, settings=None):
     path = getattr(route, 'path', None)
-    if (method, path) in UPLOAD_ROUTES:
+    if (method, path) in PROCESSING_ROUTES:
+        if settings is None or not settings.processing_enabled:
+            return False
+        name = PROCESSING_ROUTES[(method, path)]
+    elif (method, path) in UPLOAD_ROUTES:
         if settings is None or not settings.csv_upload_enabled:
             return False
         name = UPLOAD_ROUTES[(method, path)]
