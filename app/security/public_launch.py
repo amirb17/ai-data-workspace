@@ -4,6 +4,7 @@ This is an outer ASGI boundary, not a replacement for session, CSRF or ownership
 The policy binds a method AND registered path AND actual endpoint callable.
 """
 import os
+from ipaddress import ip_address, ip_network
 from dataclasses import dataclass
 from importlib import import_module
 from urllib.parse import urlsplit
@@ -56,6 +57,7 @@ POLICY = {**AUTH,
 class LaunchSettings:
     enabled: bool = False
     hosts: tuple[str, ...] = ()
+    trusted_cloudfront_vpc_origin: bool = False
 
 
 def launch_settings():
@@ -76,7 +78,10 @@ def launch_settings():
         raise ValueError('Configure exact public hostnames')
     if urlsplit(settings.backend).hostname not in hosts:
         raise ValueError('Backend origin must be a trusted public host')
-    return LaunchSettings(True, hosts)
+    trust = os.getenv('DATARISE_TRUST_CLOUDFRONT_VPC_ORIGIN', 'false')
+    if trust not in ('true', 'false'):
+        raise ValueError('Invalid trusted CloudFront VPC origin setting')
+    return LaunchSettings(True, hosts, trust == 'true')
 
 
 def permitted(route, method):
@@ -129,6 +134,40 @@ async def launch_authority(request: Request):
     await run_in_threadpool(check)
 
 
+def trusted_cloudfront_https(scope, settings):
+    """Only recognize CloudFront viewer HTTPS through the ALB-only VPC path.
+
+    This setting MUST only be enabled with: (1) task SG ingress solely from
+    private ALB SG; (2) private ALB SG ingress solely from CloudFront's VPC
+    origin managed SG; (3) CloudFront HTTPS-only viewer behavior and origin
+    policy which adds CloudFront-Forwarded-Proto. A header alone is not trust.
+    The ALB HTTP listener must independently report x-forwarded-proto=http.
+    """
+    if not settings.trusted_cloudfront_vpc_origin or scope.get('scheme') != 'http':
+        return False
+    if scope.get('type') != 'http':
+        return False
+    headers = scope.get('headers', ())
+    def exactly_one(key):
+        matches = [value for name, value in headers if name.lower() == key]
+        return matches[0] if len(matches) == 1 else None
+
+    host = exactly_one(b'host')
+    viewer_protocol = exactly_one(b'cloudfront-forwarded-proto')
+    alb_protocol = exactly_one(b'x-forwarded-proto')
+    client = scope.get('client')
+    if (host is None or viewer_protocol != b'https' or alb_protocol != b'http'
+            or not client or not isinstance(client[0], str)):
+        return False
+    try:
+        if not ip_address(client[0]) in ip_network('172.31.0.0/16'):
+            return False
+        host_text = host.decode('ascii')
+    except (ValueError, UnicodeDecodeError):
+        return False
+    return host_text in settings.hosts
+
+
 def error_response(status):
     messages = {401:'Sign in to continue.', 403:'This action is unavailable in the public read-only release.',
                 404:'Resource unavailable.', 413:'Request exceeds its byte limit.', 422:'Invalid request fields.',
@@ -160,9 +199,12 @@ class PublicLaunchBoundary:
                 and getattr(matched_health, 'endpoint', None)
                     is getattr(import_module('app.main'), 'health_check')):
                 return await self.app(scope, receive, send)
+        # A CloudFront-generated HTTPS signal is accepted only under the
+        # opt-in VPC/ALB network boundary and matching independent ALB protocol.
+        # Ignore generic X-Forwarded-Proto=https; do not enable Uvicorn proxy trust.
+        if trusted_cloudfront_https(scope, self.settings):
+            scope = {**scope, 'scheme': 'https'}
         request = Request(scope)
-        # TLS scheme must come from the server/trusted proxy configuration, never
-        # from a header interpreted here. Untrusted forwarding headers are ignored.
         try: host = request.url.hostname
         except ValueError: host = None
         status = None
