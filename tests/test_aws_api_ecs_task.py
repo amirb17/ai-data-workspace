@@ -37,7 +37,8 @@ def test_no_task_service_or_public_ingress():
     for forbidden in ('resource "aws_ecs_service"', 'resource "aws_lb"',
                       'resource "aws_security_group"', "assign_public_ip"):
         assert forbidden not in SOURCE
-    assert "prevent_destroy = true" in SOURCE
+    assert "skip_destroy             = true" in SOURCE
+    assert "prevent_destroy = true" not in SOURCE
 
 
 def test_cloudfront_vpc_scheme_trust_requires_explicit_optin():
