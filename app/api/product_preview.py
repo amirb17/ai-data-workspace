@@ -23,7 +23,9 @@ def call(fn):
 @router.get('/capabilities',response_model=CapabilitiesResponse)
 def capabilities(request:Request,workspace_id:int=Path(gt=0,le=9007199254740991),dataset_id:int=Path(gt=0,le=9007199254740991),user=Depends(get_current_user)):
     value = call(lambda:service.capabilities(workspace_id,dataset_id,user))
-    if request.scope.get('datarise.public_launch'): value = {**value,'csv_upload':False}
+    if request.scope.get('datarise.public_launch'):
+        from app.security.public_launch import launch_settings
+        value = {**value, 'csv_upload': launch_settings().csv_upload_enabled}
     return value
 
 
