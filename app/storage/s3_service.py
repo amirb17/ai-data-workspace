@@ -1,4 +1,5 @@
 import hashlib
+from botocore.config import Config
 
 from app.config import S3_BUCKET_NAME, get_boto3_session
 
@@ -9,7 +10,12 @@ BUCKET_NAME = S3_BUCKET_NAME
 
 
 def get_s3_client():
-    return get_boto3_session().client("s3")
+    # Force regional SigV4 for presigned browser PUTs. The default legacy
+    # S3 signer may produce AWSAccessKeyId/Signature/Expires (SigV2).
+    return get_boto3_session().client("s3", config=Config(
+        signature_version="s3v4",
+        s3={"addressing_style": "virtual"},
+    ))
 
 
 def upload_file_to_s3(
@@ -39,6 +45,7 @@ def generate_presigned_upload_url(
         Params={
             "Bucket": BUCKET_NAME,
             "Key": object_key,
+            "ContentType": "text/csv",
         },
         ExpiresIn=expires_in,
     )
