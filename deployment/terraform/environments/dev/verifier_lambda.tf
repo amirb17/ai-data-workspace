@@ -1,4 +1,10 @@
 
+variable "verifier_processing_enabled" {
+  description = "Explicit approval for verifier candidate verification; stays disabled by default"
+  type        = bool
+  default     = false
+}
+
 resource "aws_security_group" "verifier" {
   count       = var.enable_verifier_lambda ? 1 : 0
   name_prefix = "ai-workspace-verifier-"
@@ -146,8 +152,8 @@ resource "aws_lambda_function" "trusted_verifier" {
 
   environment {
     variables = {
-      DATARISE_PROCESSING_DEPLOYMENT_APPROVED = "false"
-      DATARISE_PROCESSING_READERS             = "false"
+      DATARISE_PROCESSING_DEPLOYMENT_APPROVED = tostring(var.verifier_processing_enabled)
+      DATARISE_PROCESSING_READERS             = tostring(var.verifier_processing_enabled)
       DATARISE_ARTIFACT_BUCKET                = var.artifact_bucket_name
       DATARISE_VERIFIER_DB_SECRET_ARN         = var.verifier_db_secret_arn
     }
