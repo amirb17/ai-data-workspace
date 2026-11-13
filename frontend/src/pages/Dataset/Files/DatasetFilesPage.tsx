@@ -11,9 +11,11 @@ import type { DatasetListItem } from "../../../features/datasets/types"
 import type { DatasetProcessing } from "../../../services/api/rules"
 import { ArchiveDeliveryDialog } from "../../../features/files/components/ArchiveDeliveryDialog"
 import { DeliveryMoreMenu } from "../../../features/files/components/DeliveryMoreMenu"
-import {usePublicReadOnly} from '../../../services/publicLaunchContext'
+import {usePublicReadOnly,usePublicUploadAllowed} from '../../../services/publicLaunchContext'
 export function DatasetFilesPage() {
-  const readOnly=usePublicReadOnly()
+  const publicReadOnly=usePublicReadOnly()
+  const uploadAllowed=usePublicUploadAllowed()
+  const readOnly=publicReadOnly && !uploadAllowed
   const { workspaceId = "", datasetId = "" } = useParams()
   const dataset = useOutletContext<DatasetListItem>()
   const [params, setParams] = useSearchParams()
@@ -30,7 +32,7 @@ export function DatasetFilesPage() {
       const c = delivery.context
       const inspection = metadata.find(f => f.id === c.file_id && f.uploadRequestIds?.includes(c.upload_request_id))
       return <article key={c.upload_request_id} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3"><h3 className="min-w-0 break-words font-semibold [overflow-wrap:anywhere]">{delivery.source_file_name}</h3><div className="flex flex-wrap items-start gap-2"><StatusBadge status={c.status === "SUCCESS" && (c.rejected_rows ?? 0) > 0 ? "SUCCESS_WITH_WARNINGS" : c.status} /><DeliveryMoreMenu readOnly={readOnly} context={c} fileName={delivery.source_file_name} processingHref={`/app/workspaces/${workspaceId}/datasets/${datasetId}/processing`} onArchive={() => setArchiving(delivery)} onViewDetails={() => setExpanded(c.upload_request_id)} /></div></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><h3 className="min-w-0 break-words font-semibold [overflow-wrap:anywhere]">{delivery.source_file_name}</h3><div className="flex flex-wrap items-start gap-2"><StatusBadge status={c.status === "SUCCESS" && (c.rejected_rows ?? 0) > 0 ? "SUCCESS_WITH_WARNINGS" : c.status} /><DeliveryMoreMenu readOnly={publicReadOnly} context={c} fileName={delivery.source_file_name} processingHref={`/app/workspaces/${workspaceId}/datasets/${datasetId}/processing`} onArchive={() => setArchiving(delivery)} onViewDetails={() => setExpanded(c.upload_request_id)} /></div></div>
         <p className="text-xs text-slate-500">Uploaded <time dateTime={delivery.created_at}>{new Date(delivery.created_at).toLocaleString()}</time></p>
         <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><div><dt className="text-slate-500">Rows{c.input_rows == null && inspection?.rowCount != null ? " (inspection)" : ""}</dt><dd>{countLabel(c.input_rows ?? inspection?.rowCount)}</dd></div><div><dt className="text-slate-500">Columns{c.column_count == null && inspection?.columnCount != null ? " (inspection)" : ""}</dt><dd>{countLabel(c.column_count ?? inspection?.columnCount)}</dd></div><div><dt className="text-slate-500">File size</dt><dd>{countLabel(delivery.size_bytes)}{delivery.size_bytes != null ? " bytes" : ""}</dd></div><div><dt className="text-slate-500">Processing</dt><dd>{terminalDelivery(c) ? "Completed" : c.status === "READY_TO_PROCESS" ? "Not started" : "See processing status"}</dd></div></dl>
         <details open={expanded === c.upload_request_id} id={`delivery-${c.upload_request_id}-details`}><summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-indigo-700">View delivery details</summary><div className="space-y-3 border-t pt-3 text-sm">
@@ -44,8 +46,9 @@ export function DatasetFilesPage() {
       </article>
     })}</section>}
     <button className="min-h-11 text-sm text-indigo-700" onClick={resource.retry}>Refresh delivery list</button>
-    {archiving && <ArchiveDeliveryDialog workspaceId={workspaceId} datasetId={datasetId} datasetName={dataset.name} fileName={archiving.source_file_name} context={archiving.context} onClose={() => setArchiving(null)} onArchived={() => { setArchiving(null); resource.retry() }} />}
-    {readOnly&&<p role="status" className="text-sm text-amber-900">CSV upload and delivery changes are unavailable in this read-only release. Existing delivery history remains visible.</p>}
+    {archiving && !publicReadOnly && <ArchiveDeliveryDialog workspaceId={workspaceId} datasetId={datasetId} datasetName={dataset.name} fileName={archiving.source_file_name} context={archiving.context} onClose={() => setArchiving(null)} onArchived={() => { setArchiving(null); resource.retry() }} />}
+    {readOnly&&<p role="status" className="text-sm text-amber-900">CSV uploads are unavailable in this release. Existing delivery history remains visible.</p>}
+    {uploadAllowed&&publicReadOnly&&<p role="status" className="text-sm text-amber-900">CSV upload is enabled. Processing and delivery archive remain disabled during this release.</p>}
     {uploadOpen && !readOnly && <UploadFileDialog open workspaceId={workspaceId} datasetId={datasetId} datasetName={dataset.name} onAccepted={resource.retry} onClose={() => { setUploadOpen(false); setParams({}); resource.retry() }} />}
   </div>
 }
