@@ -31,10 +31,10 @@ FROM (VALUES
 
 -- Roles have distinct duties; verify the restricted grants before activation.
 SELECT role_name, exists_in_db,
- CASE WHEN exists_in_db THEN has_function_privilege(role_name, 'public.task20_admit(bigint,bigint,text,text)','EXECUTE') ELSE false END AS may_admit,
- CASE WHEN exists_in_db THEN has_function_privilege(role_name, 'public.task20_claim_dispatch()','EXECUTE') ELSE false END AS may_dispatch,
- CASE WHEN exists_in_db THEN has_function_privilege(role_name, 'public.task20_publish(uuid,uuid,uuid)','EXECUTE') ELSE false END AS may_publish,
- CASE WHEN exists_in_db THEN has_function_privilege(role_name, 'public.task20_verify(uuid,uuid,uuid,jsonb)','EXECUTE') ELSE false END AS may_verify
+ CASE WHEN exists_in_db AND to_regprocedure('public.task20_admit(bigint,bigint,text,text)') IS NOT NULL THEN has_function_privilege(role_name, to_regprocedure('public.task20_admit(bigint,bigint,text,text)'),'EXECUTE') ELSE false END AS may_admit,
+ CASE WHEN exists_in_db AND to_regprocedure('public.task20_claim_dispatch()') IS NOT NULL THEN has_function_privilege(role_name, to_regprocedure('public.task20_claim_dispatch()'),'EXECUTE') ELSE false END AS may_dispatch,
+ CASE WHEN exists_in_db AND to_regprocedure('public.task20_publish(uuid,uuid,uuid)') IS NOT NULL THEN has_function_privilege(role_name, to_regprocedure('public.task20_publish(uuid,uuid,uuid)'),'EXECUTE') ELSE false END AS may_publish,
+ CASE WHEN exists_in_db AND to_regprocedure('public.task20_verify(uuid,uuid,uuid,jsonb)') IS NOT NULL THEN has_function_privilege(role_name, to_regprocedure('public.task20_verify(uuid,uuid,uuid,jsonb)'),'EXECUTE') ELSE false END AS may_verify
 FROM (SELECT v.role_name, EXISTS(SELECT 1 FROM pg_roles WHERE rolname=v.role_name) AS exists_in_db
       FROM (VALUES('datarise_api'),('datarise_worker'),('datarise_dispatch'),('datarise_verifier')) AS v(role_name)) AS x;
 
