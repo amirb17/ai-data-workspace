@@ -5,6 +5,16 @@ variable "enable_dispatcher_ec2" {
   type        = bool
   default     = false
 }
+variable "dispatcher_image_uri" {
+  description = "Separately reviewed, digest-pinned dispatcher image (same ECR repository)"
+  type        = string
+  default     = ""
+}
+variable "dispatcher_image_digest" {
+  description = "Immutable SHA-256 digest for dispatcher image"
+  type        = string
+  default     = ""
+}
 variable "dispatcher_db_secret_arn" {
   description = "Secrets Manager ARN for datarise_dispatch only"
   type        = string
@@ -129,8 +139,8 @@ resource "aws_instance" "dispatcher" {
     queue           = aws_sqs_queue.processing[0].id
     secret          = var.dispatcher_db_secret_arn
     role_arn        = aws_iam_role.dispatcher[0].arn
-    image_uri       = var.worker_image_uri
-    registry_host   = split("/", var.worker_image_uri)[0]
+    image_uri       = var.dispatcher_image_uri
+    registry_host   = split("/", var.dispatcher_image_uri)[0]
   })
   user_data_replace_on_change = true
 
@@ -157,9 +167,10 @@ resource "aws_instance" "dispatcher" {
         var.worker_db_secret_arn != "" && var.verifier_db_secret_arn != "" &&
         var.dispatcher_db_secret_arn != var.worker_db_secret_arn &&
         var.dispatcher_db_secret_arn != var.verifier_db_secret_arn &&
-        var.worker_image_digest != "" &&
-        can(regex("@sha256:[0-9a-f]{64}$", var.worker_image_uri)) &&
-        endswith(var.worker_image_uri, var.worker_image_digest)
+        var.dispatcher_image_digest != "" &&
+        can(regex("^sha256:[0-9a-f]{64}$", var.dispatcher_image_digest)) &&
+        can(regex("@sha256:[0-9a-f]{64}$", var.dispatcher_image_uri)) &&
+        endswith(var.dispatcher_image_uri, var.dispatcher_image_digest)
       )
       error_message = "Dispatcher requires reviewed immutable image, queue, RDS and a distinct DB secret."
     }
