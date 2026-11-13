@@ -91,6 +91,7 @@ resource "aws_ecs_task_definition" "api" {
   skip_destroy             = true
   execution_role_arn       = aws_iam_role.api_ecs_execution[0].arn
   task_role_arn            = var.enable_api_s3_csv_upload ? aws_iam_role.api_s3_upload_task[0].arn : null
+  depends_on               = [aws_iam_role_policy.api_s3_upload]
 
   container_definitions = jsonencode([{
     name      = "api"
