@@ -58,7 +58,7 @@ data "aws_iam_policy_document" "api_s3_upload" {
   }
   statement {
     sid       = "ValidateStagingAndDeduplicateRaw"
-    actions   = ["s3:GetObject"]
+    actions   = ["s3:GetObject", "s3:GetObjectVersion"]
     resources = [
       "arn:aws:s3:::${var.api_s3_upload_bucket}/staging/user-*/*",
       "arn:aws:s3:::${var.api_s3_upload_bucket}/raw/*"
