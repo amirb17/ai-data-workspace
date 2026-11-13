@@ -27,12 +27,11 @@ def pg(monkeypatch):
     try:
         with connect() as conn:
             for path in sorted(Path("migrations").glob("*.sql")):
-                # Migration 0064 is a security repair for the separately
-                # deployed datarise_warehouse_dev schema. Its DO guard must
-                # reject other schemas in production. This fixture provisions
-                # an ephemeral test_phase5a_* processing schema instead.
-                # Preserve 0064's real schema guard; do not weaken it.
-                if path.name.startswith("0064_"):
+                # These two canonical warehouse-query guard repairs require
+                # datarise_warehouse_dev and an admin role. Processing tests
+                # intentionally use an isolated test_phase5a_* schema.
+                # Do NOT disable their production guards to make this pass.
+                if path.name.startswith(("0064_", "0065_")):
                     continue
                 conn.execute(path.read_text(encoding="utf-8-sig"))
             user = conn.execute("INSERT INTO users(owner_key,display_name) VALUES ('dev:test','Test') RETURNING user_id").fetchone()[0]
