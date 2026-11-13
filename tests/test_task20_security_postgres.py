@@ -249,9 +249,19 @@ def test_durable_upload_completion_and_source_pin_rollback_together(pg,monkeypat
     original=runtime_security.require_runtime
     monkeypatch.setattr(runtime_security,'require_runtime',lambda conn,purpose,**kw:original(conn,purpose,isolated_test=True))
     monkeypatch.setattr(uploads,'generate_presigned_upload_url',lambda **kw:'offline-signed-url')
-    monkeypatch.setattr(uploads,'get_object_metadata',lambda key:{'size':len(payload)})
+    monkeypatch.setattr(uploads,'get_object_metadata',lambda key:{'size':len(payload),'content_type':'text/csv'})
     monkeypatch.setattr(s3_service,'get_s3_client',lambda:client)
-    session=uploads.initiate_upload_session(user['user_id'],ws,ds,'source.csv',len(payload))
+    # MemoryVersionedClient records version/size, but not S3 MIME metadata.
+    # Supply the ContentType from the upload fixture without weakening the
+    # production read_staged() check for a version-pinned CSV object.
+    head_object = client.head_object
+    def csv_head_object(*, Bucket, Key):
+        metadata = head_object(Bucket=Bucket, Key=Key)
+        if Key.startswith('staging/'):
+            metadata['ContentType'] = 'text/csv'
+        return metadata
+    monkeypatch.setattr(client,'head_object',csv_head_object)
+    session=uploads.initiate_upload_session(user['user_id'],ws,ds,'source.csv',len(payload),content_type='text/csv')
     client.seed(session['object_key'],payload)
     complete=uploads.complete_session
     def fail(*args):
