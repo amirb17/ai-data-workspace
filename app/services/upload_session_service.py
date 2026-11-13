@@ -17,8 +17,10 @@ def initiate_upload_session(user_id: int, workspace_id: int, dataset_id: int, fi
         raise ValueError('XLSX filename is not supported: an approved parser and sheet-to-dataset mapping are required')
     if not file_name.lower().endswith('.csv') or any(char in file_name for char in ('/', '\\', '\x00')) or '..' in file_name:
         raise ValueError("A plain CSV filename is required")
-    if file_size <= 0:
-        raise ValueError("File size must be positive")
+    if file_size <= 0 or file_size > 5 * 1024 * 1024:
+        raise ValueError("CSV size must be between 1 byte and 5 MiB")
+    if content_type != 'text/csv':
+        raise ValueError("Only text/csv uploads are supported")
     object_key = f"staging/user-{user_id}/{uuid4()}/{file_name}"
     # Signing failure must not leave a session that the caller never received.
     url = generate_presigned_upload_url(object_key=object_key, expires_in=900)
