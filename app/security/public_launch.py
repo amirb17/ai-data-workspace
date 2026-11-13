@@ -1,4 +1,4 @@
-"""Explicit read-only public HTTP surface. All unreviewed routes fail closed.
+"""Explicit public HTTP surface. All unreviewed routes fail closed.
 
 This is an outer ASGI boundary, not a replacement for session, CSRF or ownership.
 The policy binds a method AND registered path AND actual endpoint callable.
@@ -52,6 +52,12 @@ POLICY = {**AUTH,
     ('POST', P + '/uploads/{upload_id}/csv-preview'): 'app.api.product_preview.preview',
     ('GET', P + '/uploads/{upload_id}/gold-assessment'): 'app.api.product_preview.gold',
 }
+# Creating a workspace or a dataset is a separate, explicit opt-in.
+# No upload, processing, AI or warehouse route is added.
+WORKSPACE_CREATE = {
+    ('POST', '/workspaces'): 'app.api.workspaces.create_workspace_endpoint',
+    ('POST', W + '/datasets'): 'app.api.workspaces.create_dataset_endpoint',
+}
 
 
 @dataclass(frozen=True)
@@ -59,6 +65,7 @@ class LaunchSettings:
     enabled: bool = False
     hosts: tuple[str, ...] = ()
     trusted_cloudfront_vpc_origin: bool = False
+    workspace_creation_enabled: bool = False
 
 
 def launch_settings():
@@ -82,11 +89,20 @@ def launch_settings():
     trust = os.getenv('DATARISE_TRUST_CLOUDFRONT_VPC_ORIGIN', 'false')
     if trust not in ('true', 'false'):
         raise ValueError('Invalid trusted CloudFront VPC origin setting')
-    return LaunchSettings(True, hosts, trust == 'true')
+    creation = os.getenv('DATARISE_PUBLIC_WORKSPACE_CREATION', 'false')
+    if creation not in ('true', 'false'):
+        raise ValueError('Invalid public workspace creation opt-in')
+    return LaunchSettings(True, hosts, trust == 'true', creation == 'true')
 
 
-def permitted(route, method):
-    name = POLICY.get((method, getattr(route,'path',None)))
+def permitted(route, method, settings=None):
+    path = getattr(route, 'path', None)
+    if (method, path) in WORKSPACE_CREATE:
+        if settings is None or not settings.workspace_creation_enabled:
+            return False
+        name = WORKSPACE_CREATE[(method, path)]
+    else:
+        name = POLICY.get((method, path))
     if name is None: return False
     module, attr = name.rsplit('.', 1)
     return route.endpoint is getattr(import_module(module), attr)
@@ -217,7 +233,7 @@ class PublicLaunchBoundary:
         if method == 'OPTIONS': method = request.headers.get('access-control-request-method', '')
         probe = {**scope, 'method':method}
         matched = next((r for r in http_routes(self.routes) if r.matches(probe)[0] == Match.FULL), None)
-        if status is None and (matched is None or not permitted(matched, method)): status = 403
+        if status is None and (matched is None or not permitted(matched, method, self.settings)): status = 403
         if status is None and scope['method'] == 'OPTIONS':
             from app.auth.config import config
             if request.headers.get('origin') != config().frontend: status = 403
