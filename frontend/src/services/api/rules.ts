@@ -1,3 +1,4 @@
+import { readStageJobs, submitStage } from "./processingJobs"
 import { ApiError, backendId, request } from "./client"
 import type { DeliveryApplication, SnapshotContext, SnapshotCoverage } from "./incremental"
 export type ProcessingContext = {
@@ -31,8 +32,15 @@ export type DatasetProcessing = {
   operation?: { processed: number; successful: number; needs_attention: number }
 }
 export async function datasetProcessing(w: string, d: string, process = false, signal?: AbortSignal) {
-  const value = verifyScope(await ruleRequest<DatasetProcessing>(`/workspaces/${backendId(w)}/datasets/${backendId(d)}/processing${process ? "/pending" : ""}`, { method: process ? "POST" : "GET", signal }), w, d)
+  const value = verifyScope(await ruleRequest<DatasetProcessing>(`/workspaces/${backendId(w)}/datasets/${backendId(d)}/processing`, { signal }), w, d)
   for (const delivery of value.deliveries) verifyScope(delivery.context, w, d)
+  if (process) {
+    const jobs = await readStageJobs(w,d,signal)
+    for (const delivery of value.deliveries) {
+      if (['READY_TO_PROCESS','READY_FOR_SILVER','READY_FOR_GOLD','READY_TO_APPLY'].includes(delivery.context.status))
+        await submitStage(w,d,delivery.context,jobs)
+    }
+  }
   return value
 }
 export type RuleQuestion = { column_name: string; suggested_rule_type: string; question: string; reason?: string; options: string[] }
@@ -69,14 +77,15 @@ export async function getProcessingContext(w: string, d: string, uploadId: numbe
   return value
 }
 export async function startBronze(w: string, d: string, uploadId: number) {
-  const value = verifyScope(await ruleRequest<ProcessingContext>(`/files/uploads/${backendId(uploadId)}/process${scope(w, d)}`, { method: "POST" }), w, d)
-  if (value.upload_request_id !== uploadId) throw new ApiError("Upload response mismatch.")
-  return value
+  const context = await getProcessingContext(w,d,uploadId)
+  if (!['READY_TO_PROCESS','BRONZE_FAILED'].includes(context.status)) throw new ApiError('Refresh delivery status before starting Bronze.')
+  await submitStage(w,d,context,await readStageJobs(w,d))
+  return context
 }
 export async function continueProcessing(w: string, d: string, uploadId: number) {
-  const value = verifyScope(await ruleRequest<ProcessingContext>(`/files/uploads/${backendId(uploadId)}/continue${scope(w, d)}`, { method: "POST" }), w, d)
-  if (value.upload_request_id !== uploadId) throw new ApiError("Upload response mismatch.")
-  return value
+  const context = await getProcessingContext(w,d,uploadId)
+  await submitStage(w,d,context,await readStageJobs(w,d))
+  return context
 }
 export async function getRuleReview(w: string, d: string, id: number, signal?: AbortSignal) {
   const value = verifyScope(await ruleRequest<RuleReview>(`/files/dataset-version-files/${backendId(id)}/business-rules/suggestions${scope(w, d)}`, { signal }), w, d)
