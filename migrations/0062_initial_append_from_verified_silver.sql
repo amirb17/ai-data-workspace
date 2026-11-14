@@ -90,9 +90,9 @@ BEGIN
       OR EXISTS (
         SELECT 1 FROM dataset_profiles WHERE file_id=src.file_id
           AND (column_name IS NULL OR btrim(column_name)=''
-            OR column_name LIKE '\\_source\\_%' ESCAPE '\\'
-            OR column_name LIKE '\\_datarise\\_%' ESCAPE '\\'
-            OR column_name LIKE '\\_dq\\_%' ESCAPE '\\')
+            OR left(column_name,8)='_source_'
+            OR left(column_name,10)='_datarise_'
+            OR left(column_name,4)='_dq_'
       )
     THEN RAISE EXCEPTION 'Unsafe or ambiguous profiled schema'; END IF;
 
