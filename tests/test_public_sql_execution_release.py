@@ -45,3 +45,11 @@ def test_terraform_sql_execution_opt_in_is_independent():
     assert 'default     = false' in tf
     assert 'DATARISE_PUBLIC_SQL_EXECUTION' in tf
     assert 'var.api_enable_sql_execution || var.api_enable_sql_catalog' in tf
+
+
+def test_sql_lock_scope_is_validly_dollar_quoted():
+    schema=(ROOT/'migrations/0067_public_sql_metadata_authority.sql').read_text()
+    scope=schema.split('CREATE FUNCTION task23_sql_lock_scope(',1)[1].split('CREATE FUNCTION task23_sql_record(',1)[0]
+    assert 'AS $scope$' in scope
+    assert 'END $scope$;' in scope
+    assert 'AS $\\n' not in scope
