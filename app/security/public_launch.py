@@ -239,9 +239,10 @@ async def launch_authority(request: Request):
                 if (request.method == 'GET' or
                     (request.method == 'POST' and
                      getattr(request.scope.get('route'), 'path', None)
-                     == D + '/incremental/initial-append-policy/uploads/{upload_id}')):
-                    # The SECURITY DEFINER policy function acquires the
-                    # owner/source locks; the API guard needs SELECT only.
+                     in (D + '/incremental/initial-append-policy/uploads/{upload_id}',
+                         D + '/analytics/refresh'))):
+                    # The dedicated handlers revalidate owner and acquire their
+                    # own publication locks; the outer guard needs SELECT only.
                     authorize_read(w, d, user)
                 else:
                     authorize(w, d, user)
