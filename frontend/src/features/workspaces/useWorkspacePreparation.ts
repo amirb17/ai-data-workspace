@@ -20,7 +20,16 @@ export function useWorkspacePreparation(workspace: string, datasets: DatasetList
       rows.push(...await Promise.all(active.slice(start, start + 4).map(async dataset => {
         const [processing, analytics] = await Promise.all([datasetProcessing(workspace, String(dataset.id), false, signal), getAnalyticsReadiness(workspace, String(dataset.id), signal)])
         const profile = analytics.current_state_id === null ? null : await getProfileReadiness(workspace, String(dataset.id), signal)
-        const understanding = profile?.profile_ready ? await getUnderstandingReadiness(workspace, String(dataset.id), signal) : null
+        // Semantic understanding is optional in the restricted public release.
+        // A route-gate 403 must not hide already authorized processing/Analytics.
+        // Other failures (including network outages) remain visible for diagnosis.
+        let understanding: Understanding | null = null
+        if (profile?.profile_ready) {
+          try { understanding = await getUnderstandingReadiness(workspace, String(dataset.id), signal) }
+          catch (error) {
+            if (!(error instanceof ApiError) || error.status !== 403) throw error
+          }
+        }
         return { dataset, processing, analytics, profile, understanding }
       })))
     }
