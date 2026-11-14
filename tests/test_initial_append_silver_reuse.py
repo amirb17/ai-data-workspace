@@ -26,9 +26,10 @@ def silver():
 def first_append(old):
     new = deepcopy(old)
     new["load_policy"] = {
-        "policy_id": 1, "dataset_id": 1, "dataset_version_id": 1,
+        "policy_id": 1, "policy_version": 1,
+        "dataset_id": 1, "dataset_version_id": 1,
         "load_strategy": "APPEND", "business_keys": [],
-        "schema_evolution_policy": "STRICT",
+        "schema_evolution_policy": "STRICT", "event_time_column": None,
     }
     return new
 
@@ -59,6 +60,21 @@ def test_never_rebind_published_silver_from_a_different_source_or_rules():
     ):
         target = first_append(source)
         target[key] = changed
+        assert not reusable_initial_append(source, target), key
+
+
+def test_initial_append_policy_must_be_first_strict_and_keyless():
+    source = silver()
+    for key, value in (
+        ("policy_version", 2),
+        ("schema_evolution_policy", "ALLOW_ADDITIVE"),
+        ("business_keys", ["employee_id"]),
+        ("dataset_id", 20),
+        ("dataset_version_id", 40),
+        ("event_time_column", "created_at"),
+    ):
+        target = first_append(source)
+        target["load_policy"][key] = value
         assert not reusable_initial_append(source, target), key
 
 
