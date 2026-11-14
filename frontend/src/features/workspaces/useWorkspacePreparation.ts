@@ -20,7 +20,15 @@ export function useWorkspacePreparation(workspace: string, datasets: DatasetList
       rows.push(...await Promise.all(active.slice(start, start + 4).map(async dataset => {
         const [processing, analytics] = await Promise.all([datasetProcessing(workspace, String(dataset.id), false, signal), getAnalyticsReadiness(workspace, String(dataset.id), signal)])
         const profile = analytics.current_state_id === null ? null : await getProfileReadiness(workspace, String(dataset.id), signal)
-        const understanding = profile?.profile_ready ? await getUnderstandingReadiness(workspace, String(dataset.id), signal) : null
+        // Semantic understanding is optional and its public route may be disabled.
+        // Do not make an authorized Overview disappear when this optional read is gated.
+        let understanding: Understanding | null = null
+        if (profile?.profile_ready) {
+          try { understanding = await getUnderstandingReadiness(workspace, String(dataset.id), signal) }
+          catch (error) {
+            if (!(error instanceof ApiError) || error.status !== 403) throw error
+          }
+        }
         return { dataset, processing, analytics, profile, understanding }
       })))
     }
@@ -60,6 +68,6 @@ export function preparationAction(workspace: string, row: DatasetPreparation) {
   if (row.analytics.current_state_id === null) return { label: "Configure load policy", to: `${base}/contract` }
   if (!row.analytics.analytics_ready) return { label: "Refresh analytics", to: `${base}/analytics` }
   if (!row.profile?.profile_ready) return { label: "Prepare data profile", to: `${base}/profile` }
-  if (row.understanding?.status !== "READY") return { label: "Review description", to: `${base}/understanding` }
+  if (row.understanding && row.understanding.status !== "READY") return { label: "Review description", to: `${base}/understanding` }
   return { label: "Explore dataset", to: base }
 }
