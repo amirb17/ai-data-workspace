@@ -17,7 +17,7 @@ export function PublicWorkspaceAnalytics({workspaceId}:{workspaceId:string}) {
       try {
         const datasets=(await listDatasets(workspaceId,controller.signal)).filter(d=>d.status==='ACTIVE')
         // Owner-scoped reads. Do not imply a failed dataset is zero or current.
-        const rows=await Promise.all(datasets.map(async d:Promise<DatasetRow>=>{
+        const rows=await Promise.all(datasets.map(async (d):Promise<DatasetRow>=>{
           try { const analytics=await getDatasetAnalytics(workspaceId,String(d.id),controller.signal)
             return {id:d.id,name:d.name,analytics,error:''}
           } catch (caught) {return {id:d.id,name:d.name,analytics:null,error:caught instanceof Error?caught.message:'Dataset analytics unavailable'} }
