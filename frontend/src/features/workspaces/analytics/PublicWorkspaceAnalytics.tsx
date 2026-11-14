@@ -12,7 +12,6 @@ export function PublicWorkspaceAnalytics({workspaceId}:{workspaceId:string}) {
   const [state,setState]=useState<State>({rows:[],loading:true,error:''})
   useEffect(()=>{
     const controller=new AbortController()
-    setState({rows:[],loading:true,error:''})
     async function load() {
       try {
         const datasets=(await listDatasets(workspaceId,controller.signal)).filter(d=>d.status==='ACTIVE')
@@ -38,7 +37,7 @@ export function PublicWorkspaceAnalytics({workspaceId}:{workspaceId:string}) {
   return <section className="space-y-5" aria-labelledby="public-workspace-analytics">
     <header className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="public-workspace-analytics" className="text-2xl font-semibold">Analytics</h2>
       <p className="mt-1 text-sm text-slate-600">Current dataset analytics from verified published data.</p></div>
-      <button className="min-h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm" onClick={()=>setRevision(v=>v+1)}>Refresh status</button></header>
+      <button className="min-h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm" onClick={()=>{setState({rows:[],loading:true,error:''});setRevision(v=>v+1)}}>Refresh status</button></header>
     {state.loading && <p role="status">Loading dataset analytics…</p>}
     {state.error && <p role="alert" className="rounded-lg border border-red-200 p-4 text-sm text-red-700">{state.error}</p>}
     {!state.loading&&!state.error&&<>
