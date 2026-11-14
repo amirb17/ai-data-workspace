@@ -131,6 +131,12 @@ def reusable_initial_append(source, target):
         or source.get('snapshot_context') is not None
         or not isinstance(policy, dict)
         or policy.get('load_strategy') != 'APPEND'
+        or policy.get('policy_version') != 1
+        or policy.get('schema_evolution_policy') != 'STRICT'
+        or policy.get('business_keys') != []
+        or policy.get('dataset_id') != target.get('dataset_id')
+        or policy.get('dataset_version_id') != target.get('dataset_version')
+        or policy.get('event_time_column') is not None
         or target.get('snapshot_context') is not None):
         return False
     # No other contract field may change, including upstream receipt, rule
