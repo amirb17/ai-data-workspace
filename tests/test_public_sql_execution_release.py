@@ -24,9 +24,13 @@ def test_every_sql_route_default_off_and_exact_handler():
 def test_sql_metadata_updates_are_owner_fenced_not_table_grants():
     schema=(ROOT/'migrations/0067_public_sql_metadata_authority.sql').read_text()
     service=(ROOT/'app/db/sql_repository.py').read_text()
-    for fn in ('task23_sql_record','task23_sql_save','task23_sql_delete'):
+    for fn in ('task23_sql_record','task23_sql_save','task23_sql_delete','task23_sql_lock_scope'):
         assert fn in schema and fn in service
     assert "task23_sql_owner(actor,ws)" in schema
+    assert "task23_sql_lock_scope(%s,%s)" in service
+    assert "ORDER BY dataset_id FOR UPDATE" in schema
+    sql_service=(ROOT/'app/services/sql_analytics_service.py').read_text()
+    assert 'catalog_service.gather(conn,workspace,user,lock=False)' in sql_service
     assert "u.account_status='ACTIVE'" in schema
     assert "w.workspace_id=ws" in schema
     assert "TO datarise_api" in schema
