@@ -67,6 +67,17 @@ ANALYTICS_READ_ROUTES = {
 ANALYTICS_REFRESH_ROUTES = {
     ('POST', D + '/analytics/refresh'): 'app.api.dataset_analytics.refresh',
 }
+SQL_EXECUTION_ROUTES = {
+    ('POST', W + '/sql/validate'): 'app.api.sql_analytics.validate',
+    ('POST', W + '/sql/execute'): 'app.api.sql_analytics.execute',
+    ('POST', W + '/sql/builder'): 'app.api.sql_analytics.builder',
+    ('GET', W + '/sql/executions'): 'app.api.sql_analytics.executions',
+    ('GET', W + '/sql/executions/{execution_id}'): 'app.api.sql_analytics.execution',
+    ('GET', W + '/sql/queries'): 'app.api.sql_analytics.queries',
+    ('POST', W + '/sql/queries'): 'app.api.sql_analytics.save',
+    ('PATCH', W + '/sql/queries/{query_id}'): 'app.api.sql_analytics.update',
+    ('DELETE', W + '/sql/queries/{query_id}'): 'app.api.sql_analytics.delete',
+}
 SQL_CATALOG_ROUTES = {
     ('GET', W + '/sql/catalog'): 'app.api.sql_analytics.read_catalog',
 }
@@ -102,6 +113,7 @@ class LaunchSettings:
     analytics_refresh_enabled: bool = False
     sql_catalog_enabled: bool = False
     profile_refresh_enabled: bool = False
+    sql_execution_enabled: bool = False
 
 
 def launch_settings():
@@ -157,10 +169,13 @@ def launch_settings():
     analytics_refresh = os.getenv('DATARISE_PUBLIC_ANALYTICS_REFRESH', 'false')
     sql_catalog = os.getenv('DATARISE_PUBLIC_SQL_CATALOG', 'false')
     profile_refresh = os.getenv('DATARISE_PUBLIC_PROFILE_REFRESH', 'false')
-    if any(v not in ('true', 'false') for v in (analytics_read, analytics_refresh, sql_catalog, profile_refresh)):
+    sql_execution = os.getenv('DATARISE_PUBLIC_SQL_EXECUTION', 'false')
+    if any(v not in ('true', 'false') for v in (analytics_read, analytics_refresh, sql_catalog, profile_refresh, sql_execution)):
         raise ValueError('Invalid analytics or SQL public opt-in')
     if analytics_refresh == 'true' and analytics_read != 'true':
         raise ValueError('Analytics refresh requires analytics read opt-in')
+    if sql_execution == 'true' and sql_catalog != 'true':
+        raise ValueError('SQL execution requires approved SQL catalog')
     if profile_refresh == 'true' and analytics_read != 'true':
         raise ValueError('Profile refresh requires analytics read opt-in')
     if sql_catalog == 'true' and analytics_read != 'true':
@@ -168,7 +183,7 @@ def launch_settings():
     return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true',
                           processing, rule_review == 'true', initial_append == 'true',
                           analytics_read == 'true', analytics_refresh == 'true', sql_catalog == 'true',
-                          profile_refresh == 'true')
+                          profile_refresh == 'true', sql_execution == 'true')
 
 
 def permitted(route, method, settings=None):
@@ -186,6 +201,9 @@ def permitted(route, method, settings=None):
     elif (method, path) in ANALYTICS_REFRESH_ROUTES:
         if settings is None or not settings.analytics_refresh_enabled: return False
         name = ANALYTICS_REFRESH_ROUTES[(method, path)]
+    elif (method, path) in SQL_EXECUTION_ROUTES:
+        if settings is None or not settings.sql_execution_enabled: return False
+        name = SQL_EXECUTION_ROUTES[(method,path)]
     elif (method, path) in SQL_CATALOG_ROUTES:
         if settings is None or not settings.sql_catalog_enabled: return False
         name = SQL_CATALOG_ROUTES[(method, path)]
