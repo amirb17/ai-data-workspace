@@ -73,7 +73,7 @@ BEGIN
         '/run_id='||r.gold_run_id||'/%/manifest.json')
     OR jsonb_typeof(catalog) IS DISTINCT FROM 'array'
     OR jsonb_array_length(catalog)<1
-    OR catalog->0->>'artifact_type' <> 'BASE'
+    OR catalog->0->>'artifact_type' IS DISTINCT FROM 'BASE'
     OR (catalog->0->>'gold_run_id')::bigint IS DISTINCT FROM runid
  THEN RAISE EXCEPTION 'Invalid cumulative Gold publication evidence'; END IF;
  SELECT row_count INTO source_rows FROM dataset_state_versions
@@ -117,10 +117,10 @@ END $$;
 REVOKE ALL ON FUNCTION task21_analytics_owner(BIGINT,BIGINT,BIGINT),
  task21_analytics_begin(BIGINT,BIGINT,BIGINT,BIGINT),
  task21_analytics_publish(BIGINT,BIGINT,BIGINT,BIGINT,TEXT,TEXT,JSONB),
- task21_analytics_fail(BIGINT,BIGINT,BIGINT,BIGINT,TEXT)
+ task21_analytics_fail(BIGINT,BIGINT,BIGINT,BIGINT,BIGINT,TEXT)
  FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION task21_analytics_begin(BIGINT,BIGINT,BIGINT,BIGINT),
  task21_analytics_publish(BIGINT,BIGINT,BIGINT,BIGINT,TEXT,TEXT,JSONB),
- task21_analytics_fail(BIGINT,BIGINT,BIGINT,BIGINT,TEXT)
+ task21_analytics_fail(BIGINT,BIGINT,BIGINT,BIGINT,BIGINT,TEXT)
  TO datarise_api;
 COMMIT;
