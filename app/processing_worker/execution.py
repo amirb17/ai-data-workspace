@@ -99,6 +99,25 @@ def _execute_lease(job_id, lease, executor):
                        PurePath(origin.filename).name if origin else 'unknown',
                        origin.name if origin else 'unknown',
                        origin.lineno if origin else 0)
+        # The incremental coordinator wraps its original failure in a generic
+        # RuntimeError. Log only the innermost exception class and vetted
+        # application-code location; never driver messages, SQL or object keys.
+        root = exc
+        for _ in range(8):
+            cause = root.__cause__ or root.__context__
+            if cause is None or cause is root:
+                break
+            root = cause
+        root_frames = [frame for frame in extract_tb(root.__traceback__)
+                       if '/app/app/' in frame.filename.replace('\\', '/')]
+        root_origin = root_frames[-1] if root_frames else None
+        logger.warning(
+            'Processing root cause (class=%s, module=%s, function=%s, line=%s)',
+            type(root).__name__,
+            PurePath(root_origin.filename).name if root_origin else 'unknown',
+            root_origin.name if root_origin else 'unknown',
+            root_origin.lineno if root_origin else 0,
+        )
         try:
             jobs.finish_job(job_id, lease.lease_token, failure_code='PROCESSING_FAILED',
                             retry=True, retry_delay_seconds=30)
