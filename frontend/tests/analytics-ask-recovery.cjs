@@ -12,6 +12,7 @@ async function main(){
  let failed=false,history=[]
  const analytics={workspace_id:1,status:'NOT_READY',metrics:[],relationships:[],metrics_fresh:0,metrics_available:0,metrics_stale:0,metrics_failed:0,metrics_blocked:0,can_refresh:false,last_refreshed:null}
  global.fetch=async(url,options={})=>{
+  if(url.endsWith('/auth/config'))return {ok:true,status:200,json:async()=>({identity_mode:'development',public_launch_mode:'off'})}
   if(url.endsWith('/analytics'))return {ok:!failed,status:failed?503:200,json:async()=>analytics}
   if(url.endsWith('/readiness'))return {ok:true,json:async()=>({workspace_id:1,ready:true,message:'Ready',suggested_questions:[]})}
   if(url.endsWith('/answers'))return {ok:true,json:async()=>({workspace_id:1,answers:history})}
