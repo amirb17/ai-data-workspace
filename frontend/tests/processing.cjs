@@ -90,11 +90,11 @@ async function main() {
   const goldFailed = bridge({...mixed,status:'GOLD_FAILED',can_continue:true,error_summary:'Gold publication failed.',stages:{...mixed.stages,gold:'FAILED'}})
   for (const text of ['Gold publication failed','Retry Gold','will reuse successful Silver','Failed']) assert.ok(goldFailed.includes(text))
   const summary = render(DatasetProcessingSummary,{data:dataset,busy:false,process:()=>{}})
-  assert.equal((summary.match(/Process Pending Deliveries \(2\)/g)||[]).length,1)
+  assert.equal((summary.match(/Start Process \(2\)/g)||[]).length,1)
   assert.ok(!summary.includes('disabled=""') && !summary.includes('Batches'))
   const empty = {...dataset,deliveries:[],summary:{...dataset.summary,total:0,pending:0}}
   const done = {...dataset,deliveries:[delivery(success)],summary:{...dataset.summary,total:1,pending:0,successful:1}}
-  assert.ok(!render(DatasetProcessingSummary,{data:empty,busy:false,process:()=>{}}).includes('Process Pending Deliveries'))
+  assert.ok(!render(DatasetProcessingSummary,{data:empty,busy:false,process:()=>{}}).includes('Start Process'))
   assert.ok(render(DatasetProcessingSummary,{data:done,busy:false,process:()=>{}}).includes('Everything is up to date'))
   const needsAttention = {...done,deliveries:[delivery(mixed)]}
   assert.equal(presentation.overviewWarnings(needsAttention),1)
@@ -127,12 +127,12 @@ async function main() {
   try {
     const emptyPage = page()
     assert.ok(emptyPage.includes('No deliveries yet') && emptyPage.includes('Go to Files'))
-    assert.ok(!emptyPage.includes('Process Pending Deliveries') && !emptyPage.includes('<h1 class="text-3xl'))
+    assert.ok(!emptyPage.includes('Start Process') && !emptyPage.includes('<h1 class="text-3xl'))
     assert.ok(emptyPage.includes('Sales Analytics') && emptyPage.includes('Orders') && emptyPage.includes('aria-label="Dataset sections"'))
     currentData = done
     assert.ok(page().includes('Everything is up to date'))
     currentData = dataset
-    assert.equal((page().match(/Process Pending Deliveries/g)||[]).length,1)
+    assert.equal((page().match(/Start Process/g)||[]).length,1)
     const otherScope = page('/app/workspaces/11/datasets/21/processing')
     assert.ok(!otherScope.includes('orders.csv') && otherScope.includes('Loading delivery status'))
     assert.equal(presentation.ownsProcessing(dataset,'11','20'),false)
@@ -166,7 +166,7 @@ async function main() {
   assert.ok(stageSubmission,'Expected async stage admission')
   assert.equal(JSON.parse(stageSubmission.body).operation,'SILVER')
   assert.ok(JSON.parse(stageSubmission.body).idempotency_key)
-  assert.ok(!calls.some(c => /\\/(process|continue|processing\\/pending)(?:\\?|$)/.test(c.url) && c.method==='POST'))
+  assert.ok(!calls.some(c => ['/process','/continue','/processing/pending'].some(endpoint => c.url.includes(endpoint)) && c.method === 'POST'))
   responseState = success
   assert.equal((await api.getProcessingContext('10','20',40)).output_rows,3)
   for (const mismatch of [{workspace_id:11},{dataset_id:21},{upload_request_id:41}]) {
