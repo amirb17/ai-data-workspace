@@ -58,6 +58,15 @@ POLICY = {**AUTH,
 PROCESSING_ROUTES = {
     ('POST', '/files/uploads/{upload_id}/jobs'): 'app.api.processing_jobs.admit_stage',
 }
+ANALYTICS_READ_ROUTES = {
+    ('GET', D + '/analytics'): 'app.api.dataset_analytics.read',
+}
+ANALYTICS_REFRESH_ROUTES = {
+    ('POST', D + '/analytics/refresh'): 'app.api.dataset_analytics.refresh',
+}
+SQL_CATALOG_ROUTES = {
+    ('GET', W + '/sql/catalog'): 'app.api.sql_analytics.read_catalog',
+}
 INITIAL_APPEND_ROUTES = {
     ('POST', D + '/incremental/initial-append-policy/uploads/{upload_id}'): 'app.api.incremental.initial_append_policy',
 }
@@ -86,6 +95,9 @@ class LaunchSettings:
     processing_enabled: bool = False
     rule_review_enabled: bool = False
     initial_append_enabled: bool = False
+    analytics_read_enabled: bool = False
+    analytics_refresh_enabled: bool = False
+    sql_catalog_enabled: bool = False
 
 
 def launch_settings():
@@ -137,7 +149,18 @@ def launch_settings():
         raise ValueError('Invalid initial append opt-in')
     if initial_append == 'true' and not (processing and rule_review == 'true'):
         raise ValueError('Initial APPEND requires approved processing and rule review')
-    return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true', processing, rule_review == 'true', initial_append == 'true')
+    analytics_read = os.getenv('DATARISE_PUBLIC_ANALYTICS_READ', 'false')
+    analytics_refresh = os.getenv('DATARISE_PUBLIC_ANALYTICS_REFRESH', 'false')
+    sql_catalog = os.getenv('DATARISE_PUBLIC_SQL_CATALOG', 'false')
+    if any(v not in ('true', 'false') for v in (analytics_read, analytics_refresh, sql_catalog)):
+        raise ValueError('Invalid analytics or SQL public opt-in')
+    if analytics_refresh == 'true' and analytics_read != 'true':
+        raise ValueError('Analytics refresh requires analytics read opt-in')
+    if sql_catalog == 'true' and analytics_read != 'true':
+        raise ValueError('SQL catalog requires analytics read opt-in')
+    return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true',
+                          processing, rule_review == 'true', initial_append == 'true',
+                          analytics_read == 'true', analytics_refresh == 'true', sql_catalog == 'true')
 
 
 def permitted(route, method, settings=None):
@@ -146,6 +169,15 @@ def permitted(route, method, settings=None):
         if settings is None or not settings.processing_enabled:
             return False
         name = PROCESSING_ROUTES[(method, path)]
+    elif (method, path) in ANALYTICS_READ_ROUTES:
+        if settings is None or not settings.analytics_read_enabled: return False
+        name = ANALYTICS_READ_ROUTES[(method, path)]
+    elif (method, path) in ANALYTICS_REFRESH_ROUTES:
+        if settings is None or not settings.analytics_refresh_enabled: return False
+        name = ANALYTICS_REFRESH_ROUTES[(method, path)]
+    elif (method, path) in SQL_CATALOG_ROUTES:
+        if settings is None or not settings.sql_catalog_enabled: return False
+        name = SQL_CATALOG_ROUTES[(method, path)]
     elif (method, path) in INITIAL_APPEND_ROUTES:
         if settings is None or not settings.initial_append_enabled:
             return False
