@@ -142,21 +142,41 @@ async function main() {
     assert.ok(!rules.includes('Upload #40') && !rules.includes('not in this dataset'))
     assert.ok(page('/app/workspaces/10/datasets/20/rules?upload=999').includes('The selected delivery is not in this dataset'))
   } finally { hook.useDatasetProcessing=oldHook; resource.useApiResource=oldResource }
+  // Async admission fixture: processing is a read; stage operations use jobs.
+  // No legacy /process, /continue or /processing/pending POST is permitted.
+  const client = require('../src/services/api/client.ts')
+  client.setIdentityMode('development')
   let responseState = context
-  const calls=[]
-  global.fetch = async (url,options) => { calls.push({url,...options}); return new Response(JSON.stringify(responseState)) }
-  assert.equal((await api.getProcessingContext('10','20',40)).status,'READY_FOR_SILVER')
-  responseState = success
-  assert.equal((await api.continueProcessing('10','20',40)).status,'SUCCESS')
-  assert.equal((await api.getProcessingContext('10','20',40)).output_rows,3)
-  assert.equal(calls[1].method,'POST'); assert.equal(calls[1].body,undefined)
-  for (const mismatch of [{workspace_id:11},{dataset_id:21},{upload_request_id:41}]) {
-    responseState = {...success,...mismatch}; await assert.rejects(api.continueProcessing('10','20',40),/another|mismatch/)
+  let processingState = dataset
+  const calls = []
+  global.fetch = async (url, options = {}) => {
+    const target = String(url)
+    calls.push({url: target, ...options})
+    if (target.endsWith('/product/jobs'))
+      return new Response(JSON.stringify({workspace_id:10,dataset_id:20,jobs:[]}),{status:200})
+    if (target.endsWith('/uploads/40/jobs') && options.method === 'POST')
+      return new Response(JSON.stringify({job_id:'00000000-0000-4000-8000-000000000040'}),{status:202})
+    if (target.endsWith('/datasets/20/processing'))
+      return new Response(JSON.stringify(processingState),{status:200})
+    return new Response(JSON.stringify(responseState),{status:200})
   }
-  responseState = dataset
+  assert.equal((await api.getProcessingContext('10','20',40)).status,'READY_FOR_SILVER')
+  assert.equal((await api.continueProcessing('10','20',40)).status,'READY_FOR_SILVER')
+  const stageSubmission = calls.find(c => c.url.endsWith('/uploads/40/jobs') && c.method==='POST')
+  assert.ok(stageSubmission,'Expected async stage admission')
+  assert.equal(JSON.parse(stageSubmission.body).operation,'SILVER')
+  assert.ok(JSON.parse(stageSubmission.body).idempotency_key)
+  assert.ok(!calls.some(c => /\\/(process|continue|processing\\/pending)(?:\\?|$)/.test(c.url) && c.method==='POST'))
+  responseState = success
+  assert.equal((await api.getProcessingContext('10','20',40)).output_rows,3)
+  for (const mismatch of [{workspace_id:11},{dataset_id:21},{upload_request_id:41}]) {
+    responseState = {...success,...mismatch}
+    await assert.rejects(api.continueProcessing('10','20',40),/another|mismatch/)
+  }
+  responseState = context
   assert.equal((await api.datasetProcessing('10','20',true)).summary.pending,2)
-  assert.ok(calls.at(-1).url.endsWith('/workspaces/10/datasets/20/processing/pending')); assert.equal(calls.at(-1).body,undefined)
-  responseState = {...dataset,deliveries:[delivery({...context,dataset_id:21})]}
+  assert.ok(calls.some(c=>c.url.endsWith('/workspaces/10/datasets/20/processing') && (!c.method || c.method==='GET')))
+  processingState = {...dataset,deliveries:[delivery({...context,dataset_id:21})]}
   await assert.rejects(api.datasetProcessing('10','20'),/another/)
   console.log('Named breadcrumbs, real headers, delivery terminology, primary actions, stages, result variants, truthful rates, rules/retries, empty/ready views, responsive structure, private metadata filtering, scope isolation and refresh checks passed.')
 }
