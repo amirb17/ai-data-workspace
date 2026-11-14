@@ -58,6 +58,9 @@ POLICY = {**AUTH,
 PROCESSING_ROUTES = {
     ('POST', '/files/uploads/{upload_id}/jobs'): 'app.api.processing_jobs.admit_stage',
 }
+PROFILE_REFRESH_ROUTES = {
+    ('POST', D + '/profile/refresh'): 'app.api.dataset_profiles.refresh',
+}
 ANALYTICS_READ_ROUTES = {
     ('GET', D + '/analytics'): 'app.api.dataset_analytics.read',
 }
@@ -98,6 +101,7 @@ class LaunchSettings:
     analytics_read_enabled: bool = False
     analytics_refresh_enabled: bool = False
     sql_catalog_enabled: bool = False
+    profile_refresh_enabled: bool = False
 
 
 def launch_settings():
@@ -152,15 +156,19 @@ def launch_settings():
     analytics_read = os.getenv('DATARISE_PUBLIC_ANALYTICS_READ', 'false')
     analytics_refresh = os.getenv('DATARISE_PUBLIC_ANALYTICS_REFRESH', 'false')
     sql_catalog = os.getenv('DATARISE_PUBLIC_SQL_CATALOG', 'false')
-    if any(v not in ('true', 'false') for v in (analytics_read, analytics_refresh, sql_catalog)):
+    profile_refresh = os.getenv('DATARISE_PUBLIC_PROFILE_REFRESH', 'false')
+    if any(v not in ('true', 'false') for v in (analytics_read, analytics_refresh, sql_catalog, profile_refresh)):
         raise ValueError('Invalid analytics or SQL public opt-in')
     if analytics_refresh == 'true' and analytics_read != 'true':
         raise ValueError('Analytics refresh requires analytics read opt-in')
+    if profile_refresh == 'true' and analytics_read != 'true':
+        raise ValueError('Profile refresh requires analytics read opt-in')
     if sql_catalog == 'true' and analytics_read != 'true':
         raise ValueError('SQL catalog requires analytics read opt-in')
     return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true',
                           processing, rule_review == 'true', initial_append == 'true',
-                          analytics_read == 'true', analytics_refresh == 'true', sql_catalog == 'true')
+                          analytics_read == 'true', analytics_refresh == 'true', sql_catalog == 'true',
+                          profile_refresh == 'true')
 
 
 def permitted(route, method, settings=None):
@@ -169,6 +177,9 @@ def permitted(route, method, settings=None):
         if settings is None or not settings.processing_enabled:
             return False
         name = PROCESSING_ROUTES[(method, path)]
+    elif (method, path) in PROFILE_REFRESH_ROUTES:
+        if settings is None or not settings.profile_refresh_enabled: return False
+        name = PROFILE_REFRESH_ROUTES[(method,path)]
     elif (method, path) in ANALYTICS_READ_ROUTES:
         if settings is None or not settings.analytics_read_enabled: return False
         name = ANALYTICS_READ_ROUTES[(method, path)]
@@ -240,7 +251,8 @@ async def launch_authority(request: Request):
                     (request.method == 'POST' and
                      getattr(request.scope.get('route'), 'path', None)
                      in (D + '/incremental/initial-append-policy/uploads/{upload_id}',
-                         D + '/analytics/refresh'))):
+                         D + '/analytics/refresh',
+                         D + '/profile/refresh'))):
                     # The dedicated handlers revalidate owner and acquire their
                     # own publication locks; the outer guard needs SELECT only.
                     authorize_read(w, d, user)
