@@ -53,7 +53,7 @@ assert.equal(state.isRunning('DATASET_UPDATE_PROCESSING'),true)
 const bridge = c => render(DeliveryRuleBridge,{batch,context:c,workspaceId:'10',datasetId:'20',reload:()=>{},datasetBusy:false})
 assert.ok(bridge(updateFailure).includes('previous trusted dataset version is still active') && bridge(updateFailure).includes('Retry Dataset Update'))
 async function main() {
-  assert.equal(state.executionAction(context),null)
+  assert.equal(state.executionAction(context),'Continue to Silver')
   assert.equal(state.executionAction(success),null)
   assert.equal(state.executionAction(rejected),null)
   assert.equal(state.executionAction({...context,status:'SILVER_FAILED'}),'Retry Processing')
