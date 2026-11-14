@@ -84,6 +84,16 @@ variable "api_enable_analytics_refresh" {
   }
 }
 
+variable "api_enable_sql_execution" {
+  description = "Explicit authenticated, bounded SQL execution and owner-scoped saved-query/history metadata"
+  type        = bool
+  default     = false
+  validation {
+    condition = !var.api_enable_sql_execution || var.api_enable_sql_catalog
+    error_message = "SQL execution requires approved SQL catalog access."
+  }
+}
+
 variable "api_enable_profile_refresh" {
   description = "Separately reviewed, authenticated profile refresh for published trusted state"
   type        = bool
@@ -163,6 +173,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "DATARISE_PUBLIC_ANALYTICS_READ", value = tostring(var.api_enable_analytics_read) },
       { name = "DATARISE_PUBLIC_ANALYTICS_REFRESH", value = tostring(var.api_enable_analytics_refresh) },
       { name = "DATARISE_PUBLIC_SQL_CATALOG", value = tostring(var.api_enable_sql_catalog) },
+      { name = "DATARISE_PUBLIC_SQL_EXECUTION", value = tostring(var.api_enable_sql_execution) },
       { name = "DATARISE_PUBLIC_PROFILE_REFRESH", value = tostring(var.api_enable_profile_refresh) },
       { name = "DATARISE_PROCESSING_DEPLOYMENT_APPROVED", value = tostring(var.api_enable_processing_jobs) },
       { name = "DATARISE_PROCESSING_READERS", value = tostring(var.api_enable_processing_jobs) },
