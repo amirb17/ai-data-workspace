@@ -15,13 +15,13 @@ async function main(){
  function Child(){const readOnly=usePublicReadOnly();return React.createElement('div',null,React.createElement('p',{'data-testid':'policy'},readOnly?'restricted':'local'),React.createElement(DeliveryMoreMenu,{readOnly,context:{status:'SUCCESS',archived_at:null,stages:{bronze:'SUCCESS',silver:'SUCCESS',gold:'SUCCESS'},output_rows:2},fileName:'orders.csv',processingHref:'/processing',onViewDetails(){},onArchive(){archived++}}))}
  async function render(key){await act(async()=>{root.render(React.createElement(MemoryRouter,null,React.createElement(PublicLaunchPolicy,{key},React.createElement(Child))));await new Promise(r=>setTimeout(r,0))})}
  await render('public')
- assert.match(host.textContent,/Public read-only release/);assert.match(host.textContent,/XLSX is not supported/)
+ assert.match(host.textContent,/Development release/);assert.match(host.textContent,/Processing awaits runtime approval/)
  assert.equal(host.querySelector('[data-testid=policy]').textContent,'restricted')
  const archive=[...host.querySelectorAll('button')].find(b=>/Archive|Remove/i.test(b.textContent));assert.ok(archive);assert.equal(archive.disabled,true)
  await act(async()=>archive.click());assert.equal(archived,0)
  mode='off';await render('development');assert.equal(host.querySelector('[data-testid=policy]').textContent,'local')
- assert.doesNotMatch(host.textContent,/Public read-only release/)
- failure=true;await render('offline');assert.match(host.textContent,/Website permissions are unavailable/)
+ assert.doesNotMatch(host.textContent,/Development release/)
+ failure=true;await render('offline');assert.match(host.textContent,/Website permissions unavailable/)
  assert.equal(host.querySelector('[data-testid=policy]').textContent,'restricted')
  assert.equal(calls,3)
  await act(async()=>root.unmount());await window.happyDOM.close()

@@ -2,7 +2,7 @@ import { ApiError, backendId, request } from './client'
 
 export type Capability = {
   workspace_id: number; dataset_id: number; csv_upload: boolean; xlsx: 'UNSUPPORTED'
-  max_preview_bytes: number; processing_submission: 'DISABLED'; preview: string
+  max_preview_bytes: number; processing_submission: 'ENABLED' | 'DISABLED'; preview: string
   warehouse: 'NOT_CONFIGURED' | 'ACCEPTED_STATE_REQUIRED' | 'RECONCILIATION_REQUIRED'
   warehouse_models: {model_id:number;version_id:number;name:string;version_number:number}[]
 }
@@ -12,7 +12,7 @@ export type Preview = {
   columns:string[];issues:{column:string;rule:string;count:number}[];publication_authorized:false
 }
 export type GoldAssessment = {workspace_id:number;dataset_id:number;status:'ASSESSED'|'UNAVAILABLE';reason:string|null;rows:number|null;columns:string[];publication_authorized:false}
-export type Jobs = {workspace_id:number;dataset_id:number;jobs:{job_id:string;operation:string;status:string;attempt_count:number}[]}
+export type Jobs = {workspace_id:number;dataset_id:number;jobs:{job_id:string;upload_id:number;operation:string;status:string;attempt_count:number}[]}
 const path=(w:string,d:string)=>`/workspaces/${backendId(w)}/datasets/${backendId(d)}/product`
 function scope<T extends {workspace_id:number;dataset_id:number}>(value:T,w:string,d:string):T {
   if(value.workspace_id!==backendId(w)||value.dataset_id!==backendId(d))throw new ApiError('Preview scope does not match this dataset.')

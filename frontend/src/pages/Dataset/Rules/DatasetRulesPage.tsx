@@ -17,6 +17,7 @@ function DeliveryRules({ workspaceId, datasetId, uploadId, reviewing }: { worksp
   const { context, error, reload } = useProcessingContext(workspaceId, datasetId, uploadId)
   if (!context) return <ApiFeedback error={error} retry={reload} loading="Loading delivery rules…" />
   return <div className="space-y-4">
+    {context.rule_state === "FINALIZED" && <Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/processing`}>Continue processing</Link>}
     <RuleSituation context={context} reviewing={reviewing} reviewHref={`/app/workspaces/${workspaceId}/datasets/${datasetId}/rules?upload=${uploadId}`} />
     {reviewing && context.status === "AWAITING_RULES" && context.dataset_version_file_id && <RuleReviewForm key={context.dataset_version_file_id} workspaceId={workspaceId} datasetId={datasetId} associationId={context.dataset_version_file_id} onChanged={reload} />}
   </div>

@@ -5,7 +5,7 @@ import { DuplicateFileContentError, findFileByContentHash } from "./data/storage
 import { reconcileCompletedUpload } from "../ingestion/reconcileCompletedUpload"
 import type { CsvInspectionResult } from "./types"
 export type UploadState = "IDLE" | "INITIATING" | "UPLOADING" | "COMPLETING" | "SUCCESS" | "FAILED"
-export type UploadFeedback = { state: UploadState; error?: string; isDuplicate?: boolean }
+export type UploadFeedback = { state: UploadState; error?: string; isDuplicate?: boolean; uploadId?: number }
 type Dependencies = { initiate: typeof initiateUpload; put: typeof putCsv; complete: typeof completeUpload; reconcile: typeof reconcileCompletedUpload }
 const defaults: Dependencies = { initiate: initiateUpload, put: putCsv, complete: completeUpload, reconcile: reconcileCompletedUpload }
 
@@ -62,7 +62,7 @@ export function createUploadWorkflow(context: UploadContext, notify: (feedback: 
         stage = "Upload completed on backend, but local metadata could not be saved. Retry to reconcile the same upload"
         deps.reconcile(scope, completed, inspection, acceptanceId)
         succeeded = true
-        notify({ state: "SUCCESS", isDuplicate: completed.isDuplicate })
+        notify({ state: "SUCCESS", isDuplicate: completed.isDuplicate, uploadId: completed.uploadRequestId })
         return true
       } catch (error) {
         if (signal.aborted || disposed) return false

@@ -1,3 +1,5 @@
+import {Link} from "react-router-dom"
+import {useReleaseFeatures} from "../../../services/releaseFeatures"
 import { useState } from "react"
 import { useOutletContext, useParams, useSearchParams } from "react-router-dom"
 import { Button } from "../../../components/ui/Button"
@@ -13,6 +15,7 @@ import { ArchiveDeliveryDialog } from "../../../features/files/components/Archiv
 import { DeliveryMoreMenu } from "../../../features/files/components/DeliveryMoreMenu"
 import {usePublicReadOnly,usePublicUploadAllowed} from '../../../services/publicLaunchContext'
 export function DatasetFilesPage() {
+  const features=useReleaseFeatures()
   const publicReadOnly=usePublicReadOnly()
   const uploadAllowed=usePublicUploadAllowed()
   const readOnly=publicReadOnly && !uploadAllowed
@@ -26,9 +29,10 @@ export function DatasetFilesPage() {
   let metadata: ReturnType<typeof readDatasetFiles> = [], cacheError = ""
   try { metadata = readDatasetFiles(workspaceId,datasetId) } catch { cacheError = "Saved inspection details are unavailable in this browser. Backend deliveries are still shown." }
   return <div className="space-y-5">
-    <header className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-semibold">Files</h2><p className="mt-1 text-sm text-slate-600">Deliveries are incoming source data for {dataset.name}. Each delivery retains its own file and processing outcome.</p></div><Button disabled={readOnly} onClick={() => { if (!readOnly) setUploadOpen(true) }}>Add Delivery</Button></header>
+    <header className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-semibold">Files</h2><p className="mt-1 text-sm text-slate-600">Upload and track source files for {dataset.name}.</p></div><Button disabled={readOnly} onClick={() => { if (!readOnly) setUploadOpen(true) }}>Add Delivery</Button></header>
+    {features.processing && !!resource.data?.deliveries.some(d=>d.context.status==='READY_TO_PROCESS') && <Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/processing`}>Start Process</Link>}
     {cacheError && <p role="status" className="text-sm text-slate-600">{cacheError}</p>}
-    {!resource.data ? <ApiFeedback error={resource.error} retry={resource.retry} loading="Loading deliveriesâ€¦" /> : !resource.data.deliveries.length ? <section className="space-y-2 rounded-xl border border-slate-300 border-dashed bg-white p-6 text-center"><h3 className="font-semibold">No deliveries yet</h3><p className="text-sm text-slate-600">Use Add Delivery to inspect a CSV and check its compatibility before uploading.</p></section> : <section className="space-y-4" aria-label="Source deliveries">{resource.data.deliveries.slice().reverse().map(delivery => {
+    {!resource.data ? <ApiFeedback error={resource.error} retry={resource.retry} loading="Loading deliveries…" /> : !resource.data.deliveries.length ? <section className="space-y-2 rounded-xl border border-slate-300 border-dashed bg-white p-6 text-center"><h3 className="font-semibold">No deliveries yet</h3><p className="text-sm text-slate-600">Use Add Delivery to inspect a CSV and check its compatibility before uploading.</p></section> : <section className="space-y-4" aria-label="Source deliveries">{resource.data.deliveries.slice().reverse().map(delivery => {
       const c = delivery.context
       const inspection = metadata.find(f => f.id === c.file_id && f.uploadRequestIds?.includes(c.upload_request_id))
       return <article key={c.upload_request_id} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
@@ -36,10 +40,10 @@ export function DatasetFilesPage() {
         <p className="text-xs text-slate-500">Uploaded <time dateTime={delivery.created_at}>{new Date(delivery.created_at).toLocaleString()}</time></p>
         <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><div><dt className="text-slate-500">Rows{c.input_rows == null && inspection?.rowCount != null ? " (inspection)" : ""}</dt><dd>{countLabel(c.input_rows ?? inspection?.rowCount)}</dd></div><div><dt className="text-slate-500">Columns{c.column_count == null && inspection?.columnCount != null ? " (inspection)" : ""}</dt><dd>{countLabel(c.column_count ?? inspection?.columnCount)}</dd></div><div><dt className="text-slate-500">File size</dt><dd>{countLabel(delivery.size_bytes)}{delivery.size_bytes != null ? " bytes" : ""}</dd></div><div><dt className="text-slate-500">Processing</dt><dd>{terminalDelivery(c) ? "Completed" : c.status === "READY_TO_PROCESS" ? "Not started" : "See processing status"}</dd></div></dl>
         <details open={expanded === c.upload_request_id} id={`delivery-${c.upload_request_id}-details`}><summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-indigo-700">View delivery details</summary><div className="space-y-3 border-t pt-3 text-sm">
-          <p>Valid: {countLabel(c.valid_rows)} Â· Quarantined: {countLabel(c.rejected_rows)} Â· Published: {countLabel(c.output_rows)}</p>
+          <p>Valid: {countLabel(c.valid_rows)} · Quarantined: {countLabel(c.rejected_rows)} · Published: {countLabel(c.output_rows)}</p>
           {c.rule_state === "FINALIZED" && <p>Approved Rule Version {c.rule_version}{c.rules_reused ? " reused" : ""}</p>}
-          {c.load_strategy === "SNAPSHOT" && <div className="space-y-1"><p>Snapshot coverage: {c.snapshot_context?.coverage === "COMPLETE" ? "Complete" : "Partial / unknown"} Â· {c.snapshot_context?.delivery_kind ?? "Declaration required"}</p>{c.snapshot_context?.effective_at && <p>Effective snapshot time: {new Date(c.snapshot_context.effective_at).toLocaleString()}</p>}<p>Outcome: {c.snapshot_outcome ?? "Not applied"} Â· Deactivated: {countLabel(c.deactivated_rows)} Â· Reactivated: {countLabel(c.reactivated_rows)}</p></div>}
-          {inspection && <p>Browser inspection: {inspection.sizeBytes.toLocaleString()} bytes Â· {countLabel(inspection.rowCount)} rows Â· {countLabel(inspection.columnCount)} columns</p>}
+          {c.load_strategy === "SNAPSHOT" && <div className="space-y-1"><p>Snapshot coverage: {c.snapshot_context?.coverage === "COMPLETE" ? "Complete" : "Partial / unknown"} · {c.snapshot_context?.delivery_kind ?? "Declaration required"}</p>{c.snapshot_context?.effective_at && <p>Effective snapshot time: {new Date(c.snapshot_context.effective_at).toLocaleString()}</p>}<p>Outcome: {c.snapshot_outcome ?? "Not applied"} · Deactivated: {countLabel(c.deactivated_rows)} · Reactivated: {countLabel(c.reactivated_rows)}</p></div>}
+          {inspection && <p>Browser inspection: {inspection.sizeBytes.toLocaleString()} bytes · {countLabel(inspection.rowCount)} rows · {countLabel(inspection.columnCount)} columns</p>}
           <dl><dt className="text-slate-500">Upload reference</dt><dd>{c.upload_request_id}</dd></dl>
           <p className="text-slate-600">Removing or archiving a delivery retains its source file and historical lineage.</p>
         </div></details>
@@ -48,7 +52,7 @@ export function DatasetFilesPage() {
     <button className="min-h-11 text-sm text-indigo-700" onClick={resource.retry}>Refresh delivery list</button>
     {archiving && !publicReadOnly && <ArchiveDeliveryDialog workspaceId={workspaceId} datasetId={datasetId} datasetName={dataset.name} fileName={archiving.source_file_name} context={archiving.context} onClose={() => setArchiving(null)} onArchived={() => { setArchiving(null); resource.retry() }} />}
     {readOnly&&<p role="status" className="text-sm text-amber-900">CSV uploads are unavailable in this release. Existing delivery history remains visible.</p>}
-    {uploadAllowed&&publicReadOnly&&<p role="status" className="text-sm text-amber-900">CSV upload is enabled. Processing and delivery archive remain disabled during this release.</p>}
+    {uploadAllowed&&publicReadOnly&&<p role="status" className="text-sm text-amber-900">CSV upload is enabled. Delivery archive is unavailable in this release.</p>}
     {uploadOpen && !readOnly && <UploadFileDialog open workspaceId={workspaceId} datasetId={datasetId} datasetName={dataset.name} onAccepted={resource.retry} onClose={() => { setUploadOpen(false); setParams({}); resource.retry() }} />}
   </div>
 }

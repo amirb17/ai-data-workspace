@@ -63,7 +63,7 @@ export function WorkspacesPage() {
       <PageHeader
         eyebrow="Workspace"
         title="Workspaces"
-        description="Organize datasets, processing, and analytics by business area or use case."
+        description="Your business domains, datasets and analytics."
         action={
           <Button
             onClick={() => setCreateOpen(true)}

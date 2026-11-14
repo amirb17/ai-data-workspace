@@ -33,12 +33,17 @@ def set_session(response, token):
 @router.get('/config')
 def configuration():
     settings = config()
-    from app.security.public_launch import launch_settings, MODE
+    from app.security.public_launch import launch_settings, MODE, PROCESSING_MODE
     launch = launch_settings()
     return {'google_available': bool(settings.mode == 'session' and len(settings.secret.encode()) >= 32
                                     and os.getenv('GOOGLE_CLIENT_ID') and os.getenv('GOOGLE_CLIENT_SECRET')),
             'identity_mode': settings.mode,
-            'public_launch_mode': MODE if launch.enabled else 'off',
+            'public_launch_mode': (PROCESSING_MODE if launch.processing_enabled else MODE) if launch.enabled else 'off',
+            'processing_available': launch.processing_enabled,
+            'rule_review_available': launch.rule_review_enabled,
+            'initial_append_available': launch.initial_append_enabled,
+            'model_read_available': launch.model_read_enabled,
+            'ask_ai_available': launch.ask_ai_enabled,
             'workspace_creation_available': launch.workspace_creation_enabled,
             'csv_upload_available': launch.csv_upload_enabled}
 

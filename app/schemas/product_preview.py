@@ -42,7 +42,7 @@ class CapabilitiesResponse(BaseModel):
     csv_upload: bool = True
     xlsx: Literal['UNSUPPORTED'] = 'UNSUPPORTED'
     max_preview_bytes: int = 2097152
-    processing_submission: Literal['DISABLED'] = 'DISABLED'
+    processing_submission: Literal['ENABLED', 'DISABLED'] = 'DISABLED'
     preview: Literal['REGISTERED_SOURCE_AND_APPROVED_RULES_REQUIRED'] = 'REGISTERED_SOURCE_AND_APPROVED_RULES_REQUIRED'
     warehouse: Literal['NOT_CONFIGURED', 'ACCEPTED_STATE_REQUIRED', 'RECONCILIATION_REQUIRED']
     warehouse_models: list[WarehouseChoice] = Field(default_factory=list)
@@ -50,6 +50,7 @@ class CapabilitiesResponse(BaseModel):
 
 class JobView(BaseModel):
     job_id: str
+    upload_id: int | None = None
     operation: str
     status: str
     attempt_count: int

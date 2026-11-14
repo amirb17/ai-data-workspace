@@ -5,8 +5,7 @@ import { listDatasets } from "../../services/api/datasets"
 import { useApiResource } from "../../services/api/useApiResource"
 import { ApiFeedback } from "../../components/ui/ApiFeedback"
 import { SectionNavigation, type SectionLink } from "../../components/layout/SectionNavigation"
-const tabs: SectionLink[] = [{label:"Overview",path:""},{label:"Data",path:"datasets",sections:["datasets","processing"]},{label:"Quality",path:"data-quality"},{label:"Model",path:"data-model",sections:["data-model","relationships","understanding","metrics"]},{label:"Analytics",path:"analytics"},{label:"SQL",path:"sql"},{label:"Warehouse SQL",path:"warehouse-sql"}]
-const dataTabs: SectionLink[] = [{label:"Datasets",path:"datasets"},{label:"Processing",path:"processing"}]
+const tabs: SectionLink[] = [{label:"Overview",path:""},{label:"Datasets",path:"datasets"},{label:"Data Model",path:"data-model",sections:["data-model","relationships","understanding","metrics"]},{label:"Processing",path:"processing"},{label:"Data Quality",path:"data-quality"},{label:"Analytics",path:"analytics"},{label:"SQL",path:"sql"}]
 const modelTabs: SectionLink[] = [{label:"Data model",path:"data-model"},{label:"Review relationships",path:"relationships"},{label:"Dataset descriptions",path:"understanding"},{label:"Metric definitions",path:"metrics"}]
 export function WorkspaceDetailPage() {
   const { workspaceId = "" } = useParams()
@@ -27,8 +26,7 @@ export function WorkspaceDetailPage() {
   return <div className="min-w-0 space-y-5">
     <nav aria-label="Breadcrumb" className="text-sm text-slate-500"><Link className="inline-flex min-h-11 items-center text-indigo-700" to="/app/workspaces">Workspaces</Link><span aria-hidden="true"> / </span><Link className="inline-flex min-h-11 items-center break-words text-indigo-700" to={base}>{workspace.name}</Link><span aria-hidden="true"> / </span><span aria-current="page">{section}</span></nav>
     <SectionNavigation label="Workspace sections" base={base} current={current} links={tabs} />
-    {section === "Data" && <SectionNavigation label="Data sections" base={base} current={current} links={dataTabs} secondary />}
-    {section === "Model" && <SectionNavigation label="Model sections" base={base} current={current} links={modelTabs} secondary />}
+    {section === "Data Model" && <SectionNavigation label="Model sections" base={base} current={current} links={modelTabs} secondary />}
     <Outlet key={workspaceId} context={context} />
   </div>
 }

@@ -11,7 +11,7 @@ export function safeReturn(value: string | null) {
   } catch {return '/app'}
 }
 export async function authConfig() {
-  const result=await request<{google_available: boolean; identity_mode: 'session'|'development'; public_launch_mode?:'off'|'csv-readonly'; workspace_creation_available?:boolean; csv_upload_available?:boolean}>('/auth/config')
+  const result=await request<{google_available: boolean; identity_mode: 'session'|'development'; public_launch_mode?:'off'|'csv-readonly'|'csv-processing'; initial_append_available?:boolean; processing_available?:boolean; rule_review_available?:boolean; model_read_available?:boolean; ask_ai_available?:boolean; workspace_creation_available?:boolean; csv_upload_available?:boolean}>('/auth/config')
   setIdentityMode(result.identity_mode)
   return result
 }

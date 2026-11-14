@@ -79,10 +79,11 @@ def capabilities(w,d,user):
 
 def jobs(w,d,user):
     with database.repository_transaction() as conn:
-        _scope(conn,w,d,user,lock=False)
-        values = conn.execute('''SELECT job_id,operation,status,attempt_count FROM processing_jobs
-            WHERE workspace_id=%s AND dataset_id=%s ORDER BY created_at DESC,job_id LIMIT 20''',(w,d)).fetchall()
-    return dict(workspace_id=w,dataset_id=d,jobs=[dict(job_id=str(j),operation=o,status=s,attempt_count=a) for j,o,s,a in values])
+        # Narrow owner-fenced metadata command; no raw table or lease access.
+        values = conn.execute('SELECT * FROM task24_processing_jobs(%s,%s,%s)',
+                              (user['user_id'],w,d)).fetchall()
+    return dict(workspace_id=w,dataset_id=d,jobs=[dict(job_id=str(j),upload_id=u,
+                operation=o,status=s,attempt_count=a) for j,u,o,s,a in values])
 
 
 def _unavailable(w,d,reason):

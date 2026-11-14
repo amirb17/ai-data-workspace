@@ -96,3 +96,15 @@ a {
 #root {
   min-height: 100vh;
 }
+
+@layer base {
+  body { line-height: 1.5; }
+  h1, h2, h3 { letter-spacing: -0.02em; text-wrap: balance; }
+  p { text-wrap: pretty; }
+  input, textarea, select { min-height: 2.75rem; }
+  button { touch-action: manipulation; }
+  ::selection { background: #e0e7ff; color: #1e1b4b; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
