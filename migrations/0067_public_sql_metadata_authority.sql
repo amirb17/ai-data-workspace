@@ -13,6 +13,17 @@ BEGIN
  RETURN owner_name;
 END $$;
 
+CREATE FUNCTION task23_sql_lock_scope(actor BIGINT,ws BIGINT)
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public,pg_temp AS $
+DECLARE owner_name TEXT;
+BEGIN
+ owner_name:=task23_sql_owner(actor,ws);
+ PERFORM 1 FROM workspaces WHERE workspace_id=ws AND owner=owner_name FOR UPDATE;
+ PERFORM dataset_id FROM datasets WHERE workspace_id=ws AND owner=owner_name
+ ORDER BY dataset_id FOR UPDATE;
+END $;
+
 CREATE FUNCTION task23_sql_record(actor BIGINT,ws BIGINT,sqid BIGINT,
  query_text TEXT,digest TEXT,metadata JSONB,history_limit INTEGER)
 RETURNS TABLE(execution_id BIGINT,created_at TIMESTAMPTZ)
@@ -85,10 +96,12 @@ BEGIN
 END $$;
 
 REVOKE ALL ON FUNCTION task23_sql_owner(BIGINT,BIGINT),
+ task23_sql_lock_scope(BIGINT,BIGINT),
  task23_sql_record(BIGINT,BIGINT,BIGINT,TEXT,TEXT,JSONB,INTEGER),
  task23_sql_save(BIGINT,BIGINT,BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER),
  task23_sql_delete(BIGINT,BIGINT,BIGINT,INTEGER) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION
+ task23_sql_lock_scope(BIGINT,BIGINT),
  task23_sql_record(BIGINT,BIGINT,BIGINT,TEXT,TEXT,JSONB,INTEGER),
  task23_sql_save(BIGINT,BIGINT,BIGINT,TEXT,TEXT,TEXT,INTEGER,INTEGER),
  task23_sql_delete(BIGINT,BIGINT,BIGINT,INTEGER) TO datarise_api;
