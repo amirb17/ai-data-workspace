@@ -46,8 +46,9 @@ def delete(workspace,user,query_id,request):
 
 def record(workspace,user,text,query_hash,payload,saved_query_id=None,check_current=None):
     with repository_transaction() as conn:
-        # Acquires the workspace publication lock in trusted authority.
-        # Source pins are revalidated in this transaction before immutable recording.
+        # Authoritative owner + ordered workspace/dataset locks serialize publication.
+        # The API role itself has SELECT only on trusted dataset metadata.
+        conn.execute('SELECT task23_sql_lock_scope(%s,%s)', (user['user_id'],workspace))
         if check_current: check_current(conn)
         if saved_query_id: owned_query(conn,workspace,user,saved_query_id)
         row=conn.execute(
