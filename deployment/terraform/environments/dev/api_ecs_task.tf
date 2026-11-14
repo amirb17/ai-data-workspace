@@ -68,6 +68,32 @@ variable "api_trust_cloudfront_vpc_origin" {
   default     = false
 }
 
+variable "api_enable_analytics_read" {
+  description = "Default-off, authenticated dataset analytics dashboard read"
+  type        = bool
+  default     = false
+}
+
+variable "api_enable_analytics_refresh" {
+  description = "Default-off state-pinned cumulative Gold refresh; requires separate reviewed DB and S3 grants"
+  type        = bool
+  default     = false
+  validation {
+    condition = !var.api_enable_analytics_refresh || var.api_enable_analytics_read
+    error_message = "Analytics refresh requires analytics read to be enabled."
+  }
+}
+
+variable "api_enable_sql_catalog" {
+  description = "Default-off authenticated read-only SQL catalog; not SQL execution"
+  type        = bool
+  default     = false
+  validation {
+    condition = !var.api_enable_sql_catalog || var.api_enable_analytics_read
+    error_message = "SQL catalog requires analytics read to be enabled."
+  }
+}
+
 variable "api_enable_initial_append" {
   description = "Separate reviewed, default-off first-APPEND policy admission; never enables SQL or warehouse access"
   type        = bool
@@ -124,6 +150,9 @@ resource "aws_ecs_task_definition" "api" {
       { name = "DATARISE_TRUST_CLOUDFRONT_VPC_ORIGIN", value = tostring(var.api_trust_cloudfront_vpc_origin) },
       { name = "DATARISE_PUBLIC_LAUNCH_MODE", value = var.api_enable_processing_jobs ? "csv-processing" : "csv-readonly" },
       { name = "DATARISE_PUBLIC_INITIAL_APPEND", value = tostring(var.api_enable_initial_append) },
+      { name = "DATARISE_PUBLIC_ANALYTICS_READ", value = tostring(var.api_enable_analytics_read) },
+      { name = "DATARISE_PUBLIC_ANALYTICS_REFRESH", value = tostring(var.api_enable_analytics_refresh) },
+      { name = "DATARISE_PUBLIC_SQL_CATALOG", value = tostring(var.api_enable_sql_catalog) },
       { name = "DATARISE_PROCESSING_DEPLOYMENT_APPROVED", value = tostring(var.api_enable_processing_jobs) },
       { name = "DATARISE_PROCESSING_READERS", value = tostring(var.api_enable_processing_jobs) },
       { name = "DATARISE_DISPATCH_APPROVED", value = "false" },
