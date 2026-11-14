@@ -1,0 +1,13 @@
+// Restricted public mode: optional semantic understanding 403 cannot blank Overview.
+const assert = require("node:assert/strict")
+const fs = require("node:fs")
+const path = require("node:path")
+const load = fs.readFileSync(path.join(__dirname, "../src/features/workspaces/useWorkspacePreparation.ts"), "utf8")
+const view = fs.readFileSync(path.join(__dirname, "../src/features/workspaces/components/WorkspacePreparation.tsx"), "utf8")
+assert.match(load,/getUnderstandingReadiness\(workspace, String\(dataset.id\), signal\)/)
+assert.match(load,/error instanceof ApiError/)
+assert.match(load,/error.status !== 403/)
+assert.match(load,/let understanding: Understanding \| null = null/)
+assert.match(load,/row.understanding && row.understanding.status !== "READY"/)
+assert.match(view,/row.understanding && row.understanding.status !== "READY"/)
+console.log("Restricted overview: optional semantic read is non-blocking; genuine failures are not suppressed.")
