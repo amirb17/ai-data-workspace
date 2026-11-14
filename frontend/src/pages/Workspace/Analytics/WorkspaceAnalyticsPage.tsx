@@ -1,3 +1,5 @@
+import {authConfig} from '../../../services/api/auth'
+import {PublicWorkspaceAnalytics} from '../../../features/workspaces/analytics/PublicWorkspaceAnalytics'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getWorkspaceAnalytics, refreshWorkspaceAnalytics, retryWorkspaceMetric } from '../../../services/api/workspaceAnalytics'
@@ -72,5 +74,16 @@ function ScopedAnalytics({workspaceId}: {workspaceId: string}) {
 }
 export function WorkspaceAnalyticsPage() {
   const {workspaceId = ''} = useParams()
+  const [mode,setMode]=useState<'checking'|'restricted'|'full'|'error'>('checking')
+  useEffect(()=>{
+    let active=true
+    setMode('checking')
+    authConfig().then(config=>{if(active)setMode(config.public_launch_mode==='off'?'full':'restricted')})
+      .catch(()=>{if(active)setMode('error')})
+    return ()=>{active=false}
+  },[workspaceId])
+  if(mode==='checking')return <p role="status">Checking Analytics access…</p>
+  if(mode==='error')return <p role="alert">Website permissions could not be loaded. Refresh the page to retry.</p>
+  if(mode==='restricted')return <PublicWorkspaceAnalytics key={workspaceId} workspaceId={workspaceId}/>
   return <ScopedAnalytics key={workspaceId} workspaceId={workspaceId} />
 }
