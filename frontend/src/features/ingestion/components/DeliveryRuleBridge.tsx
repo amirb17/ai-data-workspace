@@ -1,3 +1,4 @@
+import type {StageJob} from "../../../services/api/processingJobs"
 import {InitialAppendApproval} from "./InitialAppendApproval"
 import { useRef, useState } from "react"
 import { Link } from "react-router-dom"
@@ -6,7 +7,7 @@ import { executionAction } from "../processingState"
 import { IngestionBatchCard, type BatchPresentation } from "./IngestionBatchCard"
 import { SnapshotDelivery } from "./SnapshotDelivery"
 
-export function DeliveryRuleBridge({ batch, workspaceId, datasetId, context, reload, datasetBusy, onRequestActivity, executionDisabled = false }: { batch: BatchPresentation; workspaceId: string; datasetId: string; context: ProcessingContext; reload: () => void; datasetBusy: boolean; executionDisabled?: boolean; onRequestActivity?: (started: boolean) => void }) {
+export function DeliveryRuleBridge({ batch, workspaceId, datasetId, context, lastJob, reload, datasetBusy, onRequestActivity, executionDisabled = false }: { batch: BatchPresentation; workspaceId: string; datasetId: string; context: ProcessingContext; lastJob?: StageJob; reload: () => void; datasetBusy: boolean; executionDisabled?: boolean; onRequestActivity?: (started: boolean) => void }) {
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState("")
   const active = useRef(false)
@@ -26,6 +27,7 @@ export function DeliveryRuleBridge({ batch, workspaceId, datasetId, context, rel
     {!context.archived_at && !["SUCCESS","SUCCESS_WITH_WARNINGS"].includes(context.status) && context.stages.silver === "SUCCESS" && !context.load_strategy && <InitialAppendApproval workspaceId={workspaceId} datasetId={datasetId} uploadId={context.upload_request_id} disabled={busy || datasetBusy || executionDisabled} reload={reload} />}
     {context.status === "AWAITING_RULES" && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">Bronze profiling is complete. Processing is waiting for your decisions before validation can continue.</p>}
     {context.rule_state === "FINALIZED" && !context.load_strategy && context.stages.silver === "PENDING" && <p className="rounded-lg bg-indigo-50 p-3 text-sm text-indigo-900">To publish trusted cumulative data, configure a backend load policy before continuing. <Link className="inline-flex min-h-11 items-center font-medium underline" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/contract`}>Configure load policy</Link></p>}
+    {lastJob && ['FAILED','CANCELLED'].includes(lastJob.status) && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{lastJob.operation} job {lastJob.status.toLowerCase()} after {lastJob.attempt_count} attempts. Your source is retained. Refresh status, then retry the stage.</p>}
     {failed && <div className="space-y-1 rounded-lg bg-red-50 p-3 text-sm text-red-800">
       <p>{context.error_summary ?? "Processing could not be completed. Review this delivery and retry."}</p>
       <p>{context.status === "GOLD_FAILED" ? "Silver output is available. Retrying Gold will reuse successful Silver processing." : "Your uploaded source file is safe. You do not need to upload it again."}</p>
