@@ -117,6 +117,30 @@ class StageIO:
                 (lease.job_id, lease.lease_token, self.candidate_id)).fetchone()[0]
 
 
+def reusable_initial_append(source, target):
+    """Trust an existing verified Silver result, never a different source/rule.
+
+    Only first-time APPEND activation is permitted. It is checked again against
+    live dataset state and under the trusted publication lease before applying.
+    """
+    if not isinstance(source, dict) or not isinstance(target, dict):
+        return False
+    policy = target.get('load_policy')
+    if (source.get('stage') != 'SILVER' or target.get('stage') != 'SILVER'
+        or source.get('load_policy') is not None
+        or source.get('snapshot_context') is not None
+        or not isinstance(policy, dict)
+        or policy.get('load_strategy') != 'APPEND'
+        or target.get('snapshot_context') is not None):
+        return False
+    # No other contract field may change, including upstream receipt, rule
+    # version, raw identity, dataset association, and dataset version.
+    return {k: v for k, v in source.items()
+            if k not in ('load_policy', 'snapshot_context')} == {
+                k: v for k, v in target.items()
+                if k not in ('load_policy', 'snapshot_context')}
+
+
 class IntegratedExecutor:
     def __init__(self, storage_factory, verifier, *, enabled=False, isolated_test=False):
         self.storage_factory, self.verifier, self.enabled = storage_factory, verifier, enabled
@@ -149,7 +173,7 @@ class IntegratedExecutor:
             finally:
                 lock.execute('SELECT pg_advisory_unlock(hashtextextended(%s,0))', (key,))
 
-    def _apply(self, boundary, storage, contract):
+    def _apply(self, boundary, storage, contract, *, source_contract=None):
         if contract['stage'] != 'SILVER' or contract.get('load_policy') is None:
             return
         from app.services.append_application_service import apply_incremental
@@ -158,7 +182,7 @@ class IntegratedExecutor:
             job = registry.authorized_job(conn, boundary.lease)
             user = registry.row(conn, 'SELECT user_id,owner_key FROM users WHERE user_id=%s', (job['requested_by'],))
             silver = registry.head(conn, 'SILVER', job['file_id'], contract['association'])
-        guard = ApplyGuard(boundary, storage, contract, ObjectIdentity.decode(silver['artifact_identities']['data']))
+        guard = ApplyGuard(boundary, storage, contract, ObjectIdentity.decode(silver['artifact_identities']['data']), source_contract=source_contract)
         with io_context.using(guard):
             apply_incremental(job['workspace_id'], job['dataset_id'], user, job['upload_id'])
         boundary.checkpoint(renew=True)
@@ -195,6 +219,24 @@ class IntegratedExecutor:
             with database.repository_transaction() as conn:
                 job, value = registry.contract(conn, lease, source_identity=source_identity)
                 prior = registry.head(conn, value['stage'], job['file_id'], value.get('association'))
+            # An initial load policy can be approved after an already verified Silver
+            # publication. Reuse that immutable Silver output only when every
+            # Silver dependency is identical and the new policy is the first
+            # APPEND policy for a dataset that has never published a state.
+            # A fresh job/lease and task20 admission pins still gate the apply.
+            if prior and prior['verification_report'] and reusable_initial_append(prior['input_contract'], value):
+                storage.read(ObjectIdentity.decode(prior['manifest_identity']))
+                for obj in prior['artifact_identities'].values():
+                    storage.read(ObjectIdentity.decode(obj))
+                with database.repository_transaction() as conn:
+                    conn.execute('SELECT task20_require_input(%s,%s,%s)',
+                                 (lease.job_id, lease.lease_token, Jsonb(value)))
+                    state = conn.execute('SELECT current_state_id FROM datasets WHERE dataset_id=%s',
+                                         (job['dataset_id'],)).fetchone()
+                    if not state or state[0] is not None:
+                        raise ValueError('Initial APPEND reuse requires an empty accepted dataset')
+                self._apply(boundary, storage, value, source_contract=prior['input_contract'])
+                return
             if prior and prior['verification_report'] and prior['input_contract'] == value:
                 # Completion loss / duplicate new job: do not rewrite objects or rewind a head.
                 storage.read(ObjectIdentity.decode(prior['manifest_identity']))
