@@ -137,6 +137,13 @@ async function main() {
     assert.ok(!otherScope.includes('orders.csv') && otherScope.includes('Loading delivery status'))
     assert.equal(presentation.ownsProcessing(dataset,'11','20'),false)
     assert.equal(presentation.ownsProcessing(dataset,'10','21'),false)
+    // Breadcrumbs name the actual subsection while preserving the existing grouped tabs.
+    for (const [section,label] of [['processing','Processing'],['relationships','Review relationships'],['metrics','Metric definitions']]) {
+      const html=renderToStaticMarkup(React.createElement(MemoryRouter,{initialEntries:['/app/workspaces/10/'+section]},React.createElement(Routes,null,
+        React.createElement(Route,{path:'/app/workspaces/:workspaceId',element:React.createElement(WorkspaceDetailPage)},React.createElement(Route,{path:section,element:React.createElement('h2',null,label)})))))
+      assert.ok(html.includes('Sales Analytics'))
+      assert.ok(html.includes('aria-current="page">'+label+'</span>'),'breadcrumb identifies '+section)
+    }
     const rules = page('/app/workspaces/10/datasets/20/rules?upload=40')
     assert.ok(rules.includes('Source delivery') && rules.includes('orders.csv') && rules.includes('Loading delivery rules'))
     assert.ok(!rules.includes('Upload #40') && !rules.includes('not in this dataset'))

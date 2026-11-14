@@ -15,8 +15,8 @@ const tabs = [
   { label: "Processing", to: "processing" }, { label: "Data Quality", to: "data-quality" },
   { label: "Analytics", to: "analytics" }, { label: "Data Profile", to: "profile" }, { label: "Description", to: "understanding" }, { label: "History", to: "history" },
 ]
-const primary: SectionLink[] = [{label:"Overview",path:""},{label:"Files",path:"files"},{label:"Rules",path:"rules"},{label:"Processing",path:"processing"},{label:"Data Quality",path:"data-quality"},{label:"Analytics",path:"analytics"},{label:"History",path:"history"}]
-const advanced: SectionLink[] = [{label:"Contract",path:"contract"},{label:"Data profile",path:"profile"},{label:"Readiness & previews",path:"readiness"},{label:"Description",path:"understanding"}]
+const primary: SectionLink[] = [{label:"Overview",path:""},{label:"Files",path:"files"},{label:"Schema",path:"profile",sections:["profile","contract"]},{label:"Quality",path:"data-quality"},{label:"Rules",path:"rules"}]
+const advanced: SectionLink[] = [{label:"Readiness & previews",path:"readiness"},{label:"Processing",path:"processing"},{label:"Analytics",path:"analytics"},{label:"Description",path:"understanding"},{label:"History",path:"history"}]
 
 export function DatasetDetailPage() {
   const { workspaceId = "", datasetId = "" } = useParams()

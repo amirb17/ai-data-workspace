@@ -1,2 +1,2 @@
-import {WorkspaceDestination} from '../../features/workspaces/components/WorkspaceDestination'
-export function AnalyticsPage(){return <WorkspaceDestination title="Analytics" description="Explore trusted metrics and ask questions in a workspace." section="analytics"/>}
+import { Link } from "react-router-dom"
+export function AnalyticsPage() { return <section className="space-y-4"><h1 className="text-3xl font-semibold">Analytics</h1><p className="max-w-2xl text-slate-600">Explore analytics within your workspace.</p><Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-white" to="/app/workspaces">View Workspaces</Link></section> }

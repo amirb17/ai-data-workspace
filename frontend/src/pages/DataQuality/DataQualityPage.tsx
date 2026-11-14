@@ -1,2 +1,2 @@
-import {WorkspaceDestination} from '../../features/workspaces/components/WorkspaceDestination'
-export function DataQualityPage(){return <WorkspaceDestination title="Data Quality" description="Review validation results and rows that need attention." section="data-quality"/>}
+import { Link } from "react-router-dom"
+export function DataQualityPage() { return <section className="space-y-4"><h1 className="text-3xl font-semibold">Data Quality</h1><p className="max-w-2xl text-slate-600">Review dataset validation results and quarantined rows.</p><Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-white" to="/app/workspaces">View Workspaces</Link></section> }

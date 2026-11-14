@@ -11,8 +11,10 @@
   0068. No deployed privilege change has been applied.
 - Add exact, independent, default-off Model read and Ask AI gates and truthful
   frontend release capabilities. Preserve Analytics/SQL behavior and gates.
-- Refresh workspace cards, shared navigation/typography/loading, responsive
-  controls and concise product guidance. Keep existing routes and dependencies.
+- Preserve the existing page layouts, grouped navigation and visual styling.
+  Make workspace cards clickable, shorten supporting copy, retain accessible
+  loading/focus states, and identify the current workspace/dataset/subsection
+  accurately in breadcrumbs. Analytics and Data Quality keep their old pages.
 
 ## Validation
 
