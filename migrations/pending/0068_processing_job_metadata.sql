@@ -27,7 +27,7 @@ BEGIN
      AND w.workspace_id=ws AND w.status='ACTIVE'
      AND d.dataset_id=ds AND d.status='ACTIVE'
  ) THEN RAISE EXCEPTION 'Processing scope unavailable' USING ERRCODE='42501'; END IF;
- RETURN QUERY SELECT j.job_id,j.upload_id,j.operation,j.status,j.attempt_count
+ RETURN QUERY SELECT j.job_id::uuid,j.upload_id::bigint,j.operation::varchar,j.status::varchar,j.attempt_count::integer
  FROM public.processing_jobs j
  JOIN public.upload_requests r ON r.upload_id=j.upload_id
    AND r.workspace_id=ws AND r.dataset_id=ds AND r.archived_at IS NULL
