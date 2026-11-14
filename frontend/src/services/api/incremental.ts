@@ -61,3 +61,11 @@ export async function saveLoadPolicy(workspaceId: string, datasetId: string, inp
     throw error
   }
 }
+
+export async function approveInitialAppend(w:string,d:string,upload:number) {
+  const value=await request<{workspace_id:number;dataset_id:number;upload_id:number;policy_id:number;load_strategy:string}>(
+    path(w,d)+'/initial-append-policy/uploads/'+backendId(upload),{method:'POST'})
+  if(value.workspace_id!==backendId(w)||value.dataset_id!==backendId(d)||value.upload_id!==upload||value.load_strategy!=='APPEND')
+    throw new ApiError('Policy response mismatch.')
+  return value
+}
