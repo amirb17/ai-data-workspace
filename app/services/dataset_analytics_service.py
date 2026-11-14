@@ -155,34 +155,31 @@ def refresh_analytics(workspace_id, dataset_id, user):
             preflight_state,
         )
 
+        # Publish metadata only through owner-fenced SECURITY DEFINER functions.
+        # The API role is intentionally denied direct dataset/Gold run writes.
         with repository_transaction() as conn:
+            run_id, reused = conn.execute(
+                'SELECT run_id,reused FROM task21_analytics_begin(%s,%s,%s,%s)',
+                (user['user_id'], workspace_id, dataset_id,
+                 preflight_state['state_id'])
+            ).fetchone()
             cursor = conn.cursor(row_factory=dict_row)
-            head = cursor.execute('SELECT current_state_id FROM datasets WHERE dataset_id=%s FOR UPDATE', (dataset_id,)).fetchone()
-            if (
-                head["current_state_id"]
-                != preflight_state["state_id"]
-            ):
-                raise RuntimeError(
-                    "Trusted state changed during Gold preflight"
-                )
-            if not head['current_state_id']:
-                raise ValueError('Trusted dataset update required')
-            state = cursor.execute("SELECT * FROM dataset_state_versions WHERE state_id=%s AND dataset_id=%s AND status='PUBLISHED'", (head['current_state_id'],dataset_id)).fetchone()
-            run = cursor.execute('SELECT * FROM dataset_gold_runs WHERE dataset_id=%s AND source_state_id=%s AND build_version=1', (dataset_id,state['state_id'])).fetchone()
-            if run and run['status']=='SUCCESS':
-                cursor.execute("UPDATE datasets SET current_gold_run_id=%s,state_analytics_status='FRESH' WHERE dataset_id=%s", (run['gold_run_id'],dataset_id))
-                reused = True
-            else:
-                reused = False
-                if run:
-                    run = cursor.execute("UPDATE dataset_gold_runs SET status='REFRESHING',started_at=NOW(),completed_at=NULL,failure_code=NULL WHERE gold_run_id=%s RETURNING *", (run['gold_run_id'],)).fetchone()
-                else:
-                    run = cursor.execute('''INSERT INTO dataset_gold_runs(dataset_id,source_state_id,dataset_version_id,policy_id,source_sha256,status)
-                        VALUES (%s,%s,%s,%s,%s,'REFRESHING') RETURNING *''',
-                        (dataset_id,state['state_id'],state['dataset_version_id'],state['policy_id'],state['manifest_sha256'])).fetchone()
-                cursor.execute("UPDATE datasets SET state_analytics_status='REFRESHING' WHERE dataset_id=%s", (dataset_id,))
-            app = cursor.execute('SELECT * FROM delivery_applications WHERE application_id=%s', (state['source_application_id'],)).fetchone()
-            policy = cursor.execute('SELECT * FROM dataset_load_policies WHERE policy_id=%s', (state['policy_id'],)).fetchone()
+            run = cursor.execute(
+                'SELECT * FROM dataset_gold_runs WHERE gold_run_id=%s',
+                (run_id,)
+            ).fetchone()
+            state = cursor.execute(
+                "SELECT * FROM dataset_state_versions WHERE state_id=%s AND dataset_id=%s AND status='PUBLISHED'",
+                (preflight_state['state_id'], dataset_id)
+            ).fetchone()
+            app = cursor.execute(
+                'SELECT * FROM delivery_applications WHERE application_id=%s',
+                (state['source_application_id'],)
+            ).fetchone()
+            policy = cursor.execute(
+                'SELECT * FROM dataset_load_policies WHERE policy_id=%s',
+                (state['policy_id'],)
+            ).fetchone()
         if reused:
             return readiness(workspace_id,dataset_id,user)
         failure = 'BUILD_FAILED'
@@ -197,15 +194,18 @@ def refresh_analytics(workspace_id, dataset_id, user):
             failure = 'VALIDATION_FAILED'
             catalog = store.validate(run,key,checksum,len(artifacts[0][0]),[c['name'] for c in policy['schema_columns']])
             with repository_transaction() as conn:
-                publish_gold(conn,dataset_id,run,key,checksum,catalog)
+                conn.execute(
+                    'SELECT task21_analytics_publish(%s,%s,%s,%s,%s,%s,%s)',
+                    (user['user_id'], workspace_id, dataset_id,
+                     run['gold_run_id'], key, checksum, Jsonb(catalog))
+                )
         except Exception:
             with repository_transaction() as conn:
-                cursor = conn.cursor(row_factory=dict_row)
-                # A response/logging failure after durable success must not regress it.
-                persisted = cursor.execute('SELECT status FROM dataset_gold_runs WHERE gold_run_id=%s FOR UPDATE', (run['gold_run_id'],)).fetchone()
-                if persisted['status'] != 'SUCCESS':
-                    cursor.execute("UPDATE dataset_gold_runs SET status='FAILED',completed_at=NOW(),failure_code=%s WHERE gold_run_id=%s", (failure,run['gold_run_id']))
-                    cursor.execute("UPDATE datasets SET state_analytics_status='FAILED' WHERE dataset_id=%s AND current_state_id=%s", (dataset_id,state['state_id']))
+                conn.execute(
+                    'SELECT task21_analytics_fail(%s,%s,%s,%s,%s,%s)',
+                    (user['user_id'], workspace_id, dataset_id,
+                     run['gold_run_id'], state['state_id'], failure)
+                )
             logger.warning('Dataset Gold failed workspace=%s dataset=%s state=%s run=%s category=%s', workspace_id,dataset_id,state['state_id'],run['gold_run_id'],failure)
             raise RuntimeError('Analytics refresh failed; previous published analytics retained') from None
         result = readiness(workspace_id,dataset_id,user)
