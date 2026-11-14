@@ -37,9 +37,9 @@ async function main() {
     return new Response(JSON.stringify(url.includes('suggestions') ? saved : url.includes('finalize') ? { finalized: true } : context), { status: 200 })
   }
   await api.getProcessingContext('10', '20', 40)
-  await api.startBronze('10', '20', 40)
+  await assert.rejects(api.startBronze('10', '20', 40), /Refresh delivery status/)
   await api.getRuleReview('10', '20', 60)
-  assert.equal(calls.filter((c) => c.method === 'POST').length, 1) // reads do not approve
+  assert.equal(calls.filter((c) => c.method === 'POST').length, 0) // pending rules cannot trigger processing
   await api.saveRuleAnswers('10', '20', saved, answers)
   assert.equal(calls.some((c) => c.url.includes('finalize')), false)
   assert.equal(JSON.parse(calls.at(-1).body).expected_rule_version, 3)
