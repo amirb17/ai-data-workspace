@@ -77,7 +77,7 @@ def _execute_query(workspace,user,request):
     def check_current(conn):
         nonlocal status, result
         if status != 'SUCCEEDED': return
-        current=catalog_service.gather(conn,workspace,user,lock=True)
+        current=catalog_service.gather(conn,workspace,user,lock=False)
         ids=[d['dataset_id'] for d in dependencies]
         current_relations=[r for r in current['relationships'] if r in relations]
         if catalog_service.signature(current,ids,current_relations)!=signature:
