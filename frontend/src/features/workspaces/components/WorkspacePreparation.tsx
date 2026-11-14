@@ -15,7 +15,7 @@ export function WorkspacePreparation({ view }: { view: "overview" | "processing"
   const prepared = rows.filter(row => row.analytics.current_state_id !== null).length
   const checked = rows.filter(row => row.processing.deliveries.some(delivery => delivery.context.valid_rows !== null)).length
   const fresh = rows.filter(row => row.analytics.analytics_ready).length
-  const next = rows.find(row => !row.analytics.analytics_ready || !row.profile?.profile_ready || row.understanding?.status !== "READY")
+  const next = rows.find(row => !row.analytics.analytics_ready || !row.profile?.profile_ready || (row.understanding && row.understanding.status !== "READY"))
   const action = !rows.length ? { label: "Add data", to: `/app/workspaces/${workspaceId}/datasets?create=1` } : next ? preparationAction(workspaceId, next) : { label: "Explore analytics", to: `/app/workspaces/${workspaceId}/analytics` }
   return <section className="min-w-0 space-y-5">
     <header className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-2xl font-semibold">{titles[view]}</h2><p className="mt-1 text-sm text-slate-600">{view === "overview" ? "Prepare data and follow your next step." : view === "processing" ? "Track dataset jobs and pending reviews." : "Validation results for each dataset."}</p></div><button className="min-h-11 px-3 text-sm text-indigo-700" onClick={resource.retry}>Reload status</button></header>
