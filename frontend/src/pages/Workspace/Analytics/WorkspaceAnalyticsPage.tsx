@@ -72,12 +72,10 @@ function ScopedAnalytics({workspaceId}: {workspaceId: string}) {
   }
   return <div className="space-y-7">{error && <div role="alert" className="space-y-2 rounded-lg border border-red-200 p-4 text-sm text-red-700"><p>{error}</p><button className="min-h-11 rounded-lg border px-3" onClick={() => void reload.current?.()} disabled={busy}>Retry</button></div>}{data ? <WorkspaceAnalyticsContent data={data} busy={busy} refresh={() => void run()} retry={id => void run(id)} /> : !error ? <div role="status" aria-label="Loading workspace analytics" className="space-y-4"><p className="text-sm text-slate-500">Loading workspace analytics…</p><div aria-hidden="true" className="grid grid-cols-1 gap-4 sm:grid-cols-3">{[1,2,3].map(id => <div key={id} className="h-32 animate-pulse rounded-xl bg-slate-100 motion-reduce:animate-none" />)}</div></div> : null}<WorkspaceAsk key={`ask-${workspaceId}`} workspaceId={workspaceId} relationships={data?.relationships} /></div>
 }
-export function WorkspaceAnalyticsPage() {
-  const {workspaceId = ''} = useParams()
+function ScopedWorkspaceAnalyticsRelease({workspaceId}:{workspaceId:string}) {
   const [mode,setMode]=useState<'checking'|'restricted'|'full'|'error'>('checking')
   useEffect(()=>{
     let active=true
-    setMode('checking')
     authConfig().then(config=>{if(active)setMode(config.public_launch_mode==='off'?'full':'restricted')})
       .catch(()=>{if(active)setMode('error')})
     return ()=>{active=false}
@@ -86,4 +84,9 @@ export function WorkspaceAnalyticsPage() {
   if(mode==='error')return <p role="alert">Website permissions could not be loaded. Refresh the page to retry.</p>
   if(mode==='restricted')return <PublicWorkspaceAnalytics key={workspaceId} workspaceId={workspaceId}/>
   return <ScopedAnalytics key={workspaceId} workspaceId={workspaceId} />
+}
+
+export function WorkspaceAnalyticsPage() {
+  const {workspaceId = ''} = useParams()
+  return <ScopedWorkspaceAnalyticsRelease key={workspaceId} workspaceId={workspaceId}/>
 }
