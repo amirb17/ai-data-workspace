@@ -92,7 +92,7 @@ BEGIN
           AND (column_name IS NULL OR btrim(column_name)=''
             OR left(column_name,8)='_source_'
             OR left(column_name,10)='_datarise_'
-            OR left(column_name,4)='_dq_'
+            OR left(column_name,4)='_dq_')
       )
     THEN RAISE EXCEPTION 'Unsafe or ambiguous profiled schema'; END IF;
 
