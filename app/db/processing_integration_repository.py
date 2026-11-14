@@ -85,7 +85,7 @@ def contract(conn, lease, *, source_identity=None):
         if stage == 'GOLD':
             result['applied_state'] = conn.execute('SELECT task20_applied_state(%s,%s,%s)',
                 (job['dataset_id'],job['upload_id'],result['load_policy']['policy_id'] if result['load_policy'] else None)).fetchone()[0]
-            result['dependency_epoch'] = conn.execute('SELECT revision FROM processing_dependency_epochs WHERE dataset_id=%s FOR SHARE', (job['dataset_id'],)).fetchone()[0]
+            result['dependency_epoch'] = conn.execute('SELECT revision FROM processing_dependency_epochs WHERE dataset_id=%s', (job['dataset_id'],)).fetchone()[0]
             dq = row(conn, """SELECT dq.* FROM data_quality_runs dq JOIN processing_attempts a ON a.attempt_id=dq.attempt_id
                 WHERE dq.dataset_version_file_id=%s AND dq.rule_version=%s AND a.status='SUCCESS'
                 ORDER BY dq.dq_run_id DESC LIMIT 1""", (aid, result['rule_version']))
