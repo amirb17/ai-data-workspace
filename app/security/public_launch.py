@@ -58,6 +58,11 @@ POLICY = {**AUTH,
 PROCESSING_ROUTES = {
     ('POST', '/files/uploads/{upload_id}/jobs'): 'app.api.processing_jobs.admit_stage',
 }
+RULE_REVIEW_ROUTES = {
+    ('GET', '/files/dataset-version-files/{dataset_version_file_id}/business-rules/suggestions'): 'app.api.files.get_rule_suggestions',
+    ('POST', '/files/dataset-version-files/{dataset_version_file_id}/business-rules'): 'app.api.files.submit_business_rules',
+    ('POST', '/files/dataset-version-files/{dataset_version_file_id}/business-rules/finalize'): 'app.api.files.finalize_rules',
+}
 UPLOAD_ROUTES = {
     ('POST', '/files/initiate'): 'app.api.files.initiate_upload',
     ('POST', '/files/complete'): 'app.api.files.complete_upload',
@@ -76,6 +81,7 @@ class LaunchSettings:
     workspace_creation_enabled: bool = False
     csv_upload_enabled: bool = False
     processing_enabled: bool = False
+    rule_review_enabled: bool = False
 
 
 def launch_settings():
@@ -117,7 +123,12 @@ def launch_settings():
             raise ValueError('Public upload requires reviewed workspace creation and S3 runtime settings')
     if processing and (creation != 'true' or upload != 'true'):
         raise ValueError('Public processing requires approved CSV uploads and workspace creation')
-    return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true', processing)
+    rule_review = os.getenv('DATARISE_PUBLIC_RULE_REVIEW', 'false')
+    if rule_review not in ('true', 'false'):
+        raise ValueError('Invalid rule review opt-in')
+    if rule_review == 'true' and not processing:
+        raise ValueError('Public rule review requires approved processing mode')
+    return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true', processing, rule_review == 'true')
 
 
 def permitted(route, method, settings=None):
@@ -126,6 +137,10 @@ def permitted(route, method, settings=None):
         if settings is None or not settings.processing_enabled:
             return False
         name = PROCESSING_ROUTES[(method, path)]
+    elif (method, path) in RULE_REVIEW_ROUTES:
+        if settings is None or not settings.processing_enabled or not settings.rule_review_enabled:
+            return False
+        name = RULE_REVIEW_ROUTES[(method, path)]
     elif (method, path) in UPLOAD_ROUTES:
         if settings is None or not settings.csv_upload_enabled:
             return False
