@@ -2,9 +2,14 @@
 from collections.abc import Callable
 from contextvars import Context
 from datetime import datetime
+import logging
+from pathlib import PurePath
+from traceback import extract_tb
 from uuid import UUID
 
 from app.db import processing_job_repository as jobs
+
+logger = logging.getLogger(__name__)
 
 
 class JobRetryRequired(RuntimeError):
@@ -83,7 +88,17 @@ def _execute_lease(job_id, lease, executor):
     try:
         if executor(lease) is not None:
             raise TypeError('Executor must complete synchronously and return None')
-    except Exception:
+    except Exception as exc:
+        # Operational diagnosis without logging user data, SQL, paths, secrets or lease tokens.
+        # Only class names and vetted in-package code coordinates leave the process.
+        frames = [frame for frame in extract_tb(exc.__traceback__)
+                  if '/app/app/' in frame.filename.replace('\\', '/')]
+        origin = frames[-1] if frames else None
+        logger.warning('Processing execution refused (class=%s, module=%s, function=%s, line=%s)',
+                       type(exc).__name__,
+                       PurePath(origin.filename).name if origin else 'unknown',
+                       origin.name if origin else 'unknown',
+                       origin.lineno if origin else 0)
         try:
             jobs.finish_job(job_id, lease.lease_token, failure_code='PROCESSING_FAILED',
                             retry=True, retry_delay_seconds=30)
