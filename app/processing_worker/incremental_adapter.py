@@ -67,8 +67,9 @@ class IncrementalClient:
 
 
 class ApplyGuard:
-    def __init__(self, boundary, storage, contract, silver):
+    def __init__(self, boundary, storage, contract, silver, *, source_contract=None):
         self.boundary, self.contract = boundary, contract
+        self.source_contract = source_contract if source_contract is not None else contract
         self.incremental_client = IncrementalClient(storage, contract, silver)
 
     def authorize_silver_source(self, key, application, dq, file_id):
@@ -81,6 +82,10 @@ class ApplyGuard:
         from app.db import processing_integration_repository as registry
         contract = self.contract
         silver = self.incremental_client.silver
+        if self.source_contract != contract:
+            from app.processing_worker.integrated_executor import reusable_initial_append
+            if not reusable_initial_append(self.source_contract, contract):
+                raise ValueError('Untrusted Silver reuse contract')
         if (key != silver.key or file_id != contract['file_id']
             or application['dataset_version_file_id'] != contract['association']
             or application['applied_rule_version'] != contract['rule_version']
@@ -90,7 +95,7 @@ class ApplyGuard:
         with database.get_connection() as conn:
             self.fence(conn)
             head = registry.head(conn, 'SILVER', file_id, contract['association'])
-            if (not head or head['input_contract'] != contract or not head['verification_report']
+            if (not head or head['input_contract'] != self.source_contract or not head['verification_report']
                 or head['artifact_identities'].get('data') != asdict(silver)):
                 raise ValueError('Current verified Silver receipt required')
 
