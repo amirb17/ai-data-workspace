@@ -58,6 +58,9 @@ POLICY = {**AUTH,
 PROCESSING_ROUTES = {
     ('POST', '/files/uploads/{upload_id}/jobs'): 'app.api.processing_jobs.admit_stage',
 }
+INITIAL_APPEND_ROUTES = {
+    ('POST', D + '/incremental/initial-append-policy/uploads/{upload_id}'): 'app.api.incremental.initial_append_policy',
+}
 RULE_REVIEW_ROUTES = {
     ('GET', '/files/dataset-version-files/{dataset_version_file_id}/business-rules/suggestions'): 'app.api.files.get_rule_suggestions',
     ('POST', '/files/dataset-version-files/{dataset_version_file_id}/business-rules'): 'app.api.files.submit_business_rules',
@@ -82,6 +85,7 @@ class LaunchSettings:
     csv_upload_enabled: bool = False
     processing_enabled: bool = False
     rule_review_enabled: bool = False
+    initial_append_enabled: bool = False
 
 
 def launch_settings():
@@ -128,7 +132,12 @@ def launch_settings():
         raise ValueError('Invalid rule review opt-in')
     if rule_review == 'true' and not processing:
         raise ValueError('Public rule review requires approved processing mode')
-    return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true', processing, rule_review == 'true')
+    initial_append = os.getenv('DATARISE_PUBLIC_INITIAL_APPEND', 'false')
+    if initial_append not in ('true','false'):
+        raise ValueError('Invalid initial append opt-in')
+    if initial_append == 'true' and not (processing and rule_review == 'true'):
+        raise ValueError('Initial APPEND requires approved processing and rule review')
+    return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true', processing, rule_review == 'true', initial_append == 'true')
 
 
 def permitted(route, method, settings=None):
@@ -137,6 +146,10 @@ def permitted(route, method, settings=None):
         if settings is None or not settings.processing_enabled:
             return False
         name = PROCESSING_ROUTES[(method, path)]
+    elif (method, path) in INITIAL_APPEND_ROUTES:
+        if settings is None or not settings.initial_append_enabled:
+            return False
+        name = INITIAL_APPEND_ROUTES[(method,path)]
     elif (method, path) in RULE_REVIEW_ROUTES:
         if settings is None or not settings.processing_enabled or not settings.rule_review_enabled:
             return False
@@ -191,7 +204,12 @@ async def launch_authority(request: Request):
                 # GET handlers independently enforce ownership; do not require
                 # UPDATE privileges merely to lock rows in a read-only guard.
                 # Keep the locking guard for any approved non-GET operation.
-                if request.method == 'GET':
+                if (request.method == 'GET' or
+                    (request.method == 'POST' and
+                     getattr(request.scope.get('route'), 'path', None)
+                     == D + '/incremental/initial-append-policy/uploads/{upload_id}')):
+                    # The SECURITY DEFINER policy function acquires the
+                    # owner/source locks; the API guard needs SELECT only.
                     authorize_read(w, d, user)
                 else:
                     authorize(w, d, user)
