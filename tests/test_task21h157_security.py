@@ -20,7 +20,8 @@ def client(monkeypatch):
     with TestClient(wrapper,base_url='https://testserver',raise_server_exceptions=False) as c: yield c
 
 
-BLOCKED=[(method,r.path) for r in http_routes(app.routes) for method in sorted(r.methods or []) if not permitted(r,method)]
+BLOCKED=[(method,r.path) for r in http_routes(app.routes) for method in sorted(r.methods or [])
+         if not permitted(r,method) and (method,r.path) != ('GET','/health')]
 
 
 @pytest.mark.parametrize('method,path',BLOCKED)

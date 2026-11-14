@@ -22,10 +22,20 @@ def call(fn):
 
 @router.get('/capabilities',response_model=CapabilitiesResponse)
 def capabilities(request:Request,workspace_id:int=Path(gt=0,le=9007199254740991),dataset_id:int=Path(gt=0,le=9007199254740991),user=Depends(get_current_user)):
-    value = call(lambda:service.capabilities(workspace_id,dataset_id,user))
+    from app.security.public_launch import launch_settings
+    launch = launch_settings()
     if request.scope.get('datarise.public_launch'):
-        from app.security.public_launch import launch_settings
-        value = {**value, 'csv_upload': launch_settings().csv_upload_enabled}
+        # Readiness must not depend on unrelated warehouse ACLs.
+        call(lambda:service.authorize_read(workspace_id,dataset_id,user))
+        value = dict(workspace_id=workspace_id,dataset_id=dataset_id,
+                     warehouse='NOT_CONFIGURED',warehouse_models=[],csv_upload=launch.csv_upload_enabled)
+    else:
+        value = call(lambda:service.capabilities(workspace_id,dataset_id,user))
+    import os
+    enabled = (launch.processing_enabled if launch.enabled else
+               os.getenv('DATARISE_PROCESSING_DEPLOYMENT_APPROVED') == 'true'
+               and os.getenv('DATARISE_PROCESSING_READERS') == 'true')
+    value = {**value,'processing_submission':'ENABLED' if enabled else 'DISABLED'}
     return value
 
 

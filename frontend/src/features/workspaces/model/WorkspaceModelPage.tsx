@@ -1,3 +1,4 @@
+import {useReleaseFeatures} from "../../../services/releaseFeatures"
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiFeedback } from '../../../components/ui/ApiFeedback'
@@ -11,13 +12,14 @@ import { currentMeaning, currentProfile, description, modelRelationships, relati
 
 export function WorkspaceModelPage() {
   const {workspaceId=''}=useParams()
+  const features=useReleaseFeatures()
   const [surface,setSurface]=useState<'dataset'|'warehouse'>('dataset')
   return <div className="space-y-5">
     <nav aria-label="Model type" className="inline-flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1">
       <button type="button" aria-pressed={surface==='dataset'} onClick={()=>setSurface('dataset')} className={`min-h-11 rounded-md px-4 text-sm font-medium ${surface==='dataset'?'bg-white text-indigo-700 shadow':'text-slate-600'}`}>Dataset relationships</button>
-      <button type="button" aria-pressed={surface==='warehouse'} onClick={()=>setSurface('warehouse')} className={`min-h-11 rounded-md px-4 text-sm font-medium ${surface==='warehouse'?'bg-white text-indigo-700 shadow':'text-slate-600'}`}>Data warehouse</button>
+      <button type="button" disabled title="Warehouse release pending" aria-pressed={surface==='warehouse'} onClick={()=>setSurface('warehouse')} className={`min-h-11 rounded-md px-4 text-sm font-medium ${surface==='warehouse'?'bg-white text-indigo-700 shadow':'text-slate-600'}`}>Data warehouse</button>
     </nav>
-    {surface==='dataset'
+    {!features.model ? <p role="status" className="rounded-xl border bg-white p-5 text-sm text-slate-600">{features.checking?'Checking model availability...':'Data model visibility awaits secure read access approval.'}</p> : surface==='dataset'
       ? <DatasetModelPage key={workspaceId} workspaceId={workspaceId}/>
       : <WarehouseModelPage key={workspaceId} workspace={workspaceId}/>}
   </div>

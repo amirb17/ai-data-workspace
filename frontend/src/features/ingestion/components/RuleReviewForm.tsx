@@ -1,7 +1,8 @@
+import {useReleaseFeatures} from "../../../services/releaseFeatures"
 import { useEffect, useRef, useState } from "react"
 import { answersComplete, canFinalize, finalizeRuleAnswers, getRuleReview, questionKey, reviewAnswers, requiresRuleApproval, saveRuleAnswers, type RuleReview } from "../../../services/api/rules"
 
-export function RuleReviewForm({ workspaceId, datasetId, associationId, onChanged }: { workspaceId: string; datasetId: string; associationId: number; onChanged: () => void }) {
+function ApprovedRuleReviewForm({ workspaceId, datasetId, associationId, onChanged }: { workspaceId: string; datasetId: string; associationId: number; onChanged: () => void }) {
   const [review, setReview] = useState<RuleReview>()
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [revision, setRevision] = useState(0)
@@ -62,4 +63,9 @@ export function RuleReviewForm({ workspaceId, datasetId, associationId, onChange
     </>}
     <button className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm" disabled={busy} onClick={reload}>Reload Rules</button>
   </section>
+}
+
+export function RuleReviewForm(props: Parameters<typeof ApprovedRuleReviewForm>[0]) {
+ const features=useReleaseFeatures()
+ return features.rules ? <ApprovedRuleReviewForm {...props}/> : <p role="status" className="rounded-xl border bg-white p-4 text-sm text-slate-600">Rule review awaits approval for this release.</p>
 }

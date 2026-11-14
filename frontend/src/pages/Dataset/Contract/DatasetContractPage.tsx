@@ -29,14 +29,14 @@ export function DatasetContractPage() {
   return (
     <section className="space-y-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-xl font-semibold text-slate-950">Dataset Contract</h2><p className="mt-1 text-sm text-slate-500">Defines the inspection structure for {dataset.name}. Browser settings do not configure backend incremental processing.</p></div>
+        <div><h2 className="text-xl font-semibold text-slate-950">Dataset Contract</h2><p className="mt-1 text-sm text-slate-500">Inspection settings for {dataset.name}, saved in this browser.</p></div>
         {contract && !editing && <Button onClick={() => setEditing(true)}>Edit Contract</Button>}
       </div>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {contract ? editing ? <DatasetContractForm initialContract={{ ...contract, datasetName: dataset.name }} onCancel={() => setEditing(false)}
         onSave={(updated) => { saveDatasetContract(workspaceId, datasetId, updated); setEditing(false); refresh((value) => value + 1) }} />
         : <DatasetContractSummary contract={contract} />
-        : !error && <div className="space-y-3"><h3 className="font-semibold">No contract configured</h3><p className="text-sm text-slate-600">The first contract defines the expected structure of future deliveries. Choose a CSV to inspect and configure its columns; the same selected file stays available after saving.</p><Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-white" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/files?setup=1`}>Configure Contract</Link></div>}
+        : !error && <div className="space-y-3"><h3 className="font-semibold">No contract configured</h3><p className="text-sm text-slate-600">Inspect a CSV to define expected columns and data types.</p><Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-white" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/files?setup=1`}>Configure Contract</Link></div>}
       <IncrementalPolicy workspaceId={workspaceId} datasetId={datasetId} browserContract={contract} />
     </section>
   )

@@ -1,3 +1,4 @@
+import {LoadingState} from "./components/ui/LoadingState"
 import {lazy,Suspense} from 'react'
 import {
   Route,
@@ -127,11 +128,11 @@ export default function AppLayout() {
           element={<WorkspaceOverviewPage />}
         />
         <Route path="understanding" element={<WorkspaceUnderstandingPage />} />
-        <Route path="data-model" element={<Suspense fallback={<p role="status">Loading model…</p>}><WorkspaceModelPage/></Suspense>} />
+        <Route path="data-model" element={<Suspense fallback={<LoadingState label="Loading model..."/>}><WorkspaceModelPage/></Suspense>} />
         <Route path="relationships" element={<RelationshipsPage />} />
         <Route path="metrics" element={<MetricsPage />} />
         <Route path="warehouse-sql" element={<Suspense fallback={<p role="status">Loading Warehouse SQL...</p>}><WarehouseSqlPage/></Suspense>} />
-        <Route path="sql" element={<Suspense fallback={<p role="status">Loading SQL editor…</p>}><SqlPage/></Suspense>} />
+        <Route path="sql" element={<Suspense fallback={<LoadingState label="Loading SQL editor..."/>}><SqlPage/></Suspense>} />
 
         <Route
           path="datasets"

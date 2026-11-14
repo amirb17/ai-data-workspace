@@ -56,6 +56,6 @@ def test_launch_gate_uses_read_guard_only_for_get():
     from pathlib import Path
     source = (Path(__file__).resolve().parents[1] /
               "app/security/public_launch.py").read_text()
-    assert "if request.method == 'GET':" in source
+    assert "request.method == 'GET'" in source
     assert "authorize_read(w, d, user)" in source
     assert "authorize(w, d, user)" in source

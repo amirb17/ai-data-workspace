@@ -19,7 +19,7 @@ assert.ok(render({readiness:'PARTIAL',metrics:[metric,{...metric,candidate_id:2,
 assert.ok(render({readiness:'PARTIAL',metrics_failed:1}).includes('1 need retry'))
 assert.equal(formatValue(84.234,'PERCENTAGE'),'84.2%')
 assert.equal(formatValue(12345,'USD'),'12,345') // No trusted currency contract: never infer currency.
-assert.equal(formatValue('9007199254740993123'),'9,007,199,254,740,993,123')
+assert.equal(formatValue('9007199254740993123'),BigInt('9007199254740993123').toLocaleString())
 assert.equal(formatValue(null),'Unavailable')
 const many=Array.from({length:20},(_,i)=>({...metric,candidate_id:i,decision:i===9?'REVIEW_REQUIRED':'REVIEW_RECOMMENDED'}));many.push({...metric,candidate_id:30})
 assert.equal(selectMetrics(many).kpis.length,6);assert.equal(selectMetrics(many).kpis[0].candidate_id,30)

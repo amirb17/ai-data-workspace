@@ -53,7 +53,7 @@ assert.equal(state.isRunning('DATASET_UPDATE_PROCESSING'),true)
 const bridge = c => render(DeliveryRuleBridge,{batch,context:c,workspaceId:'10',datasetId:'20',reload:()=>{},datasetBusy:false})
 assert.ok(bridge(updateFailure).includes('previous trusted dataset version is still active') && bridge(updateFailure).includes('Retry Dataset Update'))
 async function main() {
-  assert.equal(state.executionAction(context),null)
+  assert.equal(state.executionAction(context),'Continue to Silver')
   assert.equal(state.executionAction(success),null)
   assert.equal(state.executionAction(rejected),null)
   assert.equal(state.executionAction({...context,status:'SILVER_FAILED'}),'Retry Processing')
@@ -66,7 +66,7 @@ async function main() {
   assert.ok(breadcrumb.includes('href="/app/workspaces/10/datasets/20"'))
   assert.ok(!breadcrumb.includes('>10<') && !breadcrumb.includes('>20<'))
   const cards = [bridge(context),bridge({...context,status:'READY_TO_PROCESS',dataset_version_file_id:null,can_continue:false})].join('')
-  assert.ok(!cards.includes('Batch ') && !cards.includes('Continue Processing') && !cards.includes('Prepare Rules'))
+  assert.ok(!cards.includes('Batch ') && cards.includes('Start Process') && cards.includes('Continue to Silver'))
   assert.ok(cards.includes('<h3') && cards.includes('orders.csv</h3>') && cards.includes('<details') && cards.includes('<summary'))
   assert.ok(cards.includes('Delivery ID / upload request') && !cards.includes('999'))
   const clean = bridge(success)
@@ -90,11 +90,11 @@ async function main() {
   const goldFailed = bridge({...mixed,status:'GOLD_FAILED',can_continue:true,error_summary:'Gold publication failed.',stages:{...mixed.stages,gold:'FAILED'}})
   for (const text of ['Gold publication failed','Retry Gold','will reuse successful Silver','Failed']) assert.ok(goldFailed.includes(text))
   const summary = render(DatasetProcessingSummary,{data:dataset,busy:false,process:()=>{}})
-  assert.equal((summary.match(/Process Pending Deliveries \(2\)/g)||[]).length,1)
+  assert.equal((summary.match(/Start Process \(2\)/g)||[]).length,1)
   assert.ok(!summary.includes('disabled=""') && !summary.includes('Batches'))
   const empty = {...dataset,deliveries:[],summary:{...dataset.summary,total:0,pending:0}}
   const done = {...dataset,deliveries:[delivery(success)],summary:{...dataset.summary,total:1,pending:0,successful:1}}
-  assert.ok(!render(DatasetProcessingSummary,{data:empty,busy:false,process:()=>{}}).includes('Process Pending Deliveries'))
+  assert.ok(!render(DatasetProcessingSummary,{data:empty,busy:false,process:()=>{}}).includes('Start Process'))
   assert.ok(render(DatasetProcessingSummary,{data:done,busy:false,process:()=>{}}).includes('Everything is up to date'))
   const needsAttention = {...done,deliveries:[delivery(mixed)]}
   assert.equal(presentation.overviewWarnings(needsAttention),1)
@@ -127,16 +127,23 @@ async function main() {
   try {
     const emptyPage = page()
     assert.ok(emptyPage.includes('No deliveries yet') && emptyPage.includes('Go to Files'))
-    assert.ok(!emptyPage.includes('Process Pending Deliveries') && !emptyPage.includes('<h1 class="text-3xl'))
+    assert.ok(!emptyPage.includes('Start Process') && !emptyPage.includes('<h1 class="text-3xl'))
     assert.ok(emptyPage.includes('Sales Analytics') && emptyPage.includes('Orders') && emptyPage.includes('aria-label="Dataset sections"'))
     currentData = done
     assert.ok(page().includes('Everything is up to date'))
     currentData = dataset
-    assert.equal((page().match(/Process Pending Deliveries/g)||[]).length,1)
+    assert.equal((page().match(/Start Process/g)||[]).length,1)
     const otherScope = page('/app/workspaces/11/datasets/21/processing')
     assert.ok(!otherScope.includes('orders.csv') && otherScope.includes('Loading delivery status'))
     assert.equal(presentation.ownsProcessing(dataset,'11','20'),false)
     assert.equal(presentation.ownsProcessing(dataset,'10','21'),false)
+    // Breadcrumbs name the actual subsection while preserving the existing grouped tabs.
+    for (const [section,label] of [['processing','Processing'],['relationships','Review relationships'],['metrics','Metric definitions']]) {
+      const html=renderToStaticMarkup(React.createElement(MemoryRouter,{initialEntries:['/app/workspaces/10/'+section]},React.createElement(Routes,null,
+        React.createElement(Route,{path:'/app/workspaces/:workspaceId',element:React.createElement(WorkspaceDetailPage)},React.createElement(Route,{path:section,element:React.createElement('h2',null,label)})))))
+      assert.ok(html.includes('Sales Analytics'))
+      assert.ok(html.includes('aria-current="page">'+label+'</span>'),'breadcrumb identifies '+section)
+    }
     const rules = page('/app/workspaces/10/datasets/20/rules?upload=40')
     assert.ok(rules.includes('Source delivery') && rules.includes('orders.csv') && rules.includes('Loading delivery rules'))
     assert.ok(!rules.includes('Upload #40') && !rules.includes('not in this dataset'))
@@ -144,19 +151,22 @@ async function main() {
   } finally { hook.useDatasetProcessing=oldHook; resource.useApiResource=oldResource }
   let responseState = context
   const calls=[]
-  global.fetch = async (url,options) => { calls.push({url,...options}); return new Response(JSON.stringify(responseState)) }
-  assert.equal((await api.getProcessingContext('10','20',40)).status,'READY_FOR_SILVER')
-  responseState = success
-  assert.equal((await api.continueProcessing('10','20',40)).status,'SUCCESS')
-  assert.equal((await api.getProcessingContext('10','20',40)).output_rows,3)
-  assert.equal(calls[1].method,'POST'); assert.equal(calls[1].body,undefined)
-  for (const mismatch of [{workspace_id:11},{dataset_id:21},{upload_request_id:41}]) {
-    responseState = {...success,...mismatch}; await assert.rejects(api.continueProcessing('10','20',40),/another|mismatch/)
+  global.fetch = async (url,options={}) => {
+    calls.push({url,...options})
+    return new Response(JSON.stringify(url.endsWith('/product/jobs')?{workspace_id:10,dataset_id:20,jobs:[]}:url.endsWith('/jobs')?{job_id:'admitted'}:responseState))
   }
-  responseState = dataset
+  assert.equal((await api.getProcessingContext('10','20',40)).status,'READY_FOR_SILVER')
+  assert.equal((await api.continueProcessing('10','20',40)).status,'READY_FOR_SILVER','admission is not completion')
+  const post=calls.find(c=>c.method==='POST')
+  assert.ok(post.url.endsWith('/files/uploads/40/jobs'))
+  assert.equal(JSON.parse(post.body).operation,'SILVER')
+  for (const mismatch of [{workspace_id:11},{dataset_id:21},{upload_request_id:41}]) {
+    responseState={...context,...mismatch};await assert.rejects(api.continueProcessing('10','20',40),/another|mismatch/)
+  }
+  responseState=dataset
   assert.equal((await api.datasetProcessing('10','20',true)).summary.pending,2)
-  assert.ok(calls.at(-1).url.endsWith('/workspaces/10/datasets/20/processing/pending')); assert.equal(calls.at(-1).body,undefined)
-  responseState = {...dataset,deliveries:[delivery({...context,dataset_id:21})]}
+  assert.ok(!calls.some(c=>c.url.includes('/pending')||c.url.includes('/continue?')||c.url.includes('/process?')))
+  responseState={...dataset,deliveries:[delivery({...context,dataset_id:21})]}
   await assert.rejects(api.datasetProcessing('10','20'),/another/)
   console.log('Named breadcrumbs, real headers, delivery terminology, primary actions, stages, result variants, truthful rates, rules/retries, empty/ready views, responsive structure, private metadata filtering, scope isolation and refresh checks passed.')
 }

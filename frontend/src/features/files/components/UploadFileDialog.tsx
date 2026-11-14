@@ -1,3 +1,4 @@
+import {StartProcessingButton} from "../../ingestion/components/StartProcessingButton"
 import {
   FileSpreadsheet,
   Upload,
@@ -551,7 +552,8 @@ export function UploadFileDialog({
         </div>
 
         {!configuring && <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-end">
-          {uploadFeedback.state === "SUCCESS" && <Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-white" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/processing`} onClick={handleClose}>Go to Processing</Link>}
+          {uploadFeedback.state === "SUCCESS" && uploadFeedback.uploadId && <StartProcessingButton workspaceId={workspaceId} datasetId={datasetId} uploadId={uploadFeedback.uploadId} onStarted={handleClose}/>}
+          {uploadFeedback.state === "SUCCESS" && <Link className="inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 text-white" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/processing`} onClick={handleClose}>View processing</Link>}
           <Button
             type="button"
             variant="secondary"

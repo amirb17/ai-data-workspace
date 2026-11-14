@@ -1,3 +1,4 @@
+import {usePublicReadOnly} from "../../../services/publicLaunchContext"
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiFeedback } from '../../../components/ui/ApiFeedback'
@@ -35,6 +36,7 @@ export function RelationshipList({data,busy,generate,review}: {data: Relationshi
   </section>
 }
 function Content({workspaceId,data,reload}: {workspaceId: string; data: RelationshipsView; reload: () => void}) {
+  const readOnly=usePublicReadOnly()
   const [busy,setBusy] = useState(false), [error,setError] = useState('')
   const action = useRef<AbortController | null>(null)
   useEffect(()=>()=>action.current?.abort(),[])
@@ -58,5 +60,5 @@ function Content({workspaceId,data,reload}: {workspaceId: string; data: Relation
     } catch {if(!controller.signal.aborted)setError('Action could not complete. Reload current evidence and review state before retrying.')}
     finally {action.current=null;if(!controller.signal.aborted){setBusy(false);reload()}}
   }
-  return <>{error && <p role="alert" className="mb-4 text-red-700">{error}</p>}<RelationshipList data={data} busy={busy} generate={()=>void perform()} review={(c,a)=>void perform(c,a)}/></>
+  return <>{error && <p role="alert" className="mb-4 text-red-700">{error}</p>}<RelationshipList data={data} busy={busy || readOnly} generate={()=>void perform()} review={(c,a)=>void perform(c,a)}/></>
 }

@@ -60,7 +60,7 @@ async function main(){
  const choose=()=>{select(host.querySelectorAll('select')[0],'3');const input=host.querySelector('input[type=file]');const bytes=new TextEncoder().encode('id,amount\n1,1.20\n');Object.defineProperty(input,'files',{configurable:true,value:[{name:'orders.csv',size:bytes.length,arrayBuffer:async()=>bytes.buffer}]});input.dispatchEvent(new window.Event('change',{bubbles:true}))}
  await action(()=>render())
  assert.match(host.textContent,/XLSX is not yet supported/)
- assert.match(host.textContent,/Processing submission disabled/)
+ assert.match(host.textContent,/Processing awaiting approval/)
  assert.match(host.textContent,/No durable jobs recorded/)
  assert.equal([...host.querySelectorAll('button')].find(x=>x.textContent==='Run preview').disabled,true)
  await action(choose);await action(()=>click('Run preview'))
@@ -85,7 +85,7 @@ async function main(){
  assert.ok(calls.filter(c=>c.options.method==='POST').every(c=>c.url.endsWith('/csv-preview')))
  const {DatasetProcessingSummary}=require('../src/features/ingestion/components/DatasetProcessingSummary.tsx')
  await action(()=>root.render(React.createElement(DatasetProcessingSummary,{data:{deliveries:[],summary:{total:1,pending:1,successful:0,failed:0,awaiting_rules:0,needs_attention:0,processing:0}},busy:false,executionDisabled:true,process:()=>assert.fail('Disabled execution fired')})))
- const disabledRun=[...host.querySelectorAll('button')].find(x=>x.textContent.includes('Process Pending Deliveries'))
+ const disabledRun=[...host.querySelectorAll('button')].find(x=>x.textContent.includes('Start Process'))
  assert.ok(disabledRun.disabled)
  await action(()=>disabledRun.dispatchEvent(new window.MouseEvent('click',{bubbles:true})))
  await act(async()=>root.unmount());await window.happyDOM.close()

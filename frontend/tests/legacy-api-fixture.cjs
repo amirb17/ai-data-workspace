@@ -3,3 +3,5 @@
 const fs=require('node:fs'),ts=require('typescript')
 require.extensions['.ts']=(module,file)=>module._compile(ts.transpileModule(fs.readFileSync(file,'utf8').replaceAll('import.meta.env','({VITE_API_BASE_URL:"http://localhost:8000"})'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,file)
 require('../src/services/api/client.ts').setIdentityMode('development')
+
+require('../src/services/releaseFeatures.ts').useReleaseFeatures=()=>({checking:false,processing:true,rules:true,model:true,ask:true})

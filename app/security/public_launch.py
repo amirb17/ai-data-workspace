@@ -58,6 +58,18 @@ POLICY = {**AUTH,
 PROCESSING_ROUTES = {
     ('POST', '/files/uploads/{upload_id}/jobs'): 'app.api.processing_jobs.admit_stage',
 }
+MODEL_READ_ROUTES = {
+    ('GET', W + '/model-summary'): 'app.api.workspace_model.read',
+    ('GET', W + '/relationships'): 'app.api.relationships.read',
+    ('GET', W + '/relationships/readiness'): 'app.api.relationships.readiness',
+}
+ASK_AI_ROUTES = {
+    ('GET', W + '/questions/readiness'): 'app.api.workspace_questions.readiness',
+    ('GET', W + '/questions/answers'): 'app.api.workspace_questions.history',
+    ('GET', W + '/questions/answers/{answer_id}'): 'app.api.workspace_questions.answer',
+    ('POST', W + '/questions'): 'app.api.workspace_questions.ask',
+    ('POST', W + '/questions/answers/{answer_id}/refresh'): 'app.api.workspace_questions.refresh',
+}
 PROFILE_REFRESH_ROUTES = {
     ('POST', D + '/profile/refresh'): 'app.api.dataset_profiles.refresh',
 }
@@ -114,6 +126,8 @@ class LaunchSettings:
     sql_catalog_enabled: bool = False
     profile_refresh_enabled: bool = False
     sql_execution_enabled: bool = False
+    model_read_enabled: bool = False
+    ask_ai_enabled: bool = False
 
 
 def launch_settings():
@@ -180,10 +194,19 @@ def launch_settings():
         raise ValueError('Profile refresh requires analytics read opt-in')
     if sql_catalog == 'true' and analytics_read != 'true':
         raise ValueError('SQL catalog requires analytics read opt-in')
+    model_read = os.getenv('DATARISE_PUBLIC_MODEL_READ', 'false')
+    ask_ai = os.getenv('DATARISE_PUBLIC_ASK_AI', 'false')
+    if any(v not in ('true', 'false') for v in (model_read, ask_ai)):
+        raise ValueError('Invalid model or Ask AI opt-in')
+    if ask_ai == 'true':
+        from app.config import GEMINI_API_KEY
+        if not GEMINI_API_KEY or analytics_read != 'true' or model_read != 'true':
+            raise ValueError('Ask AI requires reviewed provider, model read and analytics read')
     return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true',
                           processing, rule_review == 'true', initial_append == 'true',
                           analytics_read == 'true', analytics_refresh == 'true', sql_catalog == 'true',
-                          profile_refresh == 'true', sql_execution == 'true')
+                          profile_refresh == 'true', sql_execution == 'true',
+                          model_read == 'true', ask_ai == 'true')
 
 
 def permitted(route, method, settings=None):
@@ -192,6 +215,12 @@ def permitted(route, method, settings=None):
         if settings is None or not settings.processing_enabled:
             return False
         name = PROCESSING_ROUTES[(method, path)]
+    elif (method, path) in MODEL_READ_ROUTES:
+        if settings is None or not settings.model_read_enabled: return False
+        name = MODEL_READ_ROUTES[(method, path)]
+    elif (method, path) in ASK_AI_ROUTES:
+        if settings is None or not settings.ask_ai_enabled: return False
+        name = ASK_AI_ROUTES[(method, path)]
     elif (method, path) in PROFILE_REFRESH_ROUTES:
         if settings is None or not settings.profile_refresh_enabled: return False
         name = PROFILE_REFRESH_ROUTES[(method,path)]
