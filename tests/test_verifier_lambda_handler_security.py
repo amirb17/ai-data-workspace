@@ -89,3 +89,44 @@ def test_handler_propagates_verification_failure(monkeypatch):
             {"candidate_id": CANDIDATE_ID},
             None,
         )
+
+
+def test_verification_failure_logs_only_safe_check_and_type(monkeypatch, caplog):
+    from app.processing_worker.verification_service import set_verification_step
+
+    def verifier(_candidate_id):
+        set_verification_step("GOLD_BASE")
+        raise ValueError("secret-row-data-and-internal-path")
+
+    monkeypatch.setattr(handler, "build_verifier", lambda: verifier)
+    with pytest.raises(RuntimeError, match="Verification failed"):
+        handler.lambda_handler({"candidate_id": CANDIDATE_ID}, None)
+
+    assert "check=GOLD_BASE" in caplog.text
+    assert "error=ValueError" in caplog.text
+    assert "secret-row-data-and-internal-path" not in caplog.text
+    assert CANDIDATE_ID not in caplog.text
+
+
+def test_diagnostic_check_resets_between_lambda_invocations(monkeypatch, caplog):
+    from app.processing_worker.verification_service import set_verification_step
+
+    def first(_candidate_id):
+        set_verification_step("GOLD_MART")
+        raise ValueError("internal data")
+
+    monkeypatch.setattr(handler, "build_verifier", lambda: first)
+    with pytest.raises(RuntimeError, match="Verification failed"):
+        handler.lambda_handler({"candidate_id": CANDIDATE_ID}, None)
+
+    caplog.clear()
+    def second(_candidate_id):
+        raise ValueError("another internal value")
+
+    monkeypatch.setattr(handler, "build_verifier", lambda: second)
+    with pytest.raises(RuntimeError, match="Verification failed"):
+        handler.lambda_handler({"candidate_id": CANDIDATE_ID}, None)
+
+    assert "check=UNSET" in caplog.text
+    assert "check=GOLD_MART" not in caplog.text
+    assert "another internal value" not in caplog.text
