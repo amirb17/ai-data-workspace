@@ -629,7 +629,7 @@ def get_dataset_profiles(file_id: int):
                     negative_count
                 FROM dataset_profiles
                 WHERE file_id = %s
-                ORDER BY profile_id;
+                ORDER BY column_name;
                 """,
                 (file_id,),
             )
