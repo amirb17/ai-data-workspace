@@ -8,6 +8,10 @@ It must not share database credentials with the processing worker.
 import logging
 from uuid import UUID
 from app.lambda_worker.verifier_runtime import build_verifier
+from app.processing_worker.verification_service import (
+    current_verification_step,
+    reset_verification_step,
+)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -47,6 +51,7 @@ def handle_verification(event, verifier):
 def lambda_handler(event, context):
     """AWS entry point; fail closed until runtime wiring is approved."""
 
+    reset_verification_step()
     phase = 'REQUEST'
     try:
         parse_candidate(event)  # Reject malformed requests before SDK/secret access.
@@ -64,5 +69,8 @@ def lambda_handler(event, context):
         raise PermissionError("Verifier deployment is not approved") from None
     except Exception as error:
         # Do not expose candidate evidence, database errors or credentials.
-        logger.warning("Artifact verification failed (phase=%s, error=%s)", phase, type(error).__name__)
+        logger.warning(
+            "Artifact verification failed (phase=%s, check=%s, error=%s)",
+            phase, current_verification_step(), type(error).__name__,
+        )
         raise RuntimeError("Verification failed") from None
