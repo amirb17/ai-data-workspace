@@ -110,6 +110,11 @@ def build_gold_plan(
         )
     """
 
+    # The worker may read physical profiles by insertion ID while the trusted
+    # verifier reads JSON profiles by column name. Planning MUST be invariant
+    # to storage/query order or valid Gold candidates fail verification.
+    profiles = sorted(profiles, key=lambda profile: profile[2])
+
     dimensions: list[str] = []
     measures: list[str] = []
     time_dimensions: list[str] = []
