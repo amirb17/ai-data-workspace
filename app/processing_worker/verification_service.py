@@ -3,7 +3,32 @@
 This module does not authorize real processing or access AWS directly.
 """
 
+from contextvars import ContextVar
+
 from app.processing_worker.artifact_contract import verify_candidate
+
+# Invocation-local diagnostic state. Never contain IDs, keys, SQL or row data.
+_VERIFICATION_STEP = ContextVar("verification_step", default="UNSET")
+_SAFE_STEPS = frozenset({
+    "REGISTRY", "INPUT_AUTHORIZATION", "MANIFEST", "ARTIFACT_CONTRACT",
+    "PARQUET", "STAGE_REPLAY", "GOLD_PLAN", "GOLD_ACCOUNTING",
+    "GOLD_BASE", "GOLD_MART", "ATTESTATION",
+})
+
+
+def reset_verification_step():
+    _VERIFICATION_STEP.set("UNSET")
+
+
+def set_verification_step(step):
+    if step not in _SAFE_STEPS:
+        raise ValueError("Unsupported verifier diagnostic step")
+    _VERIFICATION_STEP.set(step)
+
+
+def current_verification_step():
+    return _VERIFICATION_STEP.get()
+
 
 
 class RegistryVerifier:
@@ -27,6 +52,7 @@ class RegistryVerifier:
         storage = VersionedArtifacts(self.storage.client, self.storage.bucket,
             max_bytes=self.storage.max_bytes, max_total_bytes=self.storage.max_total_bytes,
             checkpoint=self.storage.checkpoint)
+        set_verification_step('REGISTRY')
         with self.connection() as conn:
             from app.processing_worker.runtime_security import require_runtime
             require_runtime(conn, 'verifier', isolated_test=self.isolated_test)
@@ -40,9 +66,11 @@ class RegistryVerifier:
         # Authorize all source/upstream identities BEFORE making any storage call.
         # Registry INSERT permissions alone must not turn the verifier into a
         # deputy for reading arbitrary keys. Final verification repeats the fence.
+        set_verification_step('INPUT_AUTHORIZATION')
         with self.connection() as conn:
             conn.execute('SELECT task20_require_input(%s,%s,%s)',
                 (registered['job_id'], registered['lease_token'], Jsonb(registered['input_contract'])))
+        set_verification_step('MANIFEST')
         manifest = ObjectIdentity.decode(registered['manifest_identity'])
         prefix = f'artifact-candidates/{candidate_id}/'
         if manifest.key != prefix+'manifest.json':
@@ -61,10 +89,12 @@ class RegistryVerifier:
                 raise ValueError('Unregistered artifact access')
             payloads[key] = storage.read(allowed[key])
             return payloads[key]
+        set_verification_step('ARTIFACT_CONTRACT')
         evidence = verify_candidate(storage.read(manifest), manifest_sha256=registered['manifest_sha256'],
             intent_id=registered['intent_id'], candidate_id=candidate_id, stage=registered['stage'],
             input_fingerprint=registered['input_fingerprint'], expected_roles=frozenset(objects),
             read_artifact=read, max_artifact_bytes=storage.max_bytes)
+        set_verification_step('PARQUET')
         inspected, frames = {}, {}
         for role, identity in objects.items():
             if role == 'skip' and registered['stage'] == 'GOLD':
@@ -90,6 +120,7 @@ class RegistryVerifier:
             inspected[role] = {'rows': table.num_rows, 'columns': table.column_names,
                                'schema': str(table.schema)}
             frames[role] = table.to_pandas()
+        set_verification_step('STAGE_REPLAY')
         stage = registered['stage']
         if stage == 'BRONZE':
             if set(objects) != {'data','lexical'} or inspected['data']['rows'] != inspected['lexical']['rows']:
@@ -131,7 +162,9 @@ class RegistryVerifier:
                 valid = conn.execute('SELECT valid_rows FROM data_quality_runs WHERE dq_run_id=%s', (contract['dq_run'],)).fetchone()[0]
             fields = ('profile_id','file_id','column_name','inferred_type','null_count','distinct_count',
                       'duplicate_count','min_value','max_value','negative_count')
+            set_verification_step('GOLD_PLAN')
             plan = build_gold_plan([tuple(p[k] for k in fields) for p in contract['profiles']])
+            set_verification_step('GOLD_ACCOUNTING')
             required = {'skip'} if valid == 0 else {'base', *('mart_'+p.artifact_name for p in plan.artifacts)}
             if set(objects) != required or (valid and inspected['base']['rows'] != valid):
                 raise ValueError('Gold publication does not match pinned plan/DQ')
@@ -140,13 +173,16 @@ class RegistryVerifier:
                 from app.processing.gold_mart_builder import build_mart
                 source = pd.read_parquet(io.BytesIO(storage.read(ObjectIdentity.decode(contract['upstream_artifacts']['data']))))
                 expected = source.drop(columns=[c for c in ('_dq_violations','_dq_violation_count','_dq_is_valid') if c in source])
+                set_verification_step('GOLD_BASE')
                 pd.testing.assert_frame_equal(frames['base'].drop(columns=['_gold_published_at','_gold_attempt_id']),
                                                expected, check_dtype=False, check_exact=True)
                 for artifact in plan.artifacts:
+                    set_verification_step('GOLD_MART')
                     pd.testing.assert_frame_equal(frames['mart_'+artifact.artifact_name],
                         build_mart(df=frames['base'],plan=artifact), check_dtype=False, check_exact=True)
         report = {'manifest_sha256': evidence.manifest_sha256, 'manifest_identity': asdict(manifest),
                   'artifacts': {r: asdict(v) for r,v in objects.items()}, 'parquet': inspected}
+        set_verification_step('ATTESTATION')
         with self.connection() as conn:
             conn.execute('SELECT task20_verify(%s,%s,%s,%s)',
                 (registered['job_id'], registered['lease_token'], candidate_id, Jsonb(report)))
