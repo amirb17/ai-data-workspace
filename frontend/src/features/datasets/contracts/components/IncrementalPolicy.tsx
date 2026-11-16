@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import { useCallback, useState } from "react"
 import { getIncrementalFoundation, saveLoadPolicy, type LoadStrategy, type IncrementalFoundation, type SnapshotCoverage } from "../../../../services/api/incremental"
 import { useApiResource } from "../../../../services/api/useApiResource"
@@ -21,7 +22,7 @@ export function IncrementalPolicy({ workspaceId, datasetId, browserContract, sum
     <h3 className="font-semibold">Incremental dataset policy</h3>
     <p className="text-sm text-slate-600">These settings are saved on the backend. APPEND updates the trusted dataset after Silver validation; UPSERT can insert and update records. SNAPSHOT preserves record history with explicit coverage. Refresh Analytics separately to build cumulative results from trusted state.</p>
     {resource.data ? <PolicyContent key={`${workspaceId}:${datasetId}:${resource.data.policies.at(-1)?.policy_id ?? 0}`} data={resource.data} workspaceId={workspaceId} datasetId={datasetId} browserContract={browserContract} summaryOnly={summaryOnly} refresh={resource.retry} />
-      : <ApiFeedback loading="Loading incremental settings…" error={resource.error} retry={resource.retry} />}
+      : resource.error ? <div role="alert" className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-semibold">Load policy is temporarily unavailable</p><p>The backend denied or could not complete the policy request. Your rule approval has not been lost. You can continue to the Processing page to review the delivery, but Silver and Gold require a valid backend policy and authorization.</p><p className="break-words text-xs">{resource.error}</p><div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={resource.retry}>Retry policy request</Button><Link className="inline-flex min-h-11 items-center rounded-lg border border-amber-300 px-4 font-medium" to={`/app/workspaces/${workspaceId}/datasets/${datasetId}/processing`}>View Processing and next steps</Link></div></div> : <ApiFeedback loading="Loading incremental settings…" retry={resource.retry} /> }
   </section>
 }
 function PolicyContent({ data, workspaceId, datasetId, browserContract, summaryOnly, refresh }: {
