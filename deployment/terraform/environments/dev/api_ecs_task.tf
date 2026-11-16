@@ -84,6 +84,16 @@ variable "api_enable_analytics_refresh" {
   }
 }
 
+variable "api_enable_relationship_write" {
+  description = "Explicitly allow authenticated relationship discovery and reviewed confirm/reject; requires processing and model reads"
+  type        = bool
+  default     = false
+  validation {
+    condition = !var.api_enable_relationship_write || (var.api_enable_processing_jobs && var.api_enable_model_read)
+    error_message = "Relationship writes require approved processing and model read access."
+  }
+}
+
 variable "api_enable_model_read" {
   description = "Reviewed authenticated model and relationship metadata read, default off"
   type        = bool
@@ -184,6 +194,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "DATARISE_PUBLIC_ANALYTICS_REFRESH", value = tostring(var.api_enable_analytics_refresh) },
       { name = "DATARISE_PUBLIC_SQL_CATALOG", value = tostring(var.api_enable_sql_catalog) },
       { name = "DATARISE_PUBLIC_MODEL_READ", value = tostring(var.api_enable_model_read) },
+      { name = "DATARISE_PUBLIC_RELATIONSHIP_WRITE", value = tostring(var.api_enable_relationship_write) },
       { name = "DATARISE_PUBLIC_SQL_EXECUTION", value = tostring(var.api_enable_sql_execution) },
       { name = "DATARISE_PUBLIC_PROFILE_REFRESH", value = tostring(var.api_enable_profile_refresh) },
       { name = "DATARISE_PROCESSING_DEPLOYMENT_APPROVED", value = tostring(var.api_enable_processing_jobs) },
