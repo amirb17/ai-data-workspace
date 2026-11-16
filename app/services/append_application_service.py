@@ -472,9 +472,11 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
         correlation=uuid4().hex
         started=time.monotonic()
         head=None; state_id=None
+        phase='APPLICATION_START'
         try:
             with repository_transaction() as conn:
                 application=conn.cursor(row_factory=dict_row).execute("UPDATE delivery_applications SET status='RUNNING',started_at=NOW(),completed_at=NULL,failure_code=NULL WHERE application_id=%s RETURNING *",(application['application_id'],)).fetchone()
+            phase='DELIVERY_MANIFEST'
             store=IncrementalArtifacts()
             manifest, incoming = delivery_manifest(
             store,
@@ -484,6 +486,7 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
             exact_rules=exact_rules,
             )
 
+            phase='CURRENT_STATE'
             head, current = current_state(
             store,
             application,
@@ -508,9 +511,11 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
                 with get_connection() as conn:
                     prior=conn.execute('SELECT snapshot_boundary_at FROM delivery_applications WHERE application_id=%s',(head['source_application_id'],)).fetchone() if head else None
                 application['previous_snapshot_boundary_at']=prior[0] if prior else None
+            phase='ROW_MERGE'
             engine=snapshot_rows if mode=='SNAPSHOT' else upsert_rows if mode=='UPSERT' else append_rows
             candidate,counts,outcomes=engine(current,incoming,policy,application)
             if mode=='APPEND' and len(current): pd.testing.assert_frame_equal(candidate.iloc[:len(current)].reset_index(drop=True),current.reset_index(drop=True),check_dtype=False,check_exact=True)
+            phase='CANDIDATE_STORAGE'
             prefix = (
                 f"silver/dataset_id={dataset_id}/"
                 f"dataset_version_id={application['dataset_version_id']}/"
@@ -555,6 +560,7 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
             if mode=='SNAPSHOT':
                 state_manifest.update({k:application[k] for k in ('snapshot_coverage','snapshot_effective_at','snapshot_boundary_at','snapshot_outcome','delivery_kind')})
             manifest_key=prefix+'manifest.json'; manifest_hash=store.put(manifest_key,store.json(state_manifest))
+            phase='CANDIDATE_REGISTRATION'
             with repository_transaction() as conn:
                 state_id=conn.execute('''INSERT INTO dataset_state_versions(dataset_id,dataset_version_id,policy_id,source_application_id,previous_state_id,state_version,manifest_key,manifest_sha256)
                     VALUES (%s,%s,%s,%s,%s,(SELECT COALESCE(MAX(state_version),0)+1 FROM dataset_state_versions WHERE dataset_id=%s),%s,%s) RETURNING state_id,state_version''',
@@ -574,6 +580,7 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
                 )
 
             # Verify candidate state before publication.
+            phase='CANDIDATE_VERIFICATION'
             verified = store.validate_state(
                 manifest_key,
                 manifest_hash,
@@ -587,6 +594,7 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
                 from app.processing.snapshot_engine import validate_snapshot_transition
                 validate_snapshot_transition(current,verified,policy,application,counts,outcomes)
             if len(candidate)!=len(current)+counts['inserted_rows']: raise ValueError('Dataset state count invariant failed')
+            phase='ATOMIC_STATE_PUBLICATION'
             with repository_transaction() as conn:
                 conn.execute("UPDATE dataset_state_versions SET status='VALIDATED',validated_at=NOW(),row_count=%s WHERE state_id=%s",(len(candidate),state_id))
                 conn.execute('''UPDATE delivery_applications SET inserted_rows=%s,duplicate_rows=%s,incremental_rejected_rows=%s,
@@ -610,7 +618,7 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
                 conn.execute("UPDATE delivery_applications SET status='FAILED',failure_code='APPLICATION_FAILED',completed_at=NOW() WHERE application_id=%s AND status <> 'SUCCESS'",(application['application_id'],))
             if committed:
                 raise RuntimeError('Dataset update completed; response interrupted. Refresh or retry to retrieve the saved result') from exc
-            logger.warning('Dataset application status=FAILED mode=%s correlation=%s dataset=%s upload=%s application=%s source_version=%s candidate=%s policy=%s duration=%.3f',mode,correlation,dataset_id,upload_id,application['application_id'],head['state_version'] if head else None,state_id,policy['policy_id'],time.monotonic()-started)
+            logger.warning('Dataset application status=FAILED mode=%s correlation=%s dataset=%s upload=%s application=%s source_version=%s candidate=%s policy=%s phase=%s error_class=%s duration=%.3f',mode,correlation,dataset_id,upload_id,application['application_id'],head['state_version'] if head else None,state_id,policy['policy_id'],phase,type(exc).__name__,time.monotonic()-started)
             raise RuntimeError('Dataset update could not be published; previous trusted state remains active') from exc
 
 
