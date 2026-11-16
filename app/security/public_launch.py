@@ -63,6 +63,12 @@ MODEL_READ_ROUTES = {
     ('GET', W + '/relationships'): 'app.api.relationships.read',
     ('GET', W + '/relationships/readiness'): 'app.api.relationships.readiness',
 }
+# Explicit opt-in for relationship discovery and review. No broad write grant.
+RELATIONSHIP_WRITE_ROUTES = {
+    ('POST', W + '/relationships/discover'): 'app.api.relationships.generate',
+    ('POST', W + '/relationships/candidates/{candidate_id}/confirm'): 'app.api.relationships.confirm',
+    ('POST', W + '/relationships/candidates/{candidate_id}/reject'): 'app.api.relationships.reject',
+}
 PROFILE_REFRESH_ROUTES = {
     ('POST', D + '/profile/refresh'): 'app.api.dataset_profiles.refresh',
 }
@@ -120,6 +126,7 @@ class LaunchSettings:
     profile_refresh_enabled: bool = False
     sql_execution_enabled: bool = False
     model_read_enabled: bool = False
+    relationship_write_enabled: bool = False
 
 
 def launch_settings():
@@ -177,12 +184,15 @@ def launch_settings():
     profile_refresh = os.getenv('DATARISE_PUBLIC_PROFILE_REFRESH', 'false')
     sql_execution = os.getenv('DATARISE_PUBLIC_SQL_EXECUTION', 'false')
     model_read = os.getenv('DATARISE_PUBLIC_MODEL_READ', 'false')
-    if any(v not in ('true', 'false') for v in (analytics_read, analytics_refresh, sql_catalog, profile_refresh, sql_execution, model_read)):
+    relationship_write = os.getenv('DATARISE_PUBLIC_RELATIONSHIP_WRITE', 'false')
+    if any(v not in ('true', 'false') for v in (analytics_read, analytics_refresh, sql_catalog, profile_refresh, sql_execution, model_read, relationship_write)):
         raise ValueError('Invalid analytics or SQL public opt-in')
     if analytics_refresh == 'true' and analytics_read != 'true':
         raise ValueError('Analytics refresh requires analytics read opt-in')
     if model_read == 'true' and analytics_read != 'true':
         raise ValueError('Model read requires approved analytics read')
+    if relationship_write == 'true' and not (processing and model_read == 'true'):
+        raise ValueError('Relationship writes require approved processing and model reads')
     if sql_execution == 'true' and sql_catalog != 'true':
         raise ValueError('SQL execution requires approved SQL catalog')
     if profile_refresh == 'true' and analytics_read != 'true':
@@ -192,7 +202,8 @@ def launch_settings():
     return LaunchSettings(True, hosts, trust == 'true', creation == 'true', upload == 'true',
                           processing, rule_review == 'true', initial_append == 'true',
                           analytics_read == 'true', analytics_refresh == 'true', sql_catalog == 'true',
-                          profile_refresh == 'true', sql_execution == 'true', model_read == 'true')
+                          profile_refresh == 'true', sql_execution == 'true', model_read == 'true',
+                          relationship_write == 'true')
 
 
 def permitted(route, method, settings=None):
@@ -204,6 +215,10 @@ def permitted(route, method, settings=None):
     elif (method, path) in MODEL_READ_ROUTES:
         if settings is None or not settings.model_read_enabled: return False
         name = MODEL_READ_ROUTES[(method,path)]
+    elif (method, path) in RELATIONSHIP_WRITE_ROUTES:
+        if settings is None or not settings.relationship_write_enabled:
+            return False
+        name = RELATIONSHIP_WRITE_ROUTES[(method, path)]
     elif (method, path) in PROFILE_REFRESH_ROUTES:
         if settings is None or not settings.profile_refresh_enabled: return False
         name = PROFILE_REFRESH_ROUTES[(method,path)]
