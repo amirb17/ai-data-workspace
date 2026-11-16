@@ -596,14 +596,19 @@ def apply_incremental(workspace_id,dataset_id,user,upload_id):
             if len(candidate)!=len(current)+counts['inserted_rows']: raise ValueError('Dataset state count invariant failed')
             phase='ATOMIC_STATE_PUBLICATION'
             with repository_transaction() as conn:
+                phase='STATE_VALIDATION_UPDATE'
                 conn.execute("UPDATE dataset_state_versions SET status='VALIDATED',validated_at=NOW(),row_count=%s WHERE state_id=%s",(len(candidate),state_id))
+                phase='APPLICATION_ACCOUNTING_UPDATE'
                 conn.execute('''UPDATE delivery_applications SET inserted_rows=%s,duplicate_rows=%s,incremental_rejected_rows=%s,
                     updated_rows=%s,unchanged_rows=%s,conflict_rows=%s,stale_rows=%s,deactivated_rows=%s,
                     reactivated_rows=%s,active_rows=%s,inactive_rows=%s,snapshot_boundary_at=%s,snapshot_outcome=%s WHERE application_id=%s''',
                     (counts['inserted_rows'],counts['duplicate_rows'],counts['incremental_rejected_rows'],counts.get('updated_rows'),counts.get('unchanged_rows'),counts.get('conflict_rows'),counts.get('stale_rows'),counts.get('deactivated_rows'),
                      counts.get('reactivated_rows'),counts.get('active_rows'),counts.get('inactive_rows'),application.get('snapshot_boundary_at'),application.get('snapshot_outcome'),application['application_id']))
+                phase='TRUSTED_PUBLICATION_FUNCTION'
                 result=_publish_metadata(conn,workspace_id,dataset_id,user,application['application_id'])
+                phase='ANALYTICS_INVALIDATION'
                 conn.execute("UPDATE datasets SET state_analytics_status='STALE' WHERE dataset_id=%s",(dataset_id,))
+            phase='POST_COMMIT'
             # Log success/return only after COMMIT; response-loss retry reads durable success.
             if mode=='SNAPSHOT':
                 logger.info('Snapshot context dataset=%s upload=%s application=%s coverage=%s effective_time=%s boundary=%s kind=%s outcome=%s',dataset_id,upload_id,application['application_id'],application['snapshot_coverage'],application['snapshot_effective_at'],application['snapshot_boundary_at'],application['delivery_kind'],application['snapshot_outcome'])
