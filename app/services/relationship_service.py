@@ -32,10 +32,15 @@ class BoundedArtifacts(IncrementalArtifacts):
 
 def gather(conn, workspace, user, lock=False):
     c = conn.cursor(row_factory=dict_row)
-    w = c.execute('SELECT * FROM workspaces WHERE workspace_id=%s'+(' FOR UPDATE' if lock else ''),(workspace,)).fetchone()
+    # A reviewed, SECURITY DEFINER function locks these heads within the caller's
+    # transaction. The API never needs UPDATE on workspace/dataset business columns.
+    if lock:
+        conn.execute('SELECT public.lock_relationship_sources(%s,%s)',
+                     (workspace, user['owner_key']))
+    w = c.execute('SELECT * FROM workspaces WHERE workspace_id=%s',(workspace,)).fetchone()
     if not w: raise HTTPException(404,'Workspace not found')
     if w['owner'] != user['owner_key']: raise HTTPException(403,'Workspace access denied')
-    rows = c.execute('SELECT * FROM datasets WHERE workspace_id=%s ORDER BY dataset_id'+(' FOR UPDATE' if lock else ''),(workspace,)).fetchall()
+    rows = c.execute('SELECT * FROM datasets WHERE workspace_id=%s ORDER BY dataset_id',(workspace,)).fetchall()
     eligible = []; excluded = []; membership = source_membership(conn,workspace,rows)
     for row in rows:
         reason = ('OWNERSHIP_MISMATCH' if row['owner']!=user['owner_key'] else
