@@ -3,8 +3,8 @@ from pathlib import Path
 
 from app.services import relationship_service
 
-PREPARE = Path("migrations/0048_relationship_lock_prepare.sql")
-REVOKE = Path("migrations/0049_relationship_lock_revoke.sql")
+PREPARE = Path("migrations/0100_relationship_lock_prepare.sql")
+REVOKE = Path("migrations/0101_relationship_lock_revoke.sql")
 
 
 def test_relationship_service_uses_scoped_lock_capability():
