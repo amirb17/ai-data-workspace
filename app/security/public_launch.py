@@ -89,6 +89,13 @@ SQL_EXECUTION_ROUTES = {
     ('PATCH', W + '/sql/queries/{query_id}'): 'app.api.sql_analytics.update',
     ('DELETE', W + '/sql/queries/{query_id}'): 'app.api.sql_analytics.delete',
 }
+ASK_AI_ROUTES = {
+    ('GET', W + '/questions/readiness'): 'app.api.workspace_questions.readiness',
+    ('POST', W + '/questions'): 'app.api.workspace_questions.ask',
+    ('GET', W + '/questions/answers'): 'app.api.workspace_questions.history',
+    ('GET', W + '/questions/answers/{answer_id}'): 'app.api.workspace_questions.answer',
+    ('POST', W + '/questions/answers/{answer_id}/refresh'): 'app.api.workspace_questions.refresh',
+}
 SQL_CATALOG_ROUTES = {
     ('GET', W + '/sql/catalog'): 'app.api.sql_analytics.read_catalog',
 }
@@ -127,6 +134,7 @@ class LaunchSettings:
     sql_execution_enabled: bool = False
     model_read_enabled: bool = False
     relationship_write_enabled: bool = False
+    ask_ai_enabled: bool = False
 
 
 def launch_settings():
@@ -185,7 +193,8 @@ def launch_settings():
     sql_execution = os.getenv('DATARISE_PUBLIC_SQL_EXECUTION', 'false')
     model_read = os.getenv('DATARISE_PUBLIC_MODEL_READ', 'false')
     relationship_write = os.getenv('DATARISE_PUBLIC_RELATIONSHIP_WRITE', 'false')
-    if any(v not in ('true', 'false') for v in (analytics_read, analytics_refresh, sql_catalog, profile_refresh, sql_execution, model_read, relationship_write)):
+    ask_ai = os.getenv('DATARISE_PUBLIC_ASK_AI', 'false')
+    if any(v not in ('true', 'false') for v in (analytics_read, analytics_refresh, sql_catalog, profile_refresh, sql_execution, model_read, relationship_write, ask_ai)):
         raise ValueError('Invalid analytics or SQL public opt-in')
     if analytics_refresh == 'true' and analytics_read != 'true':
         raise ValueError('Analytics refresh requires analytics read opt-in')
@@ -193,6 +202,8 @@ def launch_settings():
         raise ValueError('Model read requires approved analytics read')
     if relationship_write == 'true' and not (processing and model_read == 'true'):
         raise ValueError('Relationship writes require approved processing and model reads')
+    if ask_ai == 'true' and not (processing and analytics_read == 'true' and model_read == 'true'):
+        raise ValueError('Ask AI requires approved processing, analytics read and model reads')
     if sql_execution == 'true' and sql_catalog != 'true':
         raise ValueError('SQL execution requires approved SQL catalog')
     if profile_refresh == 'true' and analytics_read != 'true':
@@ -203,7 +214,7 @@ def launch_settings():
                           processing, rule_review == 'true', initial_append == 'true',
                           analytics_read == 'true', analytics_refresh == 'true', sql_catalog == 'true',
                           profile_refresh == 'true', sql_execution == 'true', model_read == 'true',
-                          relationship_write == 'true')
+                          relationship_write == 'true', ask_ai == 'true')
 
 
 def permitted(route, method, settings=None):
@@ -228,6 +239,9 @@ def permitted(route, method, settings=None):
     elif (method, path) in ANALYTICS_REFRESH_ROUTES:
         if settings is None or not settings.analytics_refresh_enabled: return False
         name = ANALYTICS_REFRESH_ROUTES[(method, path)]
+    elif (method, path) in ASK_AI_ROUTES:
+        if settings is None or not settings.ask_ai_enabled: return False
+        name = ASK_AI_ROUTES[(method, path)]
     elif (method, path) in SQL_EXECUTION_ROUTES:
         if settings is None or not settings.sql_execution_enabled: return False
         name = SQL_EXECUTION_ROUTES[(method,path)]
