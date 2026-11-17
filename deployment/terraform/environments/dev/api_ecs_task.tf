@@ -146,6 +146,31 @@ variable "api_enable_processing_jobs" {
   default     = false
 }
 
+variable "api_enable_ask_ai" {
+  description = "Default-off authenticated workspace Ask AI, requires reviewed processing, analytics and model reads plus a Gemini secret"
+  type        = bool
+  default     = false
+  validation {
+    condition = !var.api_enable_ask_ai || (
+      var.api_enable_processing_jobs &&
+      var.api_enable_analytics_read &&
+      var.api_enable_model_read &&
+      var.api_gemini_secret_arn != ""
+    )
+    error_message = "Ask AI requires approved processing, analytics/model reads and an explicit Gemini secret ARN."
+  }
+}
+
+variable "api_gemini_secret_arn" {
+  description = "ARN of Gemini API key secret, supplied as plaintext secret value; never the API key itself"
+  type        = string
+  default     = ""
+  validation {
+    condition = var.api_gemini_secret_arn == "" || can(regex("^arn:aws:secretsmanager:ap-southeast-2:[0-9]{12}:secret:datarise/dev/gemini-api-key-[A-Za-z0-9]+$", var.api_gemini_secret_arn))
+    error_message = "Use only the reviewed Sydney DataRise development Gemini secret."
+  }
+}
+
 variable "api_task_cpu" {
   description = "Fargate CPU units; 512 is an initial allocation pending memory profiling"
   type        = number
@@ -195,6 +220,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "DATARISE_PUBLIC_SQL_CATALOG", value = tostring(var.api_enable_sql_catalog) },
       { name = "DATARISE_PUBLIC_MODEL_READ", value = tostring(var.api_enable_model_read) },
       { name = "DATARISE_PUBLIC_RELATIONSHIP_WRITE", value = tostring(var.api_enable_relationship_write) },
+      { name = "DATARISE_PUBLIC_ASK_AI", value = tostring(var.api_enable_ask_ai) },
       { name = "DATARISE_PUBLIC_SQL_EXECUTION", value = tostring(var.api_enable_sql_execution) },
       { name = "DATARISE_PUBLIC_PROFILE_REFRESH", value = tostring(var.api_enable_profile_refresh) },
       { name = "DATARISE_PROCESSING_DEPLOYMENT_APPROVED", value = tostring(var.api_enable_processing_jobs) },
@@ -224,6 +250,8 @@ resource "aws_ecs_task_definition" "api" {
     ], var.enable_api_smtp_delivery ? [
       { name = "SMTP_USERNAME", valueFrom = "${var.api_smtp_secret_arn}:username::" },
       { name = "SMTP_PASSWORD", valueFrom = "${var.api_smtp_secret_arn}:password::" }
+    ] : [], var.api_enable_ask_ai ? [
+      { name = "GEMINI_API_KEY", valueFrom = var.api_gemini_secret_arn }
     ] : [])
     logConfiguration = {
       logDriver = "awslogs"
@@ -246,7 +274,8 @@ resource "aws_ecs_task_definition" "api" {
         (!var.api_enable_initial_append || var.api_enable_processing_jobs) &&
         var.api_backend_origin == "https://${var.api_public_host}" &&
         startswith(var.api_auth_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:") &&
-        startswith(var.api_database_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:"))
+        startswith(var.api_database_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:") &&
+        (!var.api_enable_ask_ai || startswith(var.api_gemini_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:")))
       error_message = "Task needs reviewed ECR/foundation/role, matching HTTPS host and Sydney Secrets Manager ARNs."
     }
     # ECS task definitions are immutable. skip_destroy retains old revisions
@@ -254,12 +283,12 @@ resource "aws_ecs_task_definition" "api" {
   }
 }
 
-# Fargate agent must fetch ONLY these two approved API secrets.
+# Fargate agent may fetch only the explicitly configured API secrets.
 data "aws_iam_policy_document" "api_execution_secrets" {
   count = var.enable_api_task_definition ? 1 : 0
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = concat([var.api_auth_secret_arn, var.api_database_secret_arn], var.enable_api_smtp_delivery ? [var.api_smtp_secret_arn] : [])
+    resources = concat([var.api_auth_secret_arn, var.api_database_secret_arn], var.enable_api_smtp_delivery ? [var.api_smtp_secret_arn] : [], var.api_enable_ask_ai ? [var.api_gemini_secret_arn] : [])
   }
 }
 
