@@ -79,7 +79,7 @@ variable "api_enable_analytics_refresh" {
   type        = bool
   default     = false
   validation {
-    condition = !var.api_enable_analytics_refresh || var.api_enable_analytics_read
+    condition     = !var.api_enable_analytics_refresh || var.api_enable_analytics_read
     error_message = "Analytics refresh requires analytics read to be enabled."
   }
 }
@@ -89,7 +89,7 @@ variable "api_enable_relationship_write" {
   type        = bool
   default     = false
   validation {
-    condition = !var.api_enable_relationship_write || (var.api_enable_processing_jobs && var.api_enable_model_read)
+    condition     = !var.api_enable_relationship_write || (var.api_enable_processing_jobs && var.api_enable_model_read)
     error_message = "Relationship writes require approved processing and model read access."
   }
 }
@@ -99,7 +99,7 @@ variable "api_enable_model_read" {
   type        = bool
   default     = false
   validation {
-    condition = !var.api_enable_model_read || var.api_enable_analytics_read
+    condition     = !var.api_enable_model_read || var.api_enable_analytics_read
     error_message = "Model read requires approved Analytics read."
   }
 }
@@ -109,7 +109,7 @@ variable "api_enable_sql_execution" {
   type        = bool
   default     = false
   validation {
-    condition = !var.api_enable_sql_execution || var.api_enable_sql_catalog
+    condition     = !var.api_enable_sql_execution || var.api_enable_sql_catalog
     error_message = "SQL execution requires approved SQL catalog access."
   }
 }
@@ -119,7 +119,7 @@ variable "api_enable_profile_refresh" {
   type        = bool
   default     = false
   validation {
-    condition = !var.api_enable_profile_refresh || var.api_enable_analytics_read
+    condition     = !var.api_enable_profile_refresh || var.api_enable_analytics_read
     error_message = "Profile refresh requires enabled analytics read."
   }
 }
@@ -129,7 +129,7 @@ variable "api_enable_sql_catalog" {
   type        = bool
   default     = false
   validation {
-    condition = !var.api_enable_sql_catalog || var.api_enable_analytics_read
+    condition     = !var.api_enable_sql_catalog || var.api_enable_analytics_read
     error_message = "SQL catalog requires analytics read to be enabled."
   }
 }
@@ -144,6 +144,31 @@ variable "api_enable_processing_jobs" {
   description = "Explicit reviewed opt-in for authenticated asynchronous processing admission; never enables dispatcher authority on the API"
   type        = bool
   default     = false
+}
+
+variable "api_enable_ask_ai" {
+  description = "Default-off authenticated workspace Ask AI, requires reviewed processing, analytics and model reads plus a Gemini secret"
+  type        = bool
+  default     = false
+  validation {
+    condition = !var.api_enable_ask_ai || (
+      var.api_enable_processing_jobs &&
+      var.api_enable_analytics_read &&
+      var.api_enable_model_read &&
+      var.api_gemini_secret_arn != ""
+    )
+    error_message = "Ask AI requires approved processing, analytics/model reads and an explicit Gemini secret ARN."
+  }
+}
+
+variable "api_gemini_secret_arn" {
+  description = "ARN of Gemini API key secret, supplied as plaintext secret value; never the API key itself"
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.api_gemini_secret_arn == "" || can(regex("^arn:aws:secretsmanager:ap-southeast-2:[0-9]{12}:secret:datarise/dev/gemini-api-key-[A-Za-z0-9]+$", var.api_gemini_secret_arn))
+    error_message = "Use only the reviewed Sydney DataRise development Gemini secret."
+  }
 }
 
 variable "api_task_cpu" {
@@ -166,10 +191,10 @@ resource "aws_ecs_task_definition" "api" {
   cpu                      = tostring(var.api_task_cpu)
   memory                   = tostring(var.api_task_memory)
   # Preserve prior ECS revisions when registering a replacement for rollback.
-  skip_destroy             = true
-  execution_role_arn       = aws_iam_role.api_ecs_execution[0].arn
-  task_role_arn            = var.enable_api_s3_csv_upload ? aws_iam_role.api_s3_upload_task[0].arn : null
-  depends_on               = [aws_iam_role_policy.api_s3_upload]
+  skip_destroy       = true
+  execution_role_arn = aws_iam_role.api_ecs_execution[0].arn
+  task_role_arn      = var.enable_api_s3_csv_upload ? aws_iam_role.api_s3_upload_task[0].arn : null
+  depends_on         = [aws_iam_role_policy.api_s3_upload]
 
   container_definitions = jsonencode([{
     name      = "api"
@@ -195,6 +220,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "DATARISE_PUBLIC_SQL_CATALOG", value = tostring(var.api_enable_sql_catalog) },
       { name = "DATARISE_PUBLIC_MODEL_READ", value = tostring(var.api_enable_model_read) },
       { name = "DATARISE_PUBLIC_RELATIONSHIP_WRITE", value = tostring(var.api_enable_relationship_write) },
+      { name = "DATARISE_PUBLIC_ASK_AI", value = tostring(var.api_enable_ask_ai) },
       { name = "DATARISE_PUBLIC_SQL_EXECUTION", value = tostring(var.api_enable_sql_execution) },
       { name = "DATARISE_PUBLIC_PROFILE_REFRESH", value = tostring(var.api_enable_profile_refresh) },
       { name = "DATARISE_PROCESSING_DEPLOYMENT_APPROVED", value = tostring(var.api_enable_processing_jobs) },
@@ -204,10 +230,10 @@ resource "aws_ecs_task_definition" "api" {
       { name = "DATARISE_PUBLIC_CSV_UPLOAD", value = tostring(var.api_s3_csv_public_live) },
       { name = "ENABLE_DEV_IDENTITY", value = "false" },
       { name = "WAREHOUSE_ENABLED", value = "false" }
-    ], var.enable_api_s3_csv_upload ? [
+      ], var.enable_api_s3_csv_upload ? [
       { name = "AWS_REGION", value = var.api_s3_upload_region },
       { name = "S3_BUCKET_NAME", value = var.api_s3_upload_bucket }
-    ] : [], var.enable_api_smtp_delivery ? [
+      ] : [], var.enable_api_smtp_delivery ? [
       { name = "AUTH_EMAIL_BACKEND", value = "smtp" },
       { name = "SMTP_HOST", value = var.api_smtp_host },
       { name = "SMTP_PORT", value = tostring(var.api_smtp_port) },
@@ -221,9 +247,11 @@ resource "aws_ecs_task_definition" "api" {
       { name = "DATARISE_DB_HOST", valueFrom = "${var.api_database_secret_arn}:host::" },
       { name = "DATARISE_DB_PORT", valueFrom = "${var.api_database_secret_arn}:port::" },
       { name = "DATARISE_DB_NAME", valueFrom = "${var.api_database_secret_arn}:dbname::" }
-    ], var.enable_api_smtp_delivery ? [
+      ], var.enable_api_smtp_delivery ? [
       { name = "SMTP_USERNAME", valueFrom = "${var.api_smtp_secret_arn}:username::" },
       { name = "SMTP_PASSWORD", valueFrom = "${var.api_smtp_secret_arn}:password::" }
+      ] : [], var.api_enable_ask_ai ? [
+      { name = "GEMINI_API_KEY", valueFrom = var.api_gemini_secret_arn }
     ] : [])
     logConfiguration = {
       logDriver = "awslogs"
@@ -246,7 +274,8 @@ resource "aws_ecs_task_definition" "api" {
         (!var.api_enable_initial_append || var.api_enable_processing_jobs) &&
         var.api_backend_origin == "https://${var.api_public_host}" &&
         startswith(var.api_auth_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:") &&
-        startswith(var.api_database_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:"))
+        startswith(var.api_database_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:") &&
+      (!var.api_enable_ask_ai || startswith(var.api_gemini_secret_arn, "arn:aws:secretsmanager:${var.aws_region}:")))
       error_message = "Task needs reviewed ECR/foundation/role, matching HTTPS host and Sydney Secrets Manager ARNs."
     }
     # ECS task definitions are immutable. skip_destroy retains old revisions
@@ -254,12 +283,12 @@ resource "aws_ecs_task_definition" "api" {
   }
 }
 
-# Fargate agent must fetch ONLY these two approved API secrets.
+# Fargate agent may fetch only the explicitly configured API secrets.
 data "aws_iam_policy_document" "api_execution_secrets" {
   count = var.enable_api_task_definition ? 1 : 0
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = concat([var.api_auth_secret_arn, var.api_database_secret_arn], var.enable_api_smtp_delivery ? [var.api_smtp_secret_arn] : [])
+    resources = concat([var.api_auth_secret_arn, var.api_database_secret_arn], var.enable_api_smtp_delivery ? [var.api_smtp_secret_arn] : [], var.api_enable_ask_ai ? [var.api_gemini_secret_arn] : [])
   }
 }
 
