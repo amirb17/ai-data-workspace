@@ -7,7 +7,7 @@ The relationship API previously used direct `SELECT ... FOR UPDATE` on
 and must not remain in a hardened API role.
 
 ## Stage A — install (while current ECS revision keeps working)
-Apply `migrations/0048_relationship_lock_prepare.sql` as a trusted migration
+Apply `migrations/0100_relationship_lock_prepare.sql` as a trusted migration
 owner. It defines `public.lock_relationship_sources(bigint,text)` as
 SECURITY DEFINER with a fixed pg_catalog search path, parent-before-child row
 locks, a workspace owner-key check, no data returned, and EXECUTE restricted
@@ -29,7 +29,7 @@ cross-workspace access. Existing READY discovery runs may be reused, so simply
 clicking Discover in Workspace 3 is **not** proof of the new lock execution.
 
 ## Stage C — revoke after successful live validation
-Apply `migrations/0049_relationship_lock_revoke.sql` as the migration owner.
+Apply `migrations/0101_relationship_lock_revoke.sql` as the migration owner.
 This removes temporary source-name UPDATE grants from `datarise_api` and
 asserts they are no longer effective, while preserving the scoped lock function.
 Do not apply Stage C before Stage B; an old API revision could fail after revoke.
