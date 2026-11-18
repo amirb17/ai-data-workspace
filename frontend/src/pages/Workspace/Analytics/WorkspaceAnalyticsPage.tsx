@@ -74,15 +74,16 @@ function ScopedAnalytics({workspaceId}: {workspaceId: string}) {
 }
 function ScopedWorkspaceAnalyticsRelease({workspaceId}:{workspaceId:string}) {
   const [mode,setMode]=useState<'checking'|'restricted'|'full'|'error'>('checking')
+  const [askAvailable,setAskAvailable]=useState(false)
   useEffect(()=>{
     let active=true
-    authConfig().then(config=>{if(active)setMode(config.public_launch_mode==='off'?'full':'restricted')})
+    authConfig().then(config=>{if(active){setAskAvailable(config.ask_ai_available===true);setMode(config.public_launch_mode==='off'?'full':'restricted')}})
       .catch(()=>{if(active)setMode('error')})
     return ()=>{active=false}
   },[workspaceId])
   if(mode==='checking')return <p role="status">Checking Analytics access…</p>
   if(mode==='error')return <p role="alert">Website permissions could not be loaded. Refresh the page to retry.</p>
-  if(mode==='restricted')return <PublicWorkspaceAnalytics key={workspaceId} workspaceId={workspaceId}/>
+  if(mode==='restricted')return <PublicWorkspaceAnalytics key={workspaceId} workspaceId={workspaceId} showAsk={askAvailable}/>
   return <ScopedAnalytics key={workspaceId} workspaceId={workspaceId} />
 }
 
