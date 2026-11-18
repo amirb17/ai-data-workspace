@@ -1,5 +1,6 @@
 """Use the existing client; provider responses never leak into domain objects."""
 from dataclasses import dataclass
+import time
 from typing import Protocol
 from app.ai.provider import get_ai_client
 from app.config import GEMINI_MODEL
@@ -79,28 +80,49 @@ class GeminiSemanticProvider:
         return reasoning_schema(self.response_model)
 
     def generate(self, evidence_json):
-        try:
-            with get_ai_client(timeout_ms=60000) as client:
-                response = client.interactions.create(model=self.model,
-                    input=self.input_label + '\n' + evidence_json,
-                    system_instruction=self.system_prompt,
-                    response_format={'type':'text','mime_type':'application/json',
-                        'schema':self.response_schema()},
-                    generation_config={'max_output_tokens':self.max_output_tokens,'temperature':0},
-                    store=False, timeout=60)
-            if not response.output_text:
-                raise ProviderFailure('REFUSED')
-            if len(response.output_text.encode()) > 250000:
-                raise ProviderFailure('INVALID_OUTPUT')
-            return ProviderResult(response.output_text, str(response.model) if getattr(response,'model',None) else None)
-        except ProviderFailure:
-            raise
-        except Exception as exc:
-            # Never persist/log provider exception bodies; they may echo input/secrets.
-            code = getattr(exc, 'status_code', None) or getattr(exc, 'code', None)
-            if code == 429: category = 'RATE_LIMIT'
-            elif code == 404: category = 'MODEL_UNAVAILABLE'
-            elif 'timeout' in type(exc).__name__.lower(): category = 'TIMEOUT'
-            elif isinstance(exc, RuntimeError): category = 'PROVIDER_UNAVAILABLE'
-            else: category = 'PROVIDER_ERROR'
-            raise ProviderFailure(category) from None
+        # Gemini can briefly return HTTP 503 when capacity is unavailable.
+        # Retry that status only, with a fixed finite budget. Do not replay
+        # malformed requests, auth failures, quota errors or invalid outputs.
+        for attempt in range(3):
+            try:
+                with get_ai_client(timeout_ms=60000) as client:
+                    response = client.interactions.create(model=self.model,
+                        input=self.input_label + '\\n' + evidence_json,
+                        system_instruction=self.system_prompt,
+                        response_format={'type':'text','mime_type':'application/json',
+                            'schema':self.response_schema()},
+                        generation_config={'max_output_tokens':self.max_output_tokens,'temperature':0},
+                        store=False, timeout=60)
+                if not response.output_text:
+                    raise ProviderFailure('REFUSED')
+                if len(response.output_text.encode()) > 250000:
+                    raise ProviderFailure('INVALID_OUTPUT')
+                return ProviderResult(response.output_text, str(response.model) if getattr(response,'model',None) else None)
+            except ProviderFailure:
+                raise
+            except Exception as exc:
+                # No raw provider text is logged or persisted: it may include
+                # user metadata or credentials. Retain only a safe status class.
+                raw_code = getattr(exc, 'status_code', None) or getattr(exc, 'code', None)
+                try:
+                    code = int(raw_code)
+                except (ValueError, TypeError):
+                    code = None
+                if code == 503:
+                    if attempt < 2:
+                        time.sleep(2 ** attempt)
+                        continue
+                    category = 'SERVICE_UNAVAILABLE'
+                elif code == 429:
+                    category = 'RATE_LIMIT'
+                elif code == 404:
+                    category = 'MODEL_UNAVAILABLE'
+                elif code in (401, 403):
+                    category = 'PROVIDER_AUTH'
+                elif 'timeout' in type(exc).__name__.lower():
+                    category = 'TIMEOUT'
+                elif isinstance(exc, RuntimeError):
+                    category = 'PROVIDER_UNAVAILABLE'
+                else:
+                    category = 'PROVIDER_ERROR'
+                raise ProviderFailure(category) from None
