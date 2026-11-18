@@ -272,8 +272,13 @@ def ask(workspace, user, request, refresh_id=None):
                            primary_answer='Could not calculate this question safely. Retry when the service is available.')
         with repository_transaction() as conn:
             # Short publication locks protect current heads; IO/provider work happened outside.
-            current_source = metric_service.gather(conn, workspace, user, True)
-            current_resolved = analytics.resolve(conn, workspace, user)
+            # Preserve strong publication locks without granting the public API
+            # UPDATE access to workspace or dataset records. The database
+            # function checks ownership and locks parent then children.
+            conn.execute('SELECT public.ask_ai_lock_owned_workspace(%s,%s)',
+                         (workspace, user['owner_key']))
+            current_source = metric_service.gather(conn, workspace, user, False)
+            current_resolved = analytics.resolve(conn, workspace, user, source=current_source)
             if payload['status'] in ('ANSWERED', 'NO_DATA'):
                 try:
                     current_plan, _ = resolve(workspace, intent, current_source, current_resolved, request.question, chosen)
