@@ -89,6 +89,10 @@ SQL_EXECUTION_ROUTES = {
     ('PATCH', W + '/sql/queries/{query_id}'): 'app.api.sql_analytics.update',
     ('DELETE', W + '/sql/queries/{query_id}'): 'app.api.sql_analytics.delete',
 }
+ASK_AI_UNDERSTANDING_READ_ROUTES = {
+    ('GET', D + '/semantic-understanding'): 'app.api.dataset_understanding.read',
+    ('GET', D + '/semantic-understanding/readiness'): 'app.api.dataset_understanding.readiness',
+}
 ASK_AI_ROUTES = {
     ('GET', W + '/questions/readiness'): 'app.api.workspace_questions.readiness',
     ('POST', W + '/questions'): 'app.api.workspace_questions.ask',
@@ -239,6 +243,9 @@ def permitted(route, method, settings=None):
     elif (method, path) in ANALYTICS_REFRESH_ROUTES:
         if settings is None or not settings.analytics_refresh_enabled: return False
         name = ANALYTICS_REFRESH_ROUTES[(method, path)]
+    elif (method, path) in ASK_AI_UNDERSTANDING_READ_ROUTES:
+        if settings is None or not settings.ask_ai_enabled: return False
+        name = ASK_AI_UNDERSTANDING_READ_ROUTES[(method, path)]
     elif (method, path) in ASK_AI_ROUTES:
         if settings is None or not settings.ask_ai_enabled: return False
         name = ASK_AI_ROUTES[(method, path)]
