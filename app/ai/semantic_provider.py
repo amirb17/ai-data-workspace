@@ -87,7 +87,7 @@ class GeminiSemanticProvider:
             try:
                 with get_ai_client(timeout_ms=60000) as client:
                     response = client.interactions.create(model=self.model,
-                        input=self.input_label + '\\n' + evidence_json,
+                        input=self.input_label + '\n' + evidence_json,
                         system_instruction=self.system_prompt,
                         response_format={'type':'text','mime_type':'application/json',
                             'schema':self.response_schema()},
