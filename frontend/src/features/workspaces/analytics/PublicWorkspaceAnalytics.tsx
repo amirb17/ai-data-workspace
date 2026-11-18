@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { WorkspaceAsk } from '../ask/WorkspaceAsk'
 import { listDatasets } from '../../../services/api/datasets'
 import { getDatasetAnalytics, type DatasetAnalytics } from '../../../services/api/analytics'
 
@@ -7,7 +8,7 @@ type DatasetRow = { id:number; name:string; analytics:DatasetAnalytics | null; e
 type State = {rows:DatasetRow[]; loading:boolean; error:string}
 const freshnessLabels:Record<string,string> = {FRESH:'Current',STALE:'Needs refresh',REFRESHING:'Refreshing',FAILED:'Needs attention',NOT_READY:'Not prepared'}
 
-export function PublicWorkspaceAnalytics({workspaceId}:{workspaceId:string}) {
+export function PublicWorkspaceAnalytics({workspaceId, showAsk = false}:{workspaceId:string;showAsk?:boolean}) {
   const [revision,setRevision]=useState(0)
   const [state,setState]=useState<State>({rows:[],loading:true,error:''})
   useEffect(()=>{
@@ -58,7 +59,8 @@ export function PublicWorkspaceAnalytics({workspaceId}:{workspaceId:string}) {
         </>}
         <Link className="inline-flex min-h-11 items-center text-sm font-medium text-indigo-700 underline" to={`/app/workspaces/${workspaceId}/datasets/${row.id}/analytics`}>View dataset analytics</Link>
       </article>)}</div>
-      <p className="text-sm text-slate-600">Workspace-wide metric definitions and Ask AI are not enabled in this release. Dataset analytics remain available.</p>
+      {!showAsk && <p className="text-sm text-slate-600">Workspace-wide metric definitions and Ask AI are not enabled in this release. Dataset analytics remain available.</p>}
     </>}
+    {showAsk && <WorkspaceAsk workspaceId={workspaceId} />}
   </section>
 }

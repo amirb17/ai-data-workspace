@@ -43,6 +43,7 @@ def configuration():
             'rule_review_available': launch.rule_review_enabled,
             'initial_append_available': launch.initial_append_enabled,
             'model_read_available': launch.model_read_enabled,
+            'ask_ai_available': launch.ask_ai_enabled,
             'workspace_creation_available': launch.workspace_creation_enabled,
             'csv_upload_available': launch.csv_upload_enabled}
 
