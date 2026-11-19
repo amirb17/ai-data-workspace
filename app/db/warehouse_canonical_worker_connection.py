@@ -15,7 +15,7 @@ from psycopg.pq import TransactionStatus
 
 from app.db.database import connection_boundary
 from app.db.warehouse_restricted_connection import (
-    RestrictedWarehouseConnection, ROLE_BY_DUTY,
+    RestrictedWarehouseConnection, ROLE_BY_DUTY, REVIEWED_DATABASES,
 )
 
 ISOLATED = "datarise_warehouse_dev"
@@ -43,7 +43,7 @@ def verify_canonical_routing(conn, duty):
                )
     """).fetchone()
     if (row is None or row[0] != ROLE_BY_DUTY[duty]
-            or row[1] != ROLE_BY_DUTY[duty] or row[2] != "ai_data_workspace"
+            or row[1] != ROLE_BY_DUTY[duty] or row[2] not in REVIEWED_DATABASES
             or row[3] is not True or row[4] is not False or row[5] is not False):
         raise RuntimeError("CANONICAL_WORKER_ROUTING_UNTRUSTED")
     shadow=conn.execute("""
@@ -63,7 +63,7 @@ class CanonicalWarehouseWorkerConnection:
     def __post_init__(self):
         if self.duty not in WORKER_DUTIES:
             raise ValueError("UNSUPPORTED_WAREHOUSE_WORKER_DUTY")
-        # This validates the DSN user and local database eagerly.
+        # Verify the exact duty login and explicit approved database identity eagerly.
         RestrictedWarehouseConnection(
             duty=self.duty,dsn=self.dsn,login=ROLE_BY_DUTY[self.duty])
 
