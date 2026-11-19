@@ -35,6 +35,11 @@ variable "efs_security_group_id" {
   description = "Security group of the existing TLS-material EFS mount targets"
 }
 
+variable "vpc_endpoint_security_group_id" {
+  type        = string
+  description = "Security group on private ECR API/DKR, Secrets Manager and CloudWatch Logs endpoints"
+}
+
 variable "private_subnet_ids" {
   type        = list(string)
   description = "At least two reviewed private subnets, with required VPC endpoints"
