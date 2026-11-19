@@ -1,0 +1,7 @@
+const fs = require('node:fs')
+const assert = require('node:assert/strict')
+const source = fs.readFileSync('frontend/src/features/workspaces/ask/WorkspaceAsk.tsx','utf8')
+assert.match(source, /question: text, previous_answer_id: context/)
+assert.doesNotMatch(source, /timezone:\s*Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone/)
+assert.match(source, /refreshWorkspaceAnswer\(workspaceId, refreshId, signal\)/)
+console.log('Public Ask AI request omits browser timezone; refresh remains intact')

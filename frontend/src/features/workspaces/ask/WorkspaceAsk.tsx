@@ -42,7 +42,10 @@ function ScopedWorkspaceAsk({ workspaceId, relationships }: { workspaceId: strin
     const signal = controller.current?.signal
     try {
       const answer = refreshId ? await refreshWorkspaceAnswer(workspaceId, refreshId, signal) : await askWorkspace(workspaceId, {
-        question: text, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, previous_answer_id: context,
+        // Do not pass a browser timezone until the public API runtime has IANA tzdata.
+        // Ordinary aggregates require no timezone; relative-calendar periods
+        // must request explicit clarification instead of using a wrong zone.
+        question: text, previous_answer_id: context,
         clarification_answer_id: clarification?.answer, choice_id: clarification?.choice,
       }, signal)
       if (!signal?.aborted) {
