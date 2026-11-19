@@ -19,7 +19,9 @@ from dataclasses import dataclass, field
 from psycopg.pq import TransactionStatus
 
 from app.db.database import connection_boundary
-from app.db.warehouse_restricted_connection import RestrictedWarehouseConnection
+from app.db.warehouse_restricted_connection import (
+    RestrictedWarehouseConnection, REVIEWED_DATABASES,
+)
 
 ISOLATED = "datarise_warehouse_dev"
 CANONICAL = "public"
@@ -57,7 +59,7 @@ def verify_scope(conn):
     """).fetchone()
     if (row is None or row[0] != "datarise_wh_control"
             or row[1] != "datarise_wh_control"
-            or row[2] != "ai_data_workspace"
+            or row[2] not in REVIEWED_DATABASES
             or row[3] is not True or row[4] is not False
             or row[5] is not False):
         raise RuntimeError("CANONICAL_QUERY_CONTROL_SCOPE_UNTRUSTED")
