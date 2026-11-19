@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import http.client
 import json
+import re
+import ssl
 
 from app.warehouse.worker_rpc_protocol import (
     DUTY_OPERATIONS, WorkerRpcRejected, seal,
@@ -21,6 +23,8 @@ class WarehouseWorkerClient:
     port: int
     secret: bytes = field(repr=False)
     timeout_seconds: float = 5.0
+    host: str = "127.0.0.1"
+    tls_context: ssl.SSLContext | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self):
         if (self.duty not in DUTY_OPERATIONS or type(self.port) is not int
@@ -29,13 +33,28 @@ class WarehouseWorkerClient:
                 or not isinstance(self.timeout_seconds,(int,float))
                 or isinstance(self.timeout_seconds,bool)
                 or not 0 < self.timeout_seconds <= 10):
-            raise ValueError("REVIEWED_LOOPBACK_WORKER_CLIENT_REQUIRED")
+            raise ValueError("REVIEWED_WORKER_CLIENT_REQUIRED")
+        if self.host == "127.0.0.1":
+            if self.tls_context is not None:
+                raise ValueError("LOOPBACK_RPC_MUST_NOT_USE_REMOTE_TLS_MODE")
+        elif (type(self.host) is not str
+                or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\.internal", self.host)
+                or type(self.tls_context) is not ssl.SSLContext
+                or self.tls_context.verify_mode != ssl.CERT_REQUIRED
+                or not self.tls_context.check_hostname
+                or self.tls_context.minimum_version < ssl.TLSVersion.TLSv1_2):
+            raise ValueError("PRIVATE_MTLS_WORKER_ENDPOINT_REQUIRED")
 
     def invoke(self, operation: str, arguments: dict) -> dict:
         payload = seal(self.secret,duty=self.duty,operation=operation,
                        arguments=arguments)
-        connection=http.client.HTTPConnection(
-            "127.0.0.1",self.port,timeout=self.timeout_seconds)
+        if self.host == "127.0.0.1":
+            connection = http.client.HTTPConnection(
+                self.host, self.port, timeout=self.timeout_seconds)
+        else:
+            connection = http.client.HTTPSConnection(
+                self.host, self.port, timeout=self.timeout_seconds,
+                context=self.tls_context)
         try:
             connection.request(
                 "POST","/internal/v1/operation",
@@ -69,7 +88,7 @@ class WarehouseWorkerClient:
                     or type(result.get("result")) is not dict):
                 raise WorkerRpcRejected("WORKER_RPC_RESPONSE_INVALID")
             return result["result"]
-        except (OSError,TimeoutError,http.client.HTTPException) as exc:
+        except (OSError,TimeoutError,http.client.HTTPException,ssl.SSLError) as exc:
             # Do not disclose host/credentials/headers from transport errors.
             raise WorkerRpcRejected("WORKER_RPC_CONNECTION_FAILED") from None
         finally:

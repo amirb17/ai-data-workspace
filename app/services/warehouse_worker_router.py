@@ -77,7 +77,7 @@ class WarehouseWorkerRouter:
                         "provider_submission","recovery_attestation",
                         "accounting","result_authorization")):
             raise ValueError("INDEPENDENT_WORKER_ROUTING_REQUIRED")
-        if len({x.port for x in (self.submit,self.attest,self.account,self.results)})!=4:
+        if len({(x.host,x.port) for x in (self.submit,self.attest,self.account,self.results)})!=4:
             raise ValueError("DISTINCT_WORKER_PORTS_REQUIRED")
         if len({x.secret for x in (self.submit,self.attest,self.account,self.results)})!=4:
             raise ValueError("DISTINCT_WORKER_RPC_SECRETS_REQUIRED")

@@ -19,6 +19,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import ssl
 import sys
 from uuid import UUID
 
@@ -142,13 +143,23 @@ def _rpc_key(value: str | None) -> bytes:
 
 
 def create_server(*, duty: str, secret: bytes, port: int,
-                  handler=execute_operation, boundary=None) -> ThreadingHTTPServer:
+                  handler=execute_operation, boundary=None,
+                  bind_host: str = "127.0.0.1",
+                  tls_context: ssl.SSLContext | None = None) -> ThreadingHTTPServer:
     if duty not in DUTY_OPERATIONS or type(port) is not int or not 1024 <= port <= 65535:
         raise ValueError("WORKER_DUTY_OR_PORT_INVALID")
     if len(secret) < 32:
         raise ValueError("WORKER_SECRET_INVALID")
     if not callable(boundary):
         raise ValueError("EXPLICIT_WORKER_DATABASE_BOUNDARY_REQUIRED")
+    private = bind_host != "127.0.0.1"
+    if private:
+        if (bind_host != "0.0.0.0" or type(tls_context) is not ssl.SSLContext
+                or tls_context.verify_mode != ssl.CERT_REQUIRED
+                or tls_context.minimum_version < ssl.TLSVersion.TLSv1_2):
+            raise ValueError("PRIVATE_WORKER_MUTUAL_TLS_REQUIRED")
+    elif tls_context is not None:
+        raise ValueError("LOOPBACK_WORKER_TLS_MODE_FORBIDDEN")
     guard = ReplayGuard()
 
     class Handler(BaseHTTPRequestHandler):
@@ -158,7 +169,15 @@ def create_server(*, duty: str, secret: bytes, port: int,
             pass
 
         def do_POST(self):
-            if self.client_address[0] != "127.0.0.1" or self.path != "/internal/v1/operation":
+            if self.path != "/internal/v1/operation":
+                self.send_error(404)
+                return
+            if private:
+                if (not isinstance(self.connection, ssl.SSLSocket)
+                        or not self.connection.getpeercert()):
+                    self.send_error(403)
+                    return
+            elif self.client_address[0] != "127.0.0.1":
                 self.send_error(404)
                 return
             raw_size = self.headers.get("Content-Length")
@@ -201,13 +220,22 @@ def create_server(*, duty: str, secret: bytes, port: int,
             self.end_headers()
             self.wfile.write(encoded)
 
-    return ThreadingHTTPServer(("127.0.0.1",port),Handler)
+    server = ThreadingHTTPServer((bind_host,port),Handler)
+    if private:
+        try:
+            server.socket = tls_context.wrap_socket(server.socket, server_side=True)
+        except BaseException:
+            server.server_close()
+            raise
+    return server
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("duty",choices=tuple(DUTY_OPERATIONS))
     parser.add_argument("--port",type=int,required=True)
+    parser.add_argument("--private-mtls",action="store_true",
+                        help="Explicitly allow private TLS only; never public Internet")
     args=parser.parse_args()
     try:
         dsn=os.environ.get("DATARISE_WAREHOUSE_DUTY_DSN")
@@ -220,10 +248,26 @@ def main():
         role=ROLE_BY_DUTY[args.duty]
         factory=CanonicalWarehouseWorkerConnection(
             duty=args.duty,dsn=dsn)
+        if args.private_mtls:
+            certificate = os.environ.get("DATARISE_WAREHOUSE_TLS_CERT")
+            private_key = os.environ.get("DATARISE_WAREHOUSE_TLS_KEY")
+            client_ca = os.environ.get("DATARISE_WAREHOUSE_TLS_CLIENT_CA")
+            if not all((certificate, private_key, client_ca)):
+                raise WorkerRpcRejected("WORKER_MTLS_MATERIAL_MISSING")
+            tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            tls.minimum_version = ssl.TLSVersion.TLSv1_2
+            tls.verify_mode = ssl.CERT_REQUIRED
+            tls.load_cert_chain(certificate, private_key)
+            tls.load_verify_locations(cafile=client_ca)
+        else:
+            tls = None
         server=create_server(duty=args.duty,secret=secret,port=args.port,
-                             boundary=factory.boundary)
+                             boundary=factory.boundary,
+                             bind_host="0.0.0.0" if args.private_mtls else "127.0.0.1",
+                             tls_context=tls)
         print(json.dumps({"worker_started":True,"duty":args.duty,
-                          "bind":"127.0.0.1","port":args.port,
+                          "bind":"private-mtls" if args.private_mtls else "127.0.0.1",
+                          "port":args.port,
                           "query_execution_enabled":False}),flush=True)
         server.serve_forever(poll_interval=0.5)
         return 0
