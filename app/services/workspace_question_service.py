@@ -78,6 +78,30 @@ def base_payload(request, intent=None):
                 explanation='', caveats=[], follow_ups=[], choices=[])
 
 
+def exact_record_count_plan(question, source):
+    """Interpret only exact, named record-count requests without a provider.
+
+    Avoid silent dataset selection, entity-count inference, time filtering, or
+    arbitrary natural-language parsing. The same validated resolver and Gold
+    engine still decide whether this count is answerable.
+    """
+    named = []
+    for item in source['eligible']:
+        dataset_name = item['pin']['dataset_name']
+        for prefix in ('What is the record count for ', 'How many records are in '):
+            if re.fullmatch(re.escape(prefix + dataset_name) + r'\\??', question.strip(), re.I):
+                named.append(item['pin']['dataset_id'])
+                break
+    if len(named) != 1:
+        return None
+    return WorkspaceQuestionPlan(
+        status='ANSWERABLE',
+        intent=QuestionIntent(question_type='SCALAR', context_mode='NEW',
+                              base_dataset_id=named[0], aggregation='COUNT',
+                              meaning='LITERAL'),
+    )
+
+
 def choices_for(intent, source):
     """Only backend-validated literal measures, scoped to a question; never approve a business metric."""
     options = []
@@ -152,6 +176,10 @@ def ask(workspace, user, request, refresh_id=None):
                 raise QuestionBlocked('UNSUPPORTED', 'Ask for aggregate analytics without personal records, identifiers or executable instructions.')
             if not source['eligible']:
                 raise QuestionBlocked('REFRESH_REQUIRED', 'Add a dataset to start asking questions.' if not source['members'] else 'Prepare current dataset profiles and understanding before asking this question.')
+            if planned is None and not request.previous_answer_id and not request.clarification_answer_id:
+                # Exact current dataset record counts are deterministic; do not
+                # make their availability depend on an external planner.
+                planned = exact_record_count_plan(request.question, source)
             if planned is None:
                 encoded = handoff(request.question, source, resolved, previous)
                 provider_started = time.monotonic()
