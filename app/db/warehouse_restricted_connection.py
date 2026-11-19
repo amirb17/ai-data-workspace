@@ -22,6 +22,9 @@ from psycopg.pq import TransactionStatus
 from app.db.database import connection_boundary
 
 SCHEMA = "datarise_warehouse_dev"
+# Explicit database identities from the development contract and deployed AWS RDS.
+# Do not accept arbitrary names, role fallbacks or caller-provided overrides.
+REVIEWED_DATABASES = frozenset(("ai_data_workspace", "aiworkspace"))
 ROLE_BY_DUTY = {
     "query_control": "datarise_wh_control",
     "provider_submission": "datarise_wh_submit",
@@ -91,7 +94,7 @@ class RestrictedWarehouseConnection:
         # Avoid accidental local admin/role reuse and refuse URI-based credentials
         # that do not name the intended direct-login role.
         settings = conninfo_to_dict(self.dsn)
-        if settings.get("user") != self.login or settings.get("dbname") != "ai_data_workspace":
+        if settings.get("user") != self.login or settings.get("dbname") not in REVIEWED_DATABASES:
             raise ValueError("RESTRICTED_WAREHOUSE_CONNECTION_IDENTITY_MISMATCH")
         if settings.get("options"):
             raise ValueError("UNREVIEWED_CONNECTION_OPTIONS")
@@ -113,7 +116,7 @@ class RestrictedWarehouseConnection:
                 """)
                 row = cur.fetchone()
                 if (row is None or row[0] != self.login or row[1] != self.login
-                        or row[2] != "ai_data_workspace" or row[3] is not True
+                        or row[2] not in REVIEWED_DATABASES or row[3] is not True
                         or any(row[4:])):
                     raise RuntimeError("RESTRICTED_DATABASE_LOGIN_NOT_VERIFIED")
                 cur.execute("""
