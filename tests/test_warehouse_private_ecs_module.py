@@ -19,7 +19,8 @@ def test_four_worker_duties_are_explicit_and_independent():
     assert re.search(r'recovery_attestation\s*=\s*18442', main)
     assert re.search(r'accounting\s*=\s*18443', main)
     assert re.search(r'result_authorization\s*=\s*18444', main)
-    assert 'setequals(' in variables
+    assert 'length(setsubtract(' in variables
+    assert 'length(var.duties) == 4' in variables
     assert 'length(distinct([for _, d in var.duties : d.db_dsn_secret_arn])) == 4' in variables
     assert 'length(distinct([for _, d in var.duties : d.rpc_secret_arn])) == 4' in variables
     assert 'length(distinct([for _, d in var.duties : d.efs_access_point_arn])) == 4' in variables
