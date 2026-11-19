@@ -43,9 +43,7 @@ resource "aws_service_discovery_service" "worker" {
     routing_policy = "MULTIVALUE"
   }
 
-  health_check_custom_config {
-    failure_threshold = 1
-  }
+  health_check_custom_config {}
 }
 
 resource "aws_cloudwatch_log_group" "worker" {
