@@ -89,7 +89,7 @@ def exact_record_count_plan(question, source):
     for item in source['eligible']:
         dataset_name = item['pin']['dataset_name']
         for prefix in ('What is the record count for ', 'How many records are in '):
-            if re.fullmatch(re.escape(prefix + dataset_name) + r'\\??', question.strip(), re.I):
+            if re.fullmatch(re.escape(prefix + dataset_name) + r'\??', question.strip(), re.I):
                 named.append(item['pin']['dataset_id'])
                 break
     if len(named) != 1:
