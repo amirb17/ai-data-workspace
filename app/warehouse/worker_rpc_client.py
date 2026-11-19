@@ -38,7 +38,7 @@ class WarehouseWorkerClient:
             if self.tls_context is not None:
                 raise ValueError("LOOPBACK_RPC_MUST_NOT_USE_REMOTE_TLS_MODE")
         elif (type(self.host) is not str
-                or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\\.internal", self.host)
+                or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\.internal", self.host)
                 or type(self.tls_context) is not ssl.SSLContext
                 or self.tls_context.verify_mode != ssl.CERT_REQUIRED
                 or not self.tls_context.check_hostname
