@@ -74,3 +74,15 @@ def test_module_does_not_mint_provider_privileges_or_enable_live_dispatch():
         'aws_iam_policy_attachment',
     ):
         assert forbidden not in main
+
+
+def test_existing_secrets_endpoint_reachable_without_broad_egress():
+    main = read("main.tf")
+    variables = read("variables.tf")
+    outputs = read("outputs.tf")
+    assert 'resource "aws_vpc_security_group_egress_rule" "worker_to_secrets_manager"' in main
+    assert 'referenced_security_group_id = var.secrets_manager_endpoint_security_group_id' in main
+    assert 'var.secrets_manager_endpoint_security_group_id == "sg-0756562b88e103959"' in variables
+    assert 'output "worker_security_group_id"' in outputs
+    assert 'output "private_worker_dns_names"' in outputs
+    assert '0.0.0.0/0' not in main
