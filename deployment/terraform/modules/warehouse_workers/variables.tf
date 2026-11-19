@@ -75,9 +75,12 @@ variable "duties" {
   }))
 
   validation {
-    condition = setequals(
-      toset(keys(var.duties)),
-      toset(["provider_submission", "recovery_attestation", "accounting", "result_authorization"])
+    condition = (
+      length(var.duties) == 4 &&
+      length(setsubtract(
+        toset(keys(var.duties)),
+        toset(["provider_submission", "recovery_attestation", "accounting", "result_authorization"])
+      )) == 0
     )
     error_message = "Exactly the four independent worker duties must be supplied."
   }
