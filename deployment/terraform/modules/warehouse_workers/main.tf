@@ -97,6 +97,16 @@ resource "aws_vpc_security_group_egress_rule" "worker_to_vpc_endpoints" {
   description                  = "Private ECR, Logs and Secrets Manager VPC endpoints"
 }
 
+# The existing Secrets Manager interface endpoint uses a separate reviewed SG.
+resource "aws_vpc_security_group_egress_rule" "worker_to_secrets_manager" {
+  security_group_id            = aws_security_group.worker.id
+  referenced_security_group_id = var.secrets_manager_endpoint_security_group_id
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+  description                  = "Private existing Secrets Manager endpoint"
+}
+
 resource "aws_iam_role" "execution" {
   for_each = local.duties
   name     = "${var.name_prefix}-${replace(each.key, "_", "-")}-exec"

@@ -40,6 +40,15 @@ variable "vpc_endpoint_security_group_id" {
   description = "Security group on private ECR API/DKR, Secrets Manager and CloudWatch Logs endpoints"
 }
 
+variable "secrets_manager_endpoint_security_group_id" {
+  type        = string
+  description = "Existing Secrets Manager endpoint SG; inspected value sg-0756562b88e103959"
+  validation {
+    condition     = var.secrets_manager_endpoint_security_group_id == "sg-0756562b88e103959"
+    error_message = "Only the inspected Secrets Manager endpoint SG is permitted."
+  }
+}
+
 variable "private_subnet_ids" {
   type        = list(string)
   description = "At least two reviewed private subnets, with required VPC endpoints"
